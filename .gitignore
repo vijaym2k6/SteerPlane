@@ -44,3 +44,5 @@ SteerPlane_PRD*
 # Large media files (host on CDN instead)
 *.mp4
 *.webm
+# Exception: keep the dashboard background video
+!dashboard/public/bg-video-2.mp4
