@@ -1,0 +1,54 @@
+{
+  "name": "steerplane",
+  "version": "0.1.0",
+  "description": "Runtime control plane for autonomous AI agents — guards, cost limits, loop detection, and telemetry.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "guard",
+    "safety",
+    "monitoring",
+    "telemetry",
+    "llm",
+    "langchain",
+    "openai",
+    "cost-tracking",
+    "loop-detection",
+    "runtime-guardrails"
+  ],
+  "author": "SteerPlane",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vijaym2k6/SteerPlane"
+  },
+  "homepage": "https://github.com/vijaym2k6/SteerPlane",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.5",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.4.0"
+  }
+}

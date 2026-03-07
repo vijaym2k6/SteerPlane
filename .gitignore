@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Databases
+*.db
+*.sqlite3
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Next.js
+.next/
+out/
+
+# Python
+*.pyz
+*.pyzw
+pip-log.txt
+pip-delete-this-directory.txt
+
+# PRD files (internal, not code)
+SteerPlane_PRD*
+
+# Large media files (host on CDN instead)
+*.mp4
+*.webm
