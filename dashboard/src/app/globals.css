@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
 
 :root {
   /* ─── Mission Control Palette ─── */
@@ -169,7 +169,7 @@ a {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 14px 40px;
+  padding: 15px 20px 15px 20px;
   background: rgba(4, 14, 16, 0.6);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -187,26 +187,35 @@ a {
 }
 
 .navbar-logo {
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  color: var(--icy);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.navbar-logo svg {
-  color: var(--accent-bright);
-  filter: drop-shadow(0 0 6px var(--accent-glow));
+.navbar-logo-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.navbar-logo-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--icy);
+  text-transform: uppercase;
 }
 
 .navbar-tagline {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-dim);
   padding-left: 14px;
   border-left: 1px solid var(--border-color);
-  font-weight: 500;
+  font-weight: 400;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
 }
 
 .navbar-nav {
@@ -856,13 +865,41 @@ a {
   box-shadow: 0 0 8px var(--accent-bright);
 }
 
-.hero-title {
-  font-size: 64px;
-  font-weight: 900;
-  line-height: 1.08;
-  letter-spacing: -2px;
-  margin-bottom: 24px;
+.hero-logo-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 21px;
+  margin-bottom: 32px;
+}
+
+.hero-logo-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 16px;
+  object-fit: cover;
+  margin-bottom: 8px;
+}
+
+.hero-title-futuristic {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 84px;
+  font-weight: 800;
+  letter-spacing: 18px;
   color: var(--icy);
+  text-transform: uppercase;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.hero-tagline-futuristic {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 17.5px;
+  font-weight: 500;
+  letter-spacing: 8px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  text-align: center;
 }
 
 .hero-gradient {
@@ -1348,8 +1385,19 @@ a {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .hero-title {
-    font-size: 38px;
+  .hero-title-futuristic {
+    font-size: 28px;
+    letter-spacing: 8px;
+  }
+
+  .hero-tagline-futuristic {
+    font-size: 10px;
+    letter-spacing: 4px;
+  }
+
+  .hero-logo-img {
+    width: 56px;
+    height: 56px;
   }
 
   .stats-banner {

@@ -22,14 +22,14 @@ export default function Navbar() {
         <nav className="navbar">
             <div className="navbar-brand">
                 <Link href="/" className="navbar-logo">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                        <polyline points="2 17 12 22 22 17" />
-                        <polyline points="2 12 12 17 22 12" />
-                    </svg>
-                    SteerPlane
+                    <img
+                        src="/SteerPlane_Logo.jpg"
+                        alt="SteerPlane"
+                        className="navbar-logo-img"
+                    />
+                    <span className="navbar-logo-text">STEER PLANE</span>
                 </Link>
-                <span className="navbar-tagline">Advanced Agent Control Plane</span>
+                <span className="navbar-tagline">Runtime Control Plane for AI Agents</span>
             </div>
 
             <div className="navbar-nav">

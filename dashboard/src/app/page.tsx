@@ -133,16 +133,15 @@ export default function Home() {
           V0.1.0 · Runtime Agent Guardrails
         </motion.div>
 
-        <motion.h1
-          className="hero-title"
+        <motion.div
+          className="hero-logo-section"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         >
-          The control plane for
-          <br />
-          <span className="hero-gradient">autonomous AI agents.</span>
-        </motion.h1>
+          <h1 className="hero-title-futuristic">STEER PLANE</h1>
+          <p className="hero-tagline-futuristic">RUNTIME CONTROL PLANE FOR AI AGENTS</p>
+        </motion.div>
 
         <motion.p
           className="hero-subtitle"
@@ -150,7 +149,7 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.25 }}
         >
-          SteerPlane is an open-source runtime layer that sits between your AI agent
+          An open-source runtime layer that sits between your AI agent
           and the outside world. It intercepts every action, enforces safety policies,
           detects infinite loops, tracks token costs, and gives you complete observability
           into autonomous agent behavior — without modifying agent code.

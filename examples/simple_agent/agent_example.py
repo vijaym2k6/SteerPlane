@@ -34,7 +34,7 @@ ACTIONS = [
 
 def run_normal_agent():
     """Run a normal agent that completes successfully."""
-    print("\n{'='*60}")
+    print(f"\n{'='*60}")
     print("DEMO 1: Normal Agent Run (Success)")
     print(f"{'='*60}")
 
