@@ -11,6 +11,7 @@ from .config import settings
 from .db.database import init_db
 from .routes.runs import router as runs_router
 from .routes.telemetry import router as telemetry_router
+from .routes.policies import router as policies_router
 
 
 app = FastAPI(
@@ -33,6 +34,7 @@ app.add_middleware(
 # Register routes
 app.include_router(runs_router)
 app.include_router(telemetry_router)
+app.include_router(policies_router)
 
 
 @app.on_event("startup")

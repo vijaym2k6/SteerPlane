@@ -32,6 +32,7 @@ from .run_manager import RunManager
 from .loop_detector import LoopDetector, detect_loop
 from .cost_tracker import CostTracker
 from .telemetry import TelemetryCollector, StepEvent
+from .policy_engine import PolicyEngine, PolicyDecision, RateLimitSpec
 from .config import configure, get_config
 from .exceptions import (
     SteerPlaneError,
@@ -39,6 +40,7 @@ from .exceptions import (
     CostLimitExceeded,
     StepLimitExceeded,
     RunTerminatedError,
+    PolicyViolationError,
     APIConnectionError,
 )
 
@@ -53,6 +55,10 @@ __all__ = [
     "CostTracker",
     "TelemetryCollector",
     "StepEvent",
+    # Policy Engine
+    "PolicyEngine",
+    "PolicyDecision",
+    "RateLimitSpec",
     # Utilities
     "detect_loop",
     "configure",
@@ -63,6 +69,7 @@ __all__ = [
     "CostLimitExceeded",
     "StepLimitExceeded",
     "RunTerminatedError",
+    "PolicyViolationError",
     "APIConnectionError",
     # Metadata
     "__version__",

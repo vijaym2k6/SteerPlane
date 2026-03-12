@@ -17,6 +17,7 @@ import logging
 from typing import Callable, Any
 
 from .run_manager import RunManager
+from .policy_engine import PolicyEngine, RateLimitSpec
 from .config import get_config
 
 logger = logging.getLogger("steerplane")
@@ -41,11 +42,17 @@ def guard(
     log_to_console: bool = True,
     api_url: str | None = None,
     api_key: str | None = None,
+    allowed_actions: list[str] | None = None,
+    denied_actions: list[str] | None = None,
+    rate_limits: list[RateLimitSpec | dict] | None = None,
+    require_approval: list[str] | None = None,
+    approval_callback=None,
 ) -> Callable:
     """
     Guard decorator for agent functions.
     
     Wraps an agent function with SteerPlane's guard system:
+    - Policy engine (allow/deny lists, rate limits, approval)
     - Loop detection (sliding window)
     - Cost limit enforcement
     - Step limit enforcement
@@ -62,14 +69,18 @@ def guard(
         log_to_console: Whether to print step logs to console.
         api_url: SteerPlane API URL (overrides config).
         api_key: API key (overrides config).
+        allowed_actions: Glob patterns for permitted actions.
+        denied_actions: Glob patterns for forbidden actions.
+        rate_limits: Per-action rate limits.
+        require_approval: Actions requiring human approval.
+        approval_callback: Callback for approval workflow.
         
     Returns:
         Decorated function with guard capabilities.
         
     Example:
-        @guard(max_cost_usd=10, max_steps=50)
+        @guard(max_cost_usd=10, max_steps=50, denied_actions=["delete_*"])
         def run_my_agent():
-            # The agent's run manager is available via steerplane.get_active_run()
             agent.run()
     """
     def decorator(func: Callable) -> Callable:
@@ -78,6 +89,17 @@ def guard(
             global _active_run
 
             name = agent_name or func.__name__
+
+            # Build policy engine if any rules are specified
+            policy = None
+            if allowed_actions or denied_actions or rate_limits or require_approval:
+                policy = PolicyEngine(
+                    allowed_actions=allowed_actions,
+                    denied_actions=denied_actions,
+                    rate_limits=rate_limits,
+                    require_approval=require_approval,
+                    approval_callback=approval_callback,
+                )
 
             # Create run manager with guard configuration
             run = RunManager(
@@ -90,6 +112,7 @@ def guard(
                 api_url=api_url,
                 api_key=api_key,
                 log_to_console=log_to_console,
+                policy=policy,
             )
 
             # Set as active run
@@ -153,14 +176,30 @@ class SteerPlane:
         max_runtime_sec: int = 3600,
         loop_window_size: int = 8,
         log_to_console: bool = True,
+        allowed_actions: list[str] | None = None,
+        denied_actions: list[str] | None = None,
+        rate_limits: list[RateLimitSpec | dict] | None = None,
+        require_approval: list[str] | None = None,
+        approval_callback=None,
     ) -> RunManager:
         """
         Create a new run context manager.
         
         Usage:
-            with sp.run(max_cost_usd=10) as run:
+            with sp.run(max_cost_usd=10, denied_actions=["delete_*"]) as run:
                 run.log_step("action", tokens=100)
         """
+        # Build policy engine if any rules are specified
+        policy = None
+        if allowed_actions or denied_actions or rate_limits or require_approval:
+            policy = PolicyEngine(
+                allowed_actions=allowed_actions,
+                denied_actions=denied_actions,
+                rate_limits=rate_limits,
+                require_approval=require_approval,
+                approval_callback=approval_callback,
+            )
+
         return RunManager(
             agent_name=self.agent_id,
             run_id=run_id,
@@ -172,6 +211,7 @@ class SteerPlane:
             api_url=self.api_url,
             api_key=self.api_key,
             log_to_console=log_to_console,
+            policy=policy,
         )
 
     def create_run(self, **kwargs) -> RunManager:
