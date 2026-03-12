@@ -57,6 +57,18 @@ class RunTerminatedError(SteerPlaneError):
         )
 
 
+class PolicyViolationError(SteerPlaneError):
+    """Raised when an action is blocked by the policy engine."""
+
+    def __init__(self, action: str, rule: str, reason: str):
+        self.action = action
+        self.rule = rule
+        self.reason = reason
+        super().__init__(
+            f"🛡️ Policy violation: {reason} [rule={rule}]"
+        )
+
+
 class APIConnectionError(SteerPlaneError):
     """Raised when the SDK cannot connect to the SteerPlane API."""
 

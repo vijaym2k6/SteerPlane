@@ -15,11 +15,13 @@ from .loop_detector import LoopDetector
 from .cost_tracker import CostTracker
 from .utils import generate_run_id, format_cost, format_duration
 from .config import get_config
+from .policy_engine import PolicyEngine
 from .exceptions import (
     LoopDetectedError,
     CostLimitExceeded,
     StepLimitExceeded,
     RunTerminatedError,
+    PolicyViolationError,
 )
 
 logger = logging.getLogger("steerplane")
@@ -49,6 +51,7 @@ class RunManager:
         api_url: str | None = None,
         api_key: str | None = None,
         log_to_console: bool = True,
+        policy: PolicyEngine | None = None,
     ):
         self.agent_name = agent_name
         self.run_id = run_id or generate_run_id()
@@ -61,6 +64,7 @@ class RunManager:
         self.telemetry = TelemetryCollector(self.run_id)
         self.loop_detector = LoopDetector(window_size=loop_window_size)
         self.cost_tracker = CostTracker(max_cost_usd=max_cost_usd, model=model)
+        self.policy = policy
 
         # Run state
         self.status = "pending"
@@ -121,6 +125,7 @@ class RunManager:
             The logged StepEvent.
             
         Raises:
+            PolicyViolationError: If the action is blocked by policy.
             LoopDetectedError: If a loop pattern is detected.
             CostLimitExceeded: If cost exceeds the limit.
             StepLimitExceeded: If steps exceed the limit.
@@ -128,6 +133,14 @@ class RunManager:
         """
         if self._terminated:
             raise RunTerminatedError(self.run_id, self._termination_reason or "Run terminated")
+
+        # Policy check (run first — block before incurring cost)
+        if self.policy and self.policy.has_rules:
+            try:
+                self.policy.check(action, metadata)
+            except PolicyViolationError:
+                self._terminate("policy_violation")
+                raise
 
         # Check step limit
         step_number = self.telemetry.step_count + 1
