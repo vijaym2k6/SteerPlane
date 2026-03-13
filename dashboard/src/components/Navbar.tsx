@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 const navLinks = [
     { href: "/", label: "Home" },
     { href: "/dashboard", label: "Dashboard" },
+    { href: "/policies", label: "Policies" },
 ];
 
 export default function Navbar() {

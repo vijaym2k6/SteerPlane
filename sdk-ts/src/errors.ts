@@ -79,3 +79,17 @@ export class APIConnectionError extends SteerPlaneError {
     this.detail = detail;
   }
 }
+
+export class PolicyViolationError extends SteerPlaneError {
+  public readonly action: string;
+  public readonly rule: string;
+  public readonly reason: string;
+
+  constructor(action: string, rule: string, reason: string) {
+    super(`🛡️ Policy violation: ${reason}`);
+    this.name = "PolicyViolationError";
+    this.action = action;
+    this.rule = rule;
+    this.reason = reason;
+  }
+}

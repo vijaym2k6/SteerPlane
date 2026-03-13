@@ -44,6 +44,14 @@ export type { LoopDetectionResult } from "./loop-detector.js";
 export { CostTracker, DEFAULT_PRICING } from "./cost-tracker.js";
 export type { StepCost, CostSummary } from "./cost-tracker.js";
 
+export { PolicyEngine, globMatch } from "./policy-engine.js";
+export type {
+  PolicyDecision,
+  RateLimitSpec,
+  ApprovalCallback,
+  PolicyEngineOptions,
+} from "./policy-engine.js";
+
 export { SteerPlaneClient } from "./client.js";
 
 // Utilities
@@ -57,4 +65,5 @@ export {
   StepLimitExceeded,
   RunTerminatedError,
   APIConnectionError,
+  PolicyViolationError,
 } from "./errors.js";

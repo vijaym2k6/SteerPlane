@@ -54,3 +54,68 @@ export async function fetchRun(runId: string): Promise<RunDetail> {
     if (!res.ok) throw new Error(`Failed to fetch run ${runId}`);
     return res.json();
 }
+
+// ─── Policy API ────────────────────────────────────────
+
+export interface RateLimitSpec {
+    pattern: string;
+    max_count: number;
+    window_seconds: number;
+}
+
+export interface PolicyConfig {
+    id?: string;
+    agent_name: string;
+    allowed_actions: string[];
+    denied_actions: string[];
+    rate_limits: RateLimitSpec[];
+    require_approval: string[];
+    is_active: boolean;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export async function fetchPolicies(): Promise<PolicyConfig[]> {
+    const res = await fetch(`${API_BASE}/policies`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to fetch policies");
+    return res.json();
+}
+
+export async function fetchPolicy(agentName: string): Promise<PolicyConfig> {
+    const res = await fetch(`${API_BASE}/policies/${agentName}`, {
+        cache: "no-store",
+    });
+    if (!res.ok) throw new Error(`Failed to fetch policy for ${agentName}`);
+    return res.json();
+}
+
+export async function createPolicy(policy: PolicyConfig): Promise<PolicyConfig> {
+    const res = await fetch(`${API_BASE}/policies`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(policy),
+    });
+    if (!res.ok) throw new Error("Failed to create policy");
+    return res.json();
+}
+
+export async function updatePolicy(
+    agentName: string,
+    policy: Partial<PolicyConfig>
+): Promise<PolicyConfig> {
+    const res = await fetch(`${API_BASE}/policies/${agentName}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(policy),
+    });
+    if (!res.ok) throw new Error(`Failed to update policy for ${agentName}`);
+    return res.json();
+}
+
+export async function deletePolicy(agentName: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/policies/${agentName}`, {
+        method: "DELETE",
+    });
+    if (!res.ok) throw new Error(`Failed to delete policy for ${agentName}`);
+}
+
