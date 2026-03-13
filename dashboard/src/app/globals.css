@@ -1415,3 +1415,437 @@ a {
     display: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   Policies Page
+   ═══════════════════════════════════════════════════════ */
+.policies-page {
+  padding: 40px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.policies-header {
+  margin-bottom: 36px;
+}
+
+.policies-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--icy);
+  margin-bottom: 6px;
+}
+
+.policies-subtitle {
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+.policy-section {
+  margin-bottom: 40px;
+}
+
+.policy-section h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.count-badge {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: rgba(37, 99, 235, 0.15);
+  color: var(--accent-bright);
+  padding: 2px 10px;
+  border-radius: var(--r-full);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+}
+
+.policy-error {
+  padding: 14px 18px;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--r-sm);
+  color: #fca5a5;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+/* ── Policy Card ── */
+.policy-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-bottom: 12px;
+}
+
+.policy-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-glow);
+}
+
+.policy-card.inactive {
+  opacity: 0.6;
+}
+
+.policy-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.policy-card-header:hover {
+  background: var(--bg-card-hover);
+}
+
+.policy-card-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.policy-icon {
+  font-size: 20px;
+}
+
+.policy-card .agent-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--icy);
+}
+
+.agent-name-input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-sm);
+  padding: 6px 12px;
+  color: var(--icy);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.agent-name-input:focus {
+  border-color: var(--accent-mid);
+}
+
+.policy-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rule-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.policy-card-meta .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  animation: none;
+  box-shadow: none;
+}
+
+.policy-card-meta .status-dot.active {
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+  animation: breathe 3s ease-in-out infinite;
+}
+
+.expand-icon {
+  font-size: 11px;
+  color: var(--text-dim);
+  transition: transform 0.3s;
+}
+
+.policy-card-body {
+  padding: 0 24px 24px;
+  border-top: 1px solid var(--border-color);
+}
+
+/* ── Policy Fields ── */
+.policy-field {
+  margin-top: 18px;
+}
+
+.policy-field > label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.policy-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.policy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(37, 99, 235, 0.15);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  color: var(--accent-bright);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+}
+
+.policy-chip button {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  transition: color 0.2s;
+}
+
+.policy-chip button:hover {
+  color: var(--danger);
+}
+
+.policy-chip-input {
+  display: flex;
+  gap: 8px;
+}
+
+.policy-chip-input input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-sm);
+  padding: 6px 12px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.policy-chip-input input:focus {
+  border-color: var(--accent-mid);
+}
+
+/* ── Buttons ── */
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--icy);
+  background: rgba(37, 99, 235, 0.2);
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-sm:hover {
+  background: rgba(37, 99, 235, 0.35);
+}
+
+.btn-primary {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent-start), var(--accent-end));
+  border: 1px solid var(--accent-mid);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: var(--shadow-glow-strong);
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fca5a5;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.btn-sm.btn-danger {
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #fca5a5;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+}
+
+/* ── Rate-limit table ── */
+.rl-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+.rl-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.rl-table td {
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+  border-bottom: 1px solid rgba(210, 236, 242, 0.05);
+}
+
+.rl-add {
+  display: flex;
+  gap: 8px;
+}
+
+.rl-add input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-sm);
+  padding: 6px 12px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.rl-add input:first-child {
+  flex: 2;
+}
+
+.rl-add input:nth-child(2),
+.rl-add input:nth-child(3) {
+  flex: 1;
+  width: 80px;
+}
+
+.rl-add input:focus {
+  border-color: var(--accent-mid);
+}
+
+/* ── Toggle / checkbox ── */
+.toggle-row label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.toggle-row input[type="checkbox"] {
+  appearance: none;
+  width: 36px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-full);
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.toggle-row input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--text-dim);
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.toggle-row input[type="checkbox"]:checked {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: var(--success);
+}
+
+.toggle-row input[type="checkbox"]:checked::after {
+  left: 18px;
+  background: var(--success);
+}
+
+/* ── Card actions ── */
+.policy-card-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+}
+
+.policy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .policies-page {
+    padding: 20px;
+  }
+
+  .rl-add {
+    flex-wrap: wrap;
+  }
+
+  .rl-add input:first-child {
+    flex: 1 1 100%;
+  }
+}

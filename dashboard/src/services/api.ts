@@ -54,3 +54,76 @@ export async function fetchRun(runId: string): Promise<RunDetail> {
     if (!res.ok) throw new Error(`Failed to fetch run ${runId}`);
     return res.json();
 }
+
+// ─── Policy API ────────────────────────────────────────
+
+export interface RateLimitSpec {
+    pattern: string;
+    max_count: number;
+    window_seconds: number;
+}
+
+export interface PolicyConfig {
+    id?: string;
+    name: string;
+    description?: string;
+    allowed_actions: string[];
+    denied_actions: string[];
+    rate_limits: RateLimitSpec[];
+    require_approval: string[];
+    is_active: boolean;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface PolicyListResponse {
+    policies: PolicyConfig[];
+    total: number;
+    limit: number;
+    offset: number;
+}
+
+export async function fetchPolicies(): Promise<PolicyConfig[]> {
+    const res = await fetch(`${API_BASE}/policies`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to fetch policies");
+    const data: PolicyListResponse = await res.json();
+    return data.policies;
+}
+
+export async function fetchPolicy(policyId: string): Promise<PolicyConfig> {
+    const res = await fetch(`${API_BASE}/policies/${policyId}`, {
+        cache: "no-store",
+    });
+    if (!res.ok) throw new Error(`Failed to fetch policy ${policyId}`);
+    return res.json();
+}
+
+export async function createPolicy(policy: PolicyConfig): Promise<PolicyConfig> {
+    const res = await fetch(`${API_BASE}/policies`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(policy),
+    });
+    if (!res.ok) throw new Error("Failed to create policy");
+    return res.json();
+}
+
+export async function updatePolicy(
+    policyId: string,
+    policy: Partial<PolicyConfig>
+): Promise<PolicyConfig> {
+    const res = await fetch(`${API_BASE}/policies/${policyId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(policy),
+    });
+    if (!res.ok) throw new Error(`Failed to update policy ${policyId}`);
+    return res.json();
+}
+
+export async function deletePolicy(policyId: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/policies/${policyId}`, {
+        method: "DELETE",
+    });
+    if (!res.ok) throw new Error(`Failed to delete policy ${policyId}`);
+}
