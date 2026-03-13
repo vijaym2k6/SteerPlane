@@ -65,7 +65,8 @@ export interface RateLimitSpec {
 
 export interface PolicyConfig {
     id?: string;
-    agent_name: string;
+    name: string;
+    description?: string;
     allowed_actions: string[];
     denied_actions: string[];
     rate_limits: RateLimitSpec[];
@@ -75,17 +76,25 @@ export interface PolicyConfig {
     updated_at?: string;
 }
 
+export interface PolicyListResponse {
+    policies: PolicyConfig[];
+    total: number;
+    limit: number;
+    offset: number;
+}
+
 export async function fetchPolicies(): Promise<PolicyConfig[]> {
     const res = await fetch(`${API_BASE}/policies`, { cache: "no-store" });
     if (!res.ok) throw new Error("Failed to fetch policies");
-    return res.json();
+    const data: PolicyListResponse = await res.json();
+    return data.policies;
 }
 
-export async function fetchPolicy(agentName: string): Promise<PolicyConfig> {
-    const res = await fetch(`${API_BASE}/policies/${agentName}`, {
+export async function fetchPolicy(policyId: string): Promise<PolicyConfig> {
+    const res = await fetch(`${API_BASE}/policies/${policyId}`, {
         cache: "no-store",
     });
-    if (!res.ok) throw new Error(`Failed to fetch policy for ${agentName}`);
+    if (!res.ok) throw new Error(`Failed to fetch policy ${policyId}`);
     return res.json();
 }
 
@@ -100,22 +109,21 @@ export async function createPolicy(policy: PolicyConfig): Promise<PolicyConfig> 
 }
 
 export async function updatePolicy(
-    agentName: string,
+    policyId: string,
     policy: Partial<PolicyConfig>
 ): Promise<PolicyConfig> {
-    const res = await fetch(`${API_BASE}/policies/${agentName}`, {
+    const res = await fetch(`${API_BASE}/policies/${policyId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(policy),
     });
-    if (!res.ok) throw new Error(`Failed to update policy for ${agentName}`);
+    if (!res.ok) throw new Error(`Failed to update policy ${policyId}`);
     return res.json();
 }
 
-export async function deletePolicy(agentName: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/policies/${agentName}`, {
+export async function deletePolicy(policyId: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/policies/${policyId}`, {
         method: "DELETE",
     });
-    if (!res.ok) throw new Error(`Failed to delete policy for ${agentName}`);
+    if (!res.ok) throw new Error(`Failed to delete policy ${policyId}`);
 }
-
