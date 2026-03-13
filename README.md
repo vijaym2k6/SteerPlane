@@ -282,8 +282,8 @@ SteerPlane/
 Thanks to these wonderful people:
 
 | Avatar | Name | Contribution |
-|--------|------|-------------|
-| <img src="https://github.com/shiri-09.png" width="50" /> | [@shiri-09](https://github.com/shiri-09) | 💡 Ideas & Planning |
+|--------|------|
+| <img src="https://github.com/shiri-09.png" width="50" /> | [@shiri-09](https://github.com/shiri-09) |
 
 ## Contributing
 
