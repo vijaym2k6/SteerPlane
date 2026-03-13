@@ -277,6 +277,14 @@ SteerPlane/
 
 ---
 
+## Contributors
+
+Thanks to these wonderful people:
+
+| Avatar | Name | Contribution |
+|--------|------|-------------|
+| <img src="https://github.com/shiri-09.png" width="50" /> | [@shiri-09](https://github.com/shiri-09) | 💡 Ideas & Planning |
+
 ## Contributing
 
 We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
