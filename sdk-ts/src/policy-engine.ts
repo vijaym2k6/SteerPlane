@@ -23,9 +23,9 @@ export interface RateLimitSpec {
   /** Glob pattern to match against action names. */
   pattern: string;
   /** Maximum number of calls allowed within the window. */
-  maxCount: number;
+  max_count: number;
   /** Sliding window duration in seconds. */
-  windowSeconds: number;
+  window_seconds: number;
 }
 
 /** Approval callback type. Return true to allow, false to deny. */
@@ -117,16 +117,16 @@ export class PolicyEngine {
       if (globMatch(action, rl.pattern)) {
         const window = this._rateWindows.get(rl.pattern)!;
         // Prune expired timestamps
-        const cutoff = now - rl.windowSeconds;
+        const cutoff = now - rl.window_seconds;
         const pruned = window.filter((t) => t > cutoff);
         this._rateWindows.set(rl.pattern, pruned);
 
-        if (pruned.length >= rl.maxCount) {
+        if (pruned.length >= rl.max_count) {
           PolicyEngine._deny(
             action,
             `rate_limit:${rl.pattern}`,
             `Rate limit exceeded for '${action}': ` +
-              `${rl.maxCount} calls per ${rl.windowSeconds}s`
+              `${rl.max_count} calls per ${rl.window_seconds}s`
           );
         }
         // Record this call

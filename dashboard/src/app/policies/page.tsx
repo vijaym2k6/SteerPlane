@@ -14,7 +14,7 @@ import {
    ═══════════════════════════════════════════════════════ */
 function emptyPolicy(): PolicyConfig {
     return {
-        agent_name: "",
+        name: "",
         allowed_actions: [],
         denied_actions: [],
         rate_limits: [],
@@ -214,15 +214,15 @@ function PolicyCard({
                     {isNew ? (
                         <input
                             className="agent-name-input"
-                            placeholder="Agent name…"
-                            value={local.agent_name}
+                            placeholder="Policy name…"
+                            value={local.name}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) =>
-                                setLocal({ ...local, agent_name: e.target.value })
+                                setLocal({ ...local, name: e.target.value })
                             }
                         />
                     ) : (
-                        <span className="agent-name">{local.agent_name}</span>
+                        <span className="agent-name">{local.name}</span>
                     )}
                 </div>
                 <div className="policy-card-meta">
@@ -234,6 +234,17 @@ function PolicyCard({
 
             {expanded && (
                 <div className="policy-card-body">
+                    {/* Description field */}
+                    <div className="policy-field">
+                        <label>Description</label>
+                        <input
+                            value={local.description ?? ""}
+                            onChange={(e) =>
+                                setLocal({ ...local, description: e.target.value })
+                            }
+                            placeholder="Optional description…"
+                        />
+                    </div>
                     <PatternChips
                         label="Allowed Actions"
                         patterns={local.allowed_actions}
@@ -269,7 +280,7 @@ function PolicyCard({
                         <button
                             className="btn-primary"
                             onClick={save}
-                            disabled={saving || !local.agent_name.trim()}
+                            disabled={saving || !local.name.trim()}
                         >
                             {saving ? "Saving…" : isNew ? "Create Policy" : "Save Changes"}
                         </button>
@@ -322,17 +333,18 @@ export default function PoliciesPage() {
     };
 
     const handleUpdate = async (p: PolicyConfig) => {
+        if (!p.id) return;
         try {
-            await updatePolicy(p.agent_name, p);
+            await updatePolicy(p.id, p);
             await load();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Update failed");
         }
     };
 
-    const handleDelete = async (agentName: string) => {
+    const handleDelete = async (policyId: string) => {
         try {
-            await deletePolicy(agentName);
+            await deletePolicy(policyId);
             await load();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Delete failed");
@@ -383,10 +395,10 @@ export default function PoliciesPage() {
                     <div className="policy-list">
                         {policies.map((p) => (
                             <PolicyCard
-                                key={p.agent_name}
+                                key={p.id ?? p.name}
                                 policy={p}
                                 onSave={handleUpdate}
-                                onDelete={() => handleDelete(p.agent_name)}
+                                onDelete={() => p.id && handleDelete(p.id)}
                             />
                         ))}
                     </div>
