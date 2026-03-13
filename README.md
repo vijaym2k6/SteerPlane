@@ -304,6 +304,30 @@ MIT — see [LICENSE](LICENSE) for details.
 
 ---
 
+## Contributors
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/shiri-09"><img src="https://avatars.githubusercontent.com/u/231910608?v=4" width="100px;" alt="shiri-09"/><br /><sub><b>shiri-09</b></sub></a><br /><a href="https://github.com/vijaym2k6/SteerPlane/commits?author=shiri-09" title="Code">💻</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
+
+---
+
 <p align="center">
   <img src="assets/logo.jpg" alt="SteerPlane" width="48" /><br>
   <b>SteerPlane</b><br>
