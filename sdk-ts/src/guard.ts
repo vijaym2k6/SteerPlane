@@ -15,6 +15,7 @@
  */
 
 import { RunManager, type RunManagerOptions } from "./run-manager.js";
+import type { PolicyEngineOptions } from "./policy-engine.js";
 
 // Global active run reference
 let _activeRun: RunManager | null = null;
@@ -44,6 +45,8 @@ export interface GuardOptions {
   apiUrl?: string;
   /** API key. */
   apiKey?: string;
+  /** Policy engine configuration for action control. */
+  policy?: PolicyEngineOptions;
 }
 
 /**
@@ -84,6 +87,7 @@ export function guard<TArgs extends unknown[], TResult>(
       apiUrl: opts.apiUrl,
       apiKey: opts.apiKey,
       logToConsole: opts.logToConsole,
+      policy: opts.policy,
     });
 
     _activeRun = run;
@@ -122,6 +126,8 @@ export interface RunOptions {
   maxRuntimeSec?: number;
   loopWindowSize?: number;
   logToConsole?: boolean;
+  /** Policy engine configuration for action control. */
+  policy?: PolicyEngineOptions;
 }
 
 /**
@@ -192,6 +198,7 @@ export class SteerPlane {
       apiUrl: this.apiUrl,
       apiKey: this.apiKey,
       logToConsole: opts.logToConsole,
+      policy: opts.policy,
     });
   }
 }

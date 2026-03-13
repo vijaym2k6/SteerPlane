@@ -8,12 +8,14 @@
 import { SteerPlaneClient } from "./client.js";
 import { LoopDetector } from "./loop-detector.js";
 import { CostTracker, type StepCost } from "./cost-tracker.js";
+import { PolicyEngine, type PolicyEngineOptions } from "./policy-engine.js";
 import { generateRunId, formatCost, formatDuration } from "./utils.js";
 import {
   LoopDetectedError,
   CostLimitExceeded,
   StepLimitExceeded,
   RunTerminatedError,
+  PolicyViolationError,
 } from "./errors.js";
 
 export interface LogStepOptions {
@@ -50,6 +52,8 @@ export interface RunManagerOptions {
   apiUrl?: string;
   apiKey?: string;
   logToConsole?: boolean;
+  /** Policy engine configuration for action control. */
+  policy?: PolicyEngineOptions;
 }
 
 export class RunManager {
@@ -62,6 +66,7 @@ export class RunManager {
   public readonly client: SteerPlaneClient;
   public readonly loopDetector: LoopDetector;
   public readonly costTracker: CostTracker;
+  public readonly policyEngine: PolicyEngine;
 
   public status: string = "pending";
   public startTime: number = 0;
@@ -81,6 +86,7 @@ export class RunManager {
     this.client = new SteerPlaneClient(opts.apiUrl, opts.apiKey);
     this.loopDetector = new LoopDetector(opts.loopWindowSize ?? 8);
     this.costTracker = new CostTracker(opts.maxCostUsd ?? 50.0, opts.model ?? "default");
+    this.policyEngine = new PolicyEngine(opts.policy);
   }
 
   /** Start the run. Call this before logging any steps. */
@@ -120,6 +126,18 @@ export class RunManager {
         this.runId,
         this.terminationReason ?? "Run terminated"
       );
+    }
+
+    // 0. Policy check (before any counters are updated)
+    if (this.policyEngine.hasRules) {
+      try {
+        await this.policyEngine.check(opts.action, opts.metadata);
+      } catch (err) {
+        if (err instanceof PolicyViolationError) {
+          await this.terminate(`policy:${err.rule}`);
+        }
+        throw err;
+      }
     }
 
     // Check step limit
