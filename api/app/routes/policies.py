@@ -8,9 +8,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from typing import Optional
+from datetime import datetime
 
 from ..db.database import get_db
 from ..services.policy_service import PolicyService
+from ..schemas import StatusResponse
 
 
 # ──────────────── Request / Response Schemas ────────────────
@@ -20,7 +22,7 @@ class CreatePolicyRequest(BaseModel):
     description: Optional[str] = Field(default=None, description="Human-readable description")
     allowed_actions: Optional[list[str]] = Field(default=None, description="Glob patterns for permitted actions")
     denied_actions: Optional[list[str]] = Field(default=None, description="Glob patterns for forbidden actions")
-    rate_limits: Optional[list[dict]] = Field(default=None, description="Per-action rate limits [{action, max_calls, window_seconds}]")
+    rate_limits: Optional[list[dict]] = Field(default=None, description="Per-action rate limits [{pattern, max_count, window_seconds}]")
     require_approval: Optional[list[str]] = Field(default=None, description="Actions requiring human approval")
     is_active: bool = Field(default=True, description="Whether policy is active")
 
@@ -48,6 +50,8 @@ class PolicyResponse(BaseModel):
     denied_actions: Optional[list[str]] = None
     rate_limits: Optional[list[dict]] = None
     require_approval: Optional[list[str]] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -66,9 +70,7 @@ class EvaluateActionResponse(BaseModel):
     reason: str
 
 
-class StatusResponse(BaseModel):
-    status: str
-    message: str = ""
+# StatusResponse imported from ..schemas — no local duplicate
 
 
 # ──────────────── Router ────────────────
