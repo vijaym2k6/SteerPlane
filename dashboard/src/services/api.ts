@@ -127,3 +127,74 @@ export async function deletePolicy(policyId: string): Promise<void> {
     });
     if (!res.ok) throw new Error(`Failed to delete policy ${policyId}`);
 }
+
+// ─── API Keys ────────────────────────────────────────────
+
+export interface APIKeyConfig {
+    id: string;
+    name: string;
+    key_prefix: string;
+    raw_key?: string;
+    max_cost_usd: number;
+    max_cost_monthly: number;
+    max_requests_per_min: number;
+    allowed_models: string | null;
+    denied_models: string | null;
+    is_active: boolean;
+    total_requests: number;
+    total_cost: number;
+    total_tokens: number;
+    last_used_at: string | null;
+    created_at: string;
+}
+
+export interface APIKeyListResponse {
+    keys: APIKeyConfig[];
+    total: number;
+}
+
+export interface CreateKeyRequest {
+    name: string;
+    max_cost_usd?: number;
+    max_cost_monthly?: number;
+    max_requests_per_min?: number;
+    allowed_models?: string | null;
+    denied_models?: string | null;
+}
+
+export async function fetchAPIKeys(): Promise<APIKeyConfig[]> {
+    const res = await fetch(`${API_BASE}/api-keys`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to fetch API keys");
+    const data: APIKeyListResponse = await res.json();
+    return data.keys;
+}
+
+export async function createAPIKey(req: CreateKeyRequest): Promise<APIKeyConfig> {
+    const res = await fetch(`${API_BASE}/api-keys`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(req),
+    });
+    if (!res.ok) throw new Error("Failed to create API key");
+    return res.json();
+}
+
+export async function updateAPIKey(
+    keyId: string,
+    updates: Partial<CreateKeyRequest & { is_active: boolean }>
+): Promise<APIKeyConfig> {
+    const res = await fetch(`${API_BASE}/api-keys/${keyId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+    });
+    if (!res.ok) throw new Error(`Failed to update API key ${keyId}`);
+    return res.json();
+}
+
+export async function deleteAPIKey(keyId: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/api-keys/${keyId}`, {
+        method: "DELETE",
+    });
+    if (!res.ok) throw new Error(`Failed to delete API key ${keyId}`);
+}

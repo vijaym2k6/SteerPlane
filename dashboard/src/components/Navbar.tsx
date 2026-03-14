@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 
@@ -8,6 +9,7 @@ const navLinks = [
     { href: "/", label: "Home" },
     { href: "/dashboard", label: "Dashboard" },
     { href: "/policies", label: "Policies" },
+    { href: "/api-keys", label: "API Keys" },
 ];
 
 export default function Navbar() {
@@ -23,14 +25,15 @@ export default function Navbar() {
         <nav className="navbar">
             <div className="navbar-brand">
                 <Link href="/" className="navbar-logo">
-                    <img
+                    <Image
                         src="/SteerPlane_Logo.jpg"
                         alt="SteerPlane"
                         className="navbar-logo-img"
+                        width={40}
+                        height={40}
                     />
-                    <span className="navbar-logo-text">STEER PLANE</span>
+                    <span className="navbar-logo-text">STEERPLANE</span>
                 </Link>
-                <span className="navbar-tagline">Runtime Control Plane for AI Agents</span>
             </div>
 
             <div className="navbar-nav">
@@ -53,14 +56,6 @@ export default function Navbar() {
                         </Link>
                     );
                 })}
-                <a
-                    href="http://localhost:8000/docs"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="navbar-link"
-                >
-                    <span style={{ position: "relative", zIndex: 1 }}>API Docs</span>
-                </a>
             </div>
 
             <div className="navbar-status">

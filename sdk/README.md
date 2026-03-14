@@ -34,11 +34,28 @@ with sp.run(max_cost_usd=10) as run:
 
 ## Features
 
-- 🔄 **Loop Detection** — Automatically detects repeating agent behavior
-- 💰 **Cost Limits** — Stop expensive agent runs before they blow budgets
-- 🚫 **Step Limits** — Prevent runaway execution
-- 📊 **Telemetry** — Full step-by-step execution tracking
-- 🖥️ **Dashboard** — Visual execution monitoring
+- 🛡️ **Policy Engine (New in v0.3.0)** — Define strict allow/deny rules, rate limits (sliding windows), and human-in-the-loop approval workflows for agents.
+- 🌉 **AI Gateway Proxy (New in v0.3.0)** — Zero-code integration. Point your default LangChain/OpenAI client to the SteerPlane gateway, and every LLM call gets token tracking, cost evaluation, and policy enforcement automatically.
+- 🧩 **First-Class LangChain & CrewAI Support** — Drop in `SteerPlaneCallbackHandler` for total observability of your multi-agent networks without modifying agent chains.
+- 🔄 **Infinite Loop Detection** — Automatically detects repeating agent behavior and breaks loops before they drain API budgets.
+- 💰 **Hard Cost Limits** — Stop expensive agent runs the instant they cross a predefined USD ceiling. Tracks 25+ LLM models locally.
+- 🚫 **Step Limits** — Cap maximum execution steps to prevent runway execution.
+- 📊 **Deep Telemetry** — Full step-by-step execution tracking (tokens, latency, cost per step) synced instantly to the dashboard.
+
+## Advanced Usage: Policy Engine
+
+```python
+from steerplane import guard
+
+@guard(
+    max_cost_usd=10, 
+    denied_actions=["DROP TABLE*", "rm -rf *"],
+    rate_limits=[{"pattern": "send_email", "max_count": 5, "window_seconds": 60}],
+    require_approval=["execute_trade*"]
+)
+def autonomous_agent():
+    agent.run()
+```
 
 ## Documentation
 
