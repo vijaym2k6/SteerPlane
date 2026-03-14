@@ -12,6 +12,8 @@ from .db.database import init_db
 from .routes.runs import router as runs_router
 from .routes.telemetry import router as telemetry_router
 from .routes.policies import router as policies_router
+from .routes.gateway import router as gateway_router
+from .routes.api_keys import router as api_keys_router
 
 
 app = FastAPI(
@@ -35,6 +37,8 @@ app.add_middleware(
 app.include_router(runs_router)
 app.include_router(telemetry_router)
 app.include_router(policies_router)
+app.include_router(gateway_router)
+app.include_router(api_keys_router)
 
 
 @app.on_event("startup")
@@ -43,6 +47,7 @@ def on_startup():
     init_db()
     print(f"\n[STARTED] {settings.APP_NAME} v{settings.APP_VERSION}")
     print(f"   Database: {settings.DATABASE_URL}")
+    print(f"   Gateway: http://localhost:8000/gateway/v1")
     print(f"   Docs: http://localhost:8000/docs\n")
 
 

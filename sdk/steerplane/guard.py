@@ -18,7 +18,6 @@ from typing import Callable, Any
 
 from .run_manager import RunManager
 from .policy_engine import PolicyEngine, RateLimitSpec
-from .config import get_config
 
 logger = logging.getLogger("steerplane")
 
@@ -46,7 +45,7 @@ def guard(
     denied_actions: list[str] | None = None,
     rate_limits: list[RateLimitSpec | dict] | None = None,
     require_approval: list[str] | None = None,
-    approval_callback=None,
+    approval_callback: Callable[[str, dict | None], bool] | None = None,
 ) -> Callable:
     """
     Guard decorator for agent functions.
@@ -180,7 +179,7 @@ class SteerPlane:
         denied_actions: list[str] | None = None,
         rate_limits: list[RateLimitSpec | dict] | None = None,
         require_approval: list[str] | None = None,
-        approval_callback=None,
+        approval_callback: Callable[[str, dict | None], bool] | None = None,
     ) -> RunManager:
         """
         Create a new run context manager.

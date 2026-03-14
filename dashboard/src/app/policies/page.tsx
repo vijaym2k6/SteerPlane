@@ -238,6 +238,8 @@ function PolicyCard({
                     <div className="policy-field">
                         <label>Description</label>
                         <input
+                            className="form-input"
+                            style={{ width: "100%" }}
                             value={local.description ?? ""}
                             onChange={(e) =>
                                 setLocal({ ...local, description: e.target.value })

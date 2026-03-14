@@ -32,6 +32,20 @@ const scaleIn = {
 const features = [
   {
     icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" /></svg>
+    ),
+    title: "AI Gateway Proxy",
+    desc: "An OpenAI-compatible proxy server that sits between your agent and LLM providers. Point your existing OpenAI client to SteerPlane — every call is automatically monitored, rate-limited, and cost-tracked with zero code changes.",
+  },
+  {
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+    ),
+    title: "Policy Engine",
+    desc: "Define allow/deny rules for actions, rate limits with sliding windows, and approval workflows. The policy engine evaluates every action through a deny → allow → rate limit → approval chain before execution.",
+  },
+  {
+    icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" /></svg>
     ),
     title: "Infinite Loop Termination",
@@ -42,7 +56,7 @@ const features = [
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
     ),
     title: "Hard Cost Ceiling",
-    desc: "Define a per-run USD cost limit. Every step's token cost is tracked cumulatively. The instant cumulative spend crosses your threshold, the run is automatically terminated and the overage is logged.",
+    desc: "Define per-run and monthly USD cost limits. Every step's token cost is tracked cumulatively across 25+ models with built-in pricing. The instant spend crosses your threshold, the run is terminated.",
   },
   {
     icon: (
@@ -63,7 +77,7 @@ const features = [
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="9" y1="3" x2="9" y2="21" /></svg>
     ),
     title: "Real-Time Dashboard",
-    desc: "A Next.js dashboard with auto-refresh that visualizes run history, execution timelines, cost breakdowns, and error traces. Designed for both debugging individual runs and monitoring fleet-wide agent health.",
+    desc: "A Next.js dashboard with auto-refresh that visualizes run history, execution timelines, cost breakdowns, and error traces. Manage API keys, policies, and monitor fleet-wide agent health.",
   },
   {
     icon: (
@@ -77,41 +91,51 @@ const features = [
 /* ─── How It Works ─── */
 const howSteps = [
   { num: 1, title: "Install SDK", desc: "pip install steerplane — one dependency, zero config required." },
-  { num: 2, title: "Wrap Your Agent", desc: "Add the @guard decorator with your cost and step limits." },
-  { num: 3, title: "Agent Runs", desc: "Your agent executes normally. SteerPlane intercepts every step." },
-  { num: 4, title: "Guards Activate", desc: "Loop detection, cost limits, and step limits are enforced in real time." },
-  { num: 5, title: "Dashboard Shows", desc: "Every run, step, cost, and error is visualized in the live dashboard." },
+  { num: 2, title: "Point to Gateway", desc: "Set your OpenAI client's base_url to SteerPlane. Or use the @guard decorator directly." },
+  { num: 3, title: "Set Policies", desc: "Define cost limits, rate limits, allowed/denied actions, and approval workflows." },
+  { num: 4, title: "Agent Runs", desc: "Your agent executes normally. SteerPlane intercepts every LLM call and action." },
+  { num: 5, title: "Guards Activate", desc: "Loop detection, cost limits, policy engine, and rate limits are enforced in real time." },
+  { num: 6, title: "Dashboard Shows", desc: "Every run, step, cost, and policy violation is visualized in the live dashboard." },
 ];
 
 /* ─── Architecture ─── */
-const archNodes = ["AI Agent", "SteerPlane SDK", "Guard Engine", "REST API", "PostgreSQL", "Dashboard UI"];
+const archNodes = ["AI Agent", "AI Gateway", "Policy Engine", "SteerPlane SDK", "Guard Engine", "REST API", "PostgreSQL", "Dashboard UI"];
 
 /* ─── Tech Stack ─── */
 const techStack = [
-  { layer: "SDK", tech: "Python 3.10+", detail: "Decorator API, context managers, async-ready client" },
+  { layer: "Python SDK", tech: "Python 3.10+", detail: "Decorator API, context managers, LangChain integration" },
+  { layer: "TypeScript SDK", tech: "TypeScript", detail: "guard() wrapper, async-ready, npm-ready" },
+  { layer: "Gateway", tech: "FastAPI + httpx", detail: "OpenAI-compatible proxy with 25+ model pricing" },
   { layer: "API", tech: "FastAPI", detail: "Auto-generated OpenAPI docs, CORS, connection pooling" },
   { layer: "Database", tech: "PostgreSQL 17", detail: "Persistent storage with SQLAlchemy ORM" },
-  { layer: "Dashboard", tech: "Next.js 16", detail: "TypeScript, Framer Motion, server components" },
+  { layer: "Dashboard", tech: "Next.js 16", detail: "React 19, Framer Motion, API key management" },
 ];
 
 /* ─── Code ─── */
-const codeExample = `from steerplane import guard
+const codeExample = `# ── Option 1: Gateway Mode (zero code changes) ──
+import openai
+
+client = openai.OpenAI(
+    base_url="http://localhost:8000/gateway/v1",
+    api_key="sk_sp_...",  # SteerPlane key
+    default_headers={"X-LLM-API-Key": "sk-..."}
+)
+# Every LLM call is now monitored and limited.
+
+# ── Option 2: Decorator Mode ──────────────────
+from steerplane import guard
 
 @guard(
     agent_name="support_bot",
     max_cost_usd=10.00,
     max_steps=50,
-    detect_loops=True
+    denied_actions=["rm -rf", "DROP TABLE"]
 )
 def run_support_agent():
     while task_queue.has_tasks():
         task = task_queue.next()
         result = llm.complete(task.prompt)
-        task.resolve(result)
-
-# SteerPlane silently monitors every step.
-# If the agent loops, overspends, or exceeds
-# step limits — it's terminated instantly.`;
+        task.resolve(result)`;
 
 export default function Home() {
   return (
@@ -130,7 +154,7 @@ export default function Home() {
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
           <span className="hero-badge-dot" />
-          V0.1.0 · Runtime Agent Guardrails
+          V0.3.0 · AI Gateway + Runtime Guardrails
         </motion.div>
 
         <motion.div
@@ -139,8 +163,7 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         >
-          <h1 className="hero-title-futuristic">STEER PLANE</h1>
-          <p className="hero-tagline-futuristic">RUNTIME CONTROL PLANE FOR AI AGENTS</p>
+          <h1 className="hero-title-futuristic">STEERPLANE</h1>
         </motion.div>
 
         <motion.p
@@ -149,10 +172,10 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.25 }}
         >
-          An open-source runtime layer that sits between your AI agent
-          and the outside world. It intercepts every action, enforces safety policies,
-          detects infinite loops, tracks token costs, and gives you complete observability
-          into autonomous agent behavior — without modifying agent code.
+          An open-source runtime control plane for AI agents. It intercepts every LLM call
+          through an OpenAI-compatible gateway, enforces safety policies, detects infinite loops,
+          tracks token costs across 25+ models, and gives you complete observability — without
+          modifying a single line of agent code.
         </motion.p>
 
         <motion.div
@@ -168,9 +191,9 @@ export default function Home() {
             </Link>
           </motion.div>
           <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
-            <a href="http://localhost:8000/docs" target="_blank" rel="noopener noreferrer" className="btn-secondary">
-              API Documentation →
-            </a>
+            <Link href="/api-keys" className="btn-secondary">
+              Manage API Keys →
+            </Link>
           </motion.div>
         </motion.div>
       </motion.section>
@@ -204,7 +227,7 @@ export default function Home() {
           viewport={{ once: true, margin: "-80px" }}
         >
           {[
-            { num: "$2.4B+", label: "AI Agent Market (2025)" },
+            { num: "$7.6B+", label: "AI Agent Market (2025)" },
             { num: "73%", label: "Devs report runaway costs" },
             { num: "10x", label: "Growth in agent failures" },
             { num: "0", label: "Runtime control tools" },
@@ -229,10 +252,10 @@ export default function Home() {
           transition={{ duration: 0.6 }}
         >
           <div className="section-label">Core Capabilities</div>
-          <h2 className="section-title">Six layers of runtime protection</h2>
+          <h2 className="section-title">Eight layers of runtime protection</h2>
           <p className="section-desc">
-            Every capability is production-ready in the SDK. No external dependencies,
-            no configuration files, no infrastructure setup. Just a decorator.
+            Every capability is production-ready. Use the AI Gateway proxy for zero-code integration,
+            the SDK decorator for deep control, or the LangChain callback handler for automatic instrumentation.
           </p>
         </motion.div>
 
@@ -265,7 +288,7 @@ export default function Home() {
           transition={{ duration: 0.6 }}
         >
           <div className="section-label">How It Works</div>
-          <h2 className="section-title">Five-step integration. Zero complexity.</h2>
+          <h2 className="section-title">Six-step integration. Zero complexity.</h2>
         </motion.div>
 
         <motion.div
@@ -297,11 +320,11 @@ export default function Home() {
       >
         <div className="section-header">
           <div className="section-label">Developer Experience</div>
-          <h2 className="section-title">One decorator. Total protection.</h2>
+          <h2 className="section-title">Two integration paths. Total protection.</h2>
           <p className="section-desc">
-            The SteerPlane SDK wraps your agent function with a single decorator.
-            Under the hood, it initializes the run manager, telemetry client, loop detector,
-            and cost tracker — all transparently.
+            Use the Gateway proxy for zero-code monitoring, or the SDK decorator for deep
+            programmatic control. Both give you cost tracking, loop detection, policy enforcement,
+            and full telemetry out of the box.
           </p>
         </div>
 
@@ -335,9 +358,9 @@ export default function Home() {
           <div className="section-label">System Architecture</div>
           <h2 className="section-title">Simple. Modular. Production-ready.</h2>
           <p className="section-desc">
-            SteerPlane uses a clean 4-tier architecture. The SDK intercepts agent calls,
-            sends telemetry to the API, which persists data to PostgreSQL, and the
-            dashboard reads it for real-time visualization.
+            SteerPlane uses a modular architecture. The AI Gateway proxies LLM calls with built-in
+            guardrails, the Policy Engine evaluates rules, the SDK instruments agent code,
+            and the dashboard provides real-time visualization.
           </p>
         </motion.div>
 
@@ -407,8 +430,8 @@ export default function Home() {
         >
           <h2 className="cta-title">Ready to secure your agents?</h2>
           <p className="cta-desc">
-            SteerPlane is open-source and free. Start monitoring your AI agents in under
-            5 minutes with a single pip install.
+            SteerPlane is open-source and free. Point your OpenAI client to the gateway
+            or add a single decorator — start monitoring your AI agents in under 5 minutes.
           </p>
           <motion.div style={{ display: "flex", gap: 14, justifyContent: "center" }}>
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
@@ -425,7 +448,7 @@ export default function Home() {
 
       {/* ═══════ FOOTER ═══════ */}
       <footer className="landing-footer">
-        <p>SteerPlane v0.1.0 — Open-source runtime guardrails for AI agents.</p>
+        <p>SteerPlane v0.3.0 — Open-source runtime guardrails for AI agents.</p>
         <p className="landing-footer-tagline">&quot;Ship agents. Not incidents.&quot;</p>
       </footer>
     </div>
