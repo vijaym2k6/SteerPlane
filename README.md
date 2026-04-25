@@ -255,19 +255,27 @@ response = client.chat.completions.create(
 ## LangChain Integration
 
 ```python
+from langchain_openai import ChatOpenAI
 from steerplane.integrations.langchain import SteerPlaneCallbackHandler
 
 handler = SteerPlaneCallbackHandler(
     agent_name="research_bot",
     max_cost_usd=5.0,
     max_steps=30,
+    denied_actions=["tool:delete_*"],
 )
 
-# Pass as callback to any LangChain agent or chain
+# Attach to LLM — every call is now monitored and limited
+llm = ChatOpenAI(model="gpt-4o", callbacks=[handler])
+
+# Or attach to agent/chain
 agent.run("Analyze this data", callbacks=[handler])
+
+# End the run when done
+handler.finish()
 ```
 
-Zero refactoring. Works with LangChain, LangGraph, and any `Runnable`.
+Automatically captures LLM token usage, tool calls, cost, and latency. Works with LangChain, LangGraph, and any `Runnable`.
 
 ---
 
