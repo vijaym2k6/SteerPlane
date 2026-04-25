@@ -1,32 +1,28 @@
 """
-SteerPlane API — Gateway Service
-
-Core gateway logic: proxies LLM API calls, auto-captures telemetry,
-enforces cost limits, detects loops, and applies policies.
-
-This is the heart of SteerPlane — the chokepoint that makes
-everything automatic with zero user instrumentation.
+Gateway service: auth, session accounting, proxy telemetry, and enforcement.
 """
 
-import time
+from __future__ import annotations
+
 import hashlib
-import uuid
-from datetime import datetime, timezone, timedelta
-from typing import Optional
+import json
+import secrets
+import time
 from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
+from ..config import settings
 from ..models.api_key import APIKey, hash_api_key
 from ..models.run import Run
 from ..models.step import Step
+from .approval_service import ApprovalService
 
-
-# ─── Pricing Table ───────────────────────────────────────
 
 MODEL_PRICING = {
-    # OpenAI
     "gpt-4o": {"input": 2.50, "output": 10.00},
     "gpt-4o-mini": {"input": 0.15, "output": 0.60},
     "gpt-4-turbo": {"input": 10.00, "output": 30.00},
@@ -35,7 +31,6 @@ MODEL_PRICING = {
     "o1": {"input": 15.00, "output": 60.00},
     "o1-mini": {"input": 3.00, "output": 12.00},
     "o3-mini": {"input": 1.10, "output": 4.40},
-    # Anthropic
     "claude-3-opus": {"input": 15.00, "output": 75.00},
     "claude-3-sonnet": {"input": 3.00, "output": 15.00},
     "claude-3-haiku": {"input": 0.25, "output": 1.25},
@@ -43,279 +38,510 @@ MODEL_PRICING = {
     "claude-3.5-haiku": {"input": 0.80, "output": 4.00},
     "claude-4-sonnet": {"input": 3.00, "output": 15.00},
     "claude-4-opus": {"input": 15.00, "output": 75.00},
-    # Google
     "gemini-pro": {"input": 0.25, "output": 0.50},
     "gemini-1.5-pro": {"input": 1.25, "output": 5.00},
     "gemini-1.5-flash": {"input": 0.075, "output": 0.30},
     "gemini-2.0-flash": {"input": 0.10, "output": 0.40},
-    # Meta
     "llama-3-70b": {"input": 0.59, "output": 0.79},
     "llama-3-8b": {"input": 0.05, "output": 0.08},
-    # Mistral
     "mistral-large": {"input": 2.00, "output": 6.00},
     "mistral-small": {"input": 0.20, "output": 0.60},
-    # Default fallback
     "default": {"input": 2.00, "output": 2.00},
 }
+
+_SESSION_ID_ALLOWED = set(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_:."
+)
 
 
 def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
     """Calculate cost in USD from token counts. Pricing is per 1M tokens."""
     pricing = MODEL_PRICING.get(model, MODEL_PRICING["default"])
-    cost = (input_tokens * pricing["input"] / 1_000_000) + \
-           (output_tokens * pricing["output"] / 1_000_000)
+    cost = (
+        input_tokens * pricing["input"] / 1_000_000
+    ) + (
+        output_tokens * pricing["output"] / 1_000_000
+    )
     return round(cost, 8)
 
 
 def normalize_model_name(model: str) -> str:
-    """Normalize model names for pricing lookup (strip date suffixes, etc.)."""
-    model = model.lower().strip()
-    # Strip date suffixes like -2024-01-01, -20240101
-    for prefix in MODEL_PRICING:
-        if model.startswith(prefix):
+    """Normalize model names for pricing lookup."""
+    normalized = model.lower().strip()
+    for prefix in sorted(MODEL_PRICING, key=len, reverse=True):
+        if normalized.startswith(prefix):
             return prefix
-    return model
+    return normalized
 
 
-# ─── Loop Detection ──────────────────────────────────────
+def normalize_session_id(session_id: str | None) -> str:
+    """Normalize an optional session id from request headers."""
+    raw = (session_id or "").strip()
+    if not raw:
+        return ""
+    sanitized = "".join(ch for ch in raw if ch in _SESSION_ID_ALLOWED)
+    return sanitized[:64]
+
+
+def gateway_run_prefix(key_hash: str) -> str:
+    """Stable run id prefix for all gateway runs issued by an API key."""
+    return f"gw_{key_hash[:12]}_"
+
+
+def build_gateway_run_id(key_hash: str, session_id: str, explicit: bool) -> str:
+    """Build a run id for a gateway session."""
+    session_hash = hashlib.sha1(session_id.encode()).hexdigest()[:12]
+    prefix = gateway_run_prefix(key_hash)
+    if explicit:
+        return f"{prefix}{session_hash}"
+    return f"{prefix}{session_hash}_{secrets.token_hex(3)}"
+
+
+def loop_storage_key(key_hash: str, session_id: str) -> str:
+    return f"{key_hash}:{session_id}"
+
+
+def month_bounds(now: datetime | None = None) -> tuple[datetime, datetime]:
+    """Return the current UTC month bounds [start, next_start)."""
+    current = now or datetime.now(timezone.utc)
+    start = current.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if start.month == 12:
+        end = start.replace(year=start.year + 1, month=1)
+    else:
+        end = start.replace(month=start.month + 1)
+    return start, end
+
 
 class GatewayLoopDetector:
-    """Detects repeated prompt patterns at the gateway level."""
+    """Detect repeated prompt patterns for a specific session."""
 
     def __init__(self):
-        # Map of api_key_hash -> list of recent prompt hashes
         self._histories: dict[str, list[str]] = defaultdict(list)
         self._window_size = 10
         self._min_repetitions = 3
 
-    def record_and_check(self, key_hash: str, prompt_hash: str) -> tuple[bool, str]:
-        """Record a prompt hash and check for loops. Returns (is_loop, pattern_info)."""
-        history = self._histories[key_hash]
+    def record_and_check(self, storage_key: str, prompt_hash: str) -> tuple[bool, str]:
+        history = self._histories[storage_key]
         history.append(prompt_hash)
 
-        # Keep window bounded
         if len(history) > self._window_size * 2:
-            self._histories[key_hash] = history[-self._window_size * 2:]
-            history = self._histories[key_hash]
+            self._histories[storage_key] = history[-self._window_size * 2:]
+            history = self._histories[storage_key]
 
         if len(history) < self._min_repetitions:
             return False, ""
 
-        # Check if the last N entries are all the same (exact repeat)
         recent = history[-self._min_repetitions:]
         if len(set(recent)) == 1:
             return True, f"Same prompt repeated {self._min_repetitions} times"
 
-        # Check for A-B-A-B patterns
         window = history[-self._window_size:]
         for pattern_len in range(1, len(window) // 2 + 1):
             pattern = window[:pattern_len]
             reps = 0
-            for i in range(0, len(window) - pattern_len + 1, pattern_len):
-                if window[i:i + pattern_len] == pattern:
+            for idx in range(0, len(window) - pattern_len + 1, pattern_len):
+                if window[idx:idx + pattern_len] == pattern:
                     reps += 1
                 else:
                     break
             if reps >= self._min_repetitions:
-                return True, f"Repeating pattern of length {pattern_len} detected ({reps} reps)"
+                return True, (
+                    f"Repeating pattern of length {pattern_len} detected ({reps} reps)"
+                )
 
         return False, ""
 
-    def clear(self, key_hash: str):
-        """Clear history for an API key."""
-        self._histories.pop(key_hash, None)
+    def clear(self, storage_key: str):
+        self._histories.pop(storage_key, None)
 
 
-# ─── Session Tracker ─────────────────────────────────────
+@dataclass
+class GatewaySession:
+    """Active gateway session state."""
+
+    key_hash: str
+    session_id: str
+    run_id: str
+    explicit: bool
+    last_seen_at: float
+
+
+@dataclass
+class GatewayPreflightResult:
+    """Gateway decision before a proxied request is sent upstream."""
+
+    decision: str  # allow, paused, blocked
+    reason: str
+    session: GatewaySession
+    approval_id: str | None = None
+
 
 class SessionTracker:
-    """Tracks active gateway sessions (maps API key -> active run)."""
+    """Track in-memory default sessions and active explicit sessions."""
 
-    def __init__(self):
-        # Map of key_hash -> { run_id, step_count, total_cost, started_at }
-        self._sessions: dict[str, dict] = {}
+    def __init__(self, idle_timeout_sec: int = 1800):
+        self._idle_timeout_sec = idle_timeout_sec
+        self._sessions: dict[str, dict[str, GatewaySession]] = defaultdict(dict)
+        self._default_session_ids: dict[str, str] = {}
 
-    def get_or_create_session(self, key_hash: str, key_name: str, max_cost: float) -> dict:
-        """Get existing session or create a new one."""
-        if key_hash not in self._sessions:
-            self._sessions[key_hash] = {
-                "run_id": f"gw_{uuid.uuid4().hex[:12]}",
-                "agent_name": f"gateway:{key_name}",
-                "step_count": 0,
-                "total_cost": 0.0,
-                "total_tokens": 0,
-                "max_cost": max_cost,
-                "started_at": time.time(),
-            }
-        return self._sessions[key_hash]
+    def resolve_session(
+        self,
+        key_hash: str,
+        requested_session_id: str | None = None,
+    ) -> tuple[GatewaySession, list[GatewaySession]]:
+        now_ts = time.time()
+        expired = self._cleanup_expired(key_hash, now_ts)
+        normalized = normalize_session_id(requested_session_id)
 
-    def increment(self, key_hash: str, cost: float, tokens: int) -> dict:
-        """Increment session counters."""
-        session = self._sessions.get(key_hash)
-        if session:
-            session["step_count"] += 1
-            session["total_cost"] += cost
-            session["total_tokens"] += tokens
-        return session
+        if normalized:
+            session = self._sessions[key_hash].get(normalized)
+            if session is None:
+                session = GatewaySession(
+                    key_hash=key_hash,
+                    session_id=normalized,
+                    run_id=build_gateway_run_id(key_hash, normalized, explicit=True),
+                    explicit=True,
+                    last_seen_at=now_ts,
+                )
+                self._sessions[key_hash][normalized] = session
+            session.last_seen_at = now_ts
+            return session, expired
 
-    def get_session(self, key_hash: str) -> Optional[dict]:
-        return self._sessions.get(key_hash)
+        default_session_id = self._default_session_ids.get(key_hash)
+        session = None
+        if default_session_id:
+            session = self._sessions[key_hash].get(default_session_id)
 
-    def reset_session(self, key_hash: str):
-        self._sessions.pop(key_hash, None)
+        if session is None:
+            generated_session_id = f"auto_{secrets.token_urlsafe(9)}"
+            session = GatewaySession(
+                key_hash=key_hash,
+                session_id=generated_session_id,
+                run_id=build_gateway_run_id(
+                    key_hash,
+                    generated_session_id,
+                    explicit=False,
+                ),
+                explicit=False,
+                last_seen_at=now_ts,
+            )
+            self._sessions[key_hash][generated_session_id] = session
+            self._default_session_ids[key_hash] = generated_session_id
+
+        session.last_seen_at = now_ts
+        return session, expired
+
+    def _cleanup_expired(
+        self,
+        key_hash: str,
+        now_ts: float,
+    ) -> list[GatewaySession]:
+        expired: list[GatewaySession] = []
+        sessions = self._sessions.get(key_hash, {})
+        for session_id, session in list(sessions.items()):
+            if session.explicit:
+                continue
+            if now_ts - session.last_seen_at > self._idle_timeout_sec:
+                expired.append(session)
+                del sessions[session_id]
+                if self._default_session_ids.get(key_hash) == session_id:
+                    del self._default_session_ids[key_hash]
+        return expired
 
 
-# ─── Gateway Service ─────────────────────────────────────
-
-# ─── Singletons ───────────────────────────────────────
-# Loop detector: in-memory by design — moving to DB would add latency to every
-# request. Acceptable trade-off: loops reset on worker restart, but cost/rate
-# limits are now DB-backed and multi-worker safe.
 _loop_detector = GatewayLoopDetector()
-_session_tracker = SessionTracker()
+_session_tracker = SessionTracker(settings.GATEWAY_SESSION_IDLE_SEC)
 
 
 class GatewayService:
-    """Core gateway logic: auth, enforce, proxy, log."""
+    """Core gateway logic: auth, enforce, proxy, and log."""
 
     def __init__(self, db: Session):
         self.db = db
 
-    def validate_api_key(self, raw_key: str) -> Optional[APIKey]:
-        """Validate an API key and return the key record if valid."""
+    def validate_api_key(self, raw_key: str) -> APIKey | None:
         key_hashed = hash_api_key(raw_key)
-        api_key = self.db.query(APIKey).filter(
+        return self.db.query(APIKey).filter(
             APIKey.key_hash == key_hashed,
             APIKey.is_active == True,
         ).first()
-        return api_key
+
+    def close_expired_sessions(self, expired_sessions: list[GatewaySession]):
+        """Mark expired auto sessions as completed in the dashboard."""
+        if not expired_sessions:
+            return
+
+        now = datetime.now(timezone.utc)
+        updated = False
+        for session in expired_sessions:
+            run = self.db.query(Run).filter(Run.id == session.run_id).first()
+            if run and run.status == "running":
+                run.status = "completed"
+                run.end_time = now
+                updated = True
+            _loop_detector.clear(loop_storage_key(session.key_hash, session.session_id))
+
+        if updated:
+            self.db.commit()
+
+    def resolve_session(
+        self,
+        api_key: APIKey,
+        requested_session_id: str | None = None,
+    ) -> GatewaySession:
+        session, expired_sessions = _session_tracker.resolve_session(
+            api_key.key_hash,
+            requested_session_id,
+        )
+        self.close_expired_sessions(expired_sessions)
+        return session
+
+    def get_session_cost(self, session: GatewaySession) -> float:
+        return float(
+            self.db.query(func.coalesce(func.sum(Step.cost_usd), 0.0))
+            .filter(Step.run_id == session.run_id)
+            .scalar()
+            or 0.0
+        )
+
+    def get_monthly_cost(self, api_key: APIKey) -> float:
+        month_start, month_end = month_bounds()
+        run_prefix = gateway_run_prefix(api_key.key_hash)
+        return float(
+            self.db.query(func.coalesce(func.sum(Step.cost_usd), 0.0))
+            .join(Run, Run.id == Step.run_id)
+            .filter(
+                Run.id.like(f"{run_prefix}%"),
+                Step.timestamp >= month_start,
+                Step.timestamp < month_end,
+            )
+            .scalar()
+            or 0.0
+        )
+
+    def get_session_cost_limit(self, api_key: APIKey, session: GatewaySession) -> float:
+        approval_service = ApprovalService(self.db)
+        return api_key.max_cost_usd + approval_service.get_gateway_cost_extension(
+            session.run_id,
+            session.session_id,
+        )
+
+    def get_run(self, run_id: str) -> Run | None:
+        return self.db.query(Run).filter(Run.id == run_id).first()
 
     def check_model_allowed(self, api_key: APIKey, model: str) -> tuple[bool, str]:
-        """Check if the requested model is allowed by the API key policy."""
+        requested_model = normalize_model_name(model)
+
         if api_key.denied_models:
-            denied = [m.strip().lower() for m in api_key.denied_models.split(",")]
-            if model.lower() in denied:
+            denied = {
+                normalize_model_name(entry.strip())
+                for entry in api_key.denied_models.split(",")
+                if entry.strip()
+            }
+            if requested_model in denied:
                 return False, f"Model '{model}' is denied by your API key policy"
 
         if api_key.allowed_models:
-            allowed = [m.strip().lower() for m in api_key.allowed_models.split(",")]
-            if model.lower() not in allowed:
+            allowed = {
+                normalize_model_name(entry.strip())
+                for entry in api_key.allowed_models.split(",")
+                if entry.strip()
+            }
+            if requested_model not in allowed:
                 return False, f"Model '{model}' is not in your allowed models list"
 
         return True, ""
 
-    def check_cost_limit(self, api_key: APIKey) -> tuple[bool, str]:
-        """Check if the API key has exceeded its cost limits (session + monthly)."""
-        # Session cost limit: check both in-memory tracker and DB
-        session = _session_tracker.get_session(api_key.key_hash)
-        session_cost = session["total_cost"] if session else 0.0
+    def check_cost_limit(
+        self,
+        api_key: APIKey,
+        session: GatewaySession,
+    ) -> tuple[bool, str, float]:
+        session_cost = self.get_session_cost(session)
+        session_limit = self.get_session_cost_limit(api_key, session)
+        if session_cost >= session_limit:
+            return (
+                False,
+                "Session cost limit exceeded: "
+                f"${session_cost:.4f} >= ${session_limit:.2f}",
+                session_limit,
+            )
 
-        # Also query DB for the active gateway run's cost (multi-worker safe)
-        db_session_cost = (
-            self.db.query(func.coalesce(func.sum(Step.cost_usd), 0.0))
-            .filter(Step.run_id.like("gw_%"))
-            .join(Run, Run.id == Step.run_id)
-            .filter(Run.agent_name == f"gateway:{api_key.name}", Run.status == "running")
-            .scalar()
-        ) or 0.0
+        monthly_cost = self.get_monthly_cost(api_key)
+        if monthly_cost >= api_key.max_cost_monthly:
+            return (
+                False,
+                "Monthly budget exceeded: "
+                f"${monthly_cost:.4f} >= ${api_key.max_cost_monthly:.2f}",
+                session_limit,
+            )
 
-        effective_session_cost = max(session_cost, float(db_session_cost))
-        if effective_session_cost >= api_key.max_cost_usd:
-            return False, f"Session cost limit exceeded: ${effective_session_cost:.4f} >= ${api_key.max_cost_usd:.2f}"
-
-        # Monthly budget limit (checked from DB-persisted total_cost)
-        if api_key.total_cost >= api_key.max_cost_monthly:
-            return False, f"Monthly budget exceeded: ${api_key.total_cost:.2f} >= ${api_key.max_cost_monthly:.2f}"
-
-        return True, ""
+        return True, "", session_limit
 
     def check_rate_limit(self, api_key: APIKey) -> tuple[bool, str]:
-        """Strict sliding-window rate limit: count DB steps in the last 60 seconds."""
         one_min_ago = datetime.now(timezone.utc) - timedelta(seconds=60)
+        run_prefix = gateway_run_prefix(api_key.key_hash)
         recent_count = (
             self.db.query(func.count(Step.id))
-            .filter(
-                Step.run_id.like("gw_%"),
-                Step.timestamp >= one_min_ago,
-                Step.action.like(f"llm:%"),
-            )
             .join(Run, Run.id == Step.run_id)
-            .filter(Run.agent_name == f"gateway:{api_key.name}")
+            .filter(
+                Run.id.like(f"{run_prefix}%"),
+                Step.timestamp >= one_min_ago,
+                Step.action.like("llm:%"),
+            )
             .scalar()
         ) or 0
 
         if recent_count >= api_key.max_requests_per_min:
-            return False, f"Rate limit exceeded: {recent_count} requests in last 60s >= {api_key.max_requests_per_min}/min"
+            return (
+                False,
+                "Rate limit exceeded: "
+                f"{recent_count} requests in last 60s >= {api_key.max_requests_per_min}/min",
+            )
         return True, ""
 
-    def check_loop(self, api_key: APIKey, messages: list[dict]) -> tuple[bool, str]:
-        """Check for repeated prompt patterns."""
-        prompt_hash = hashlib.md5(str(messages).encode()).hexdigest()
-        is_loop, info = _loop_detector.record_and_check(api_key.key_hash, prompt_hash)
-        return not is_loop, info  # Returns (is_ok, reason)
+    def check_loop(
+        self,
+        api_key: APIKey,
+        session: GatewaySession,
+        messages: list[dict],
+    ) -> tuple[bool, str]:
+        prompt_payload = json.dumps(
+            messages,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        )
+        prompt_hash = hashlib.sha256(prompt_payload.encode("utf-8")).hexdigest()
+        is_loop, info = _loop_detector.record_and_check(
+            loop_storage_key(api_key.key_hash, session.session_id),
+            prompt_hash,
+        )
+        return not is_loop, info
 
     def pre_request_checks(
-        self, api_key: APIKey, model: str, messages: list[dict]
-    ) -> tuple[bool, str]:
-        """Run all pre-request checks. Returns (allowed, denial_reason)."""
-        # 1. Model allowed?
+        self,
+        api_key: APIKey,
+        model: str,
+        messages: list[dict],
+        requested_session_id: str | None = None,
+    ) -> GatewayPreflightResult:
+        session = self.resolve_session(api_key, requested_session_id)
+        approval_service = ApprovalService(self.db)
+        run = self.get_run(session.run_id)
+        if run and run.status == "terminated":
+            return GatewayPreflightResult(
+                decision="blocked",
+                reason=run.error or "Run was previously terminated",
+                session=session,
+            )
+
+        pending = approval_service.find_pending(
+            session.run_id,
+            "cost_limit",
+            session_id=session.session_id,
+        )
+        if pending and pending.status == "pending":
+            return GatewayPreflightResult(
+                decision="paused",
+                reason=pending.message,
+                session=session,
+                approval_id=pending.id,
+            )
+
         ok, reason = self.check_model_allowed(api_key, model)
         if not ok:
-            return False, reason
+            return GatewayPreflightResult("blocked", reason, session)
 
-        # 2. Cost limit?
-        ok, reason = self.check_cost_limit(api_key)
+        ok, reason, session_limit = self.check_cost_limit(api_key, session)
         if not ok:
-            return False, reason
+            enforcement = approval_service.get_api_key_enforcement(api_key.id)
+            if enforcement.enforcement_mode == "alert" and "Session cost limit exceeded" in reason:
+                approval = approval_service.create_approval(
+                    run_id=session.run_id,
+                    agent_name=f"gateway:{api_key.name}",
+                    approval_type="cost_limit",
+                    current_value=self.get_session_cost(session),
+                    limit_value=session_limit,
+                    unit="usd",
+                    message=(
+                        f"Gateway session {session.session_id} for '{api_key.name}' "
+                        f"has reached its cost limit. Approve to continue or let it terminate."
+                    ),
+                    timeout_sec=enforcement.alert_timeout_sec,
+                    scope="gateway",
+                    session_id=session.session_id,
+                    api_key_id=api_key.id,
+                    channels=enforcement.alert_channels_json or [],
+                    alert_email=enforcement.alert_email,
+                    alert_webhook_url=enforcement.alert_webhook_url,
+                    metadata={
+                        "key_name": api_key.name,
+                        "session_cost_usd": self.get_session_cost(session),
+                        "session_limit_usd": session_limit,
+                    },
+                )
+                return GatewayPreflightResult(
+                    "paused",
+                    approval.message,
+                    session,
+                    approval_id=approval.id,
+                )
+            return GatewayPreflightResult("blocked", reason, session)
 
-        # 3. Rate limit?
         ok, reason = self.check_rate_limit(api_key)
         if not ok:
-            return False, reason
+            return GatewayPreflightResult("blocked", reason, session)
 
-        # 4. Loop detection?
-        ok, reason = self.check_loop(api_key, messages)
+        ok, reason = self.check_loop(api_key, session, messages)
         if not ok:
-            return False, f"Loop detected: {reason}"
+            return GatewayPreflightResult("blocked", f"Loop detected: {reason}", session)
 
-        return True, ""
+        return GatewayPreflightResult("allow", "", session)
+
+    def ensure_run(self, api_key: APIKey, session: GatewaySession) -> Run:
+        run = self.db.query(Run).filter(Run.id == session.run_id).first()
+        if run:
+            return run
+
+        run = Run(
+            id=session.run_id,
+            agent_name=f"gateway:{api_key.name}",
+            status="running",
+            start_time=datetime.now(timezone.utc),
+            max_cost_usd=api_key.max_cost_usd,
+            max_steps_limit=9999,
+        )
+        self.db.add(run)
+        return run
+
+    def next_step_number(self, run_id: str) -> int:
+        current_max = (
+            self.db.query(func.coalesce(func.max(Step.step_number), 0))
+            .filter(Step.run_id == run_id)
+            .scalar()
+        ) or 0
+        return int(current_max) + 1
 
     def log_request(
         self,
         api_key: APIKey,
+        session: GatewaySession,
         model: str,
         input_tokens: int,
         output_tokens: int,
         cost: float,
         latency_ms: float,
         status: str = "completed",
-        error: Optional[str] = None,
+        error: str | None = None,
     ):
-        """Log a gateway request as a run step and update API key usage."""
-        session = _session_tracker.get_or_create_session(
-            api_key.key_hash, api_key.name, api_key.max_cost_usd
-        )
-        _session_tracker.increment(api_key.key_hash, cost, input_tokens + output_tokens)
-
         total_tokens = input_tokens + output_tokens
+        run = self.ensure_run(api_key, session)
+        step_number = self.next_step_number(session.run_id)
 
-        # Ensure run exists in DB
-        run = self.db.query(Run).filter(Run.id == session["run_id"]).first()
-        if not run:
-            run = Run(
-                id=session["run_id"],
-                agent_name=session["agent_name"],
-                status="running",
-                start_time=datetime.now(timezone.utc),
-                max_cost_usd=api_key.max_cost_usd,
-                max_steps_limit=9999,
-            )
-            self.db.add(run)
-
-        # Create step
         step = Step(
-            run_id=session["run_id"],
-            step_number=session["step_count"],
+            run_id=session.run_id,
+            step_number=step_number,
             action=f"llm:{model}",
             tokens=total_tokens,
             cost_usd=cost,
@@ -327,17 +553,17 @@ class GatewayService:
                 "model": model,
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
+                "session_id": session.session_id,
+                "session_explicit": session.explicit,
             },
             timestamp=datetime.now(timezone.utc),
         )
         self.db.add(step)
 
-        # Update run totals
-        run.total_steps = session["step_count"]
-        run.total_cost = session["total_cost"]
-        run.total_tokens = session["total_tokens"]
+        run.total_steps = step_number
+        run.total_cost = (run.total_cost or 0.0) + cost
+        run.total_tokens = (run.total_tokens or 0) + total_tokens
 
-        # Update API key usage
         api_key.total_requests += 1
         api_key.total_cost += cost
         api_key.total_tokens += total_tokens
@@ -345,42 +571,131 @@ class GatewayService:
 
         self.db.commit()
 
+    def maybe_trigger_threshold_alert(
+        self,
+        api_key: APIKey,
+        session: GatewaySession,
+    ):
+        approval_service = ApprovalService(self.db)
+        enforcement = approval_service.get_api_key_enforcement(api_key.id)
+        if enforcement.enforcement_mode != "alert":
+            return None
+
+        if approval_service.find_pending(
+            session.run_id,
+            "cost_limit",
+            session_id=session.session_id,
+        ):
+            return None
+
+        session_limit = self.get_session_cost_limit(api_key, session)
+        if session_limit <= 0:
+            return None
+
+        session_cost = self.get_session_cost(session)
+        threshold_value = session_limit * enforcement.alert_threshold
+        if session_cost < threshold_value:
+            return None
+
+        return approval_service.create_approval(
+            run_id=session.run_id,
+            agent_name=f"gateway:{api_key.name}",
+            approval_type="cost_limit",
+            current_value=session_cost,
+            limit_value=session_limit,
+            unit="usd",
+            message=(
+                f"Gateway session {session.session_id} for '{api_key.name}' has crossed "
+                f"{int(enforcement.alert_threshold * 100)}% of its cost budget. "
+                "Approve to continue or let it terminate on timeout."
+            ),
+            timeout_sec=enforcement.alert_timeout_sec,
+            scope="gateway",
+            session_id=session.session_id,
+            api_key_id=api_key.id,
+            channels=enforcement.alert_channels_json or [],
+            alert_email=enforcement.alert_email,
+            alert_webhook_url=enforcement.alert_webhook_url,
+            metadata={
+                "key_name": api_key.name,
+                "session_cost_usd": session_cost,
+                "session_limit_usd": session_limit,
+                "alert_threshold": enforcement.alert_threshold,
+            },
+        )
+
+    def log_paused_request(
+        self,
+        api_key: APIKey,
+        session: GatewaySession,
+        model: str,
+        reason: str,
+        approval_id: str | None = None,
+    ):
+        run = self.ensure_run(api_key, session)
+        step_number = self.next_step_number(session.run_id)
+
+        step = Step(
+            run_id=session.run_id,
+            step_number=step_number,
+            action=f"paused:{model}",
+            tokens=0,
+            cost_usd=0.0,
+            latency_ms=0.0,
+            status="awaiting_approval",
+            error=reason,
+            metadata_json={
+                "source": "gateway",
+                "model": model,
+                "paused_reason": reason,
+                "approval_id": approval_id,
+                "session_id": session.session_id,
+                "session_explicit": session.explicit,
+            },
+            timestamp=datetime.now(timezone.utc),
+        )
+        self.db.add(step)
+
+        run.total_steps = step_number
+        run.status = "awaiting_approval"
+        run.error = reason
+        self.db.commit()
+
     def log_blocked_request(
         self,
         api_key: APIKey,
+        session: GatewaySession,
         model: str,
         reason: str,
     ):
-        """Log a blocked gateway request."""
-        session = _session_tracker.get_or_create_session(
-            api_key.key_hash, api_key.name, api_key.max_cost_usd
-        )
-        _session_tracker.increment(api_key.key_hash, 0.0, 0)
-
-        run = self.db.query(Run).filter(Run.id == session["run_id"]).first()
-        if not run:
-            run = Run(
-                id=session["run_id"],
-                agent_name=session["agent_name"],
-                status="running",
-                start_time=datetime.now(timezone.utc),
-                max_cost_usd=api_key.max_cost_usd,
-                max_steps_limit=9999,
-            )
-            self.db.add(run)
+        run = self.ensure_run(api_key, session)
+        step_number = self.next_step_number(session.run_id)
 
         step = Step(
-            run_id=session["run_id"],
-            step_number=session["step_count"],
+            run_id=session.run_id,
+            step_number=step_number,
             action=f"blocked:{model}",
             tokens=0,
             cost_usd=0.0,
             latency_ms=0.0,
             status="blocked",
             error=reason,
-            metadata_json={"source": "gateway", "model": model, "blocked_reason": reason},
+            metadata_json={
+                "source": "gateway",
+                "model": model,
+                "blocked_reason": reason,
+                "session_id": session.session_id,
+                "session_explicit": session.explicit,
+            },
             timestamp=datetime.now(timezone.utc),
         )
         self.db.add(step)
-        run.total_steps = session["step_count"]
+
+        run.total_steps = step_number
+        lowered_reason = reason.lower()
+        if "loop detected" in lowered_reason or "cost limit exceeded" in lowered_reason:
+            run.status = "terminated"
+            run.end_time = datetime.now(timezone.utc)
+            run.error = reason
+
         self.db.commit()

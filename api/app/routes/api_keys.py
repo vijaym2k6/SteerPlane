@@ -12,9 +12,15 @@ from sqlalchemy import func
 
 from ..db.database import get_db
 from ..models.api_key import APIKey, generate_api_key, hash_api_key
+from ..security import require_admin
+from ..services.approval_service import ApprovalService, DEFAULT_ALERT_THRESHOLD, DEFAULT_ALERT_TIMEOUT_SEC
 
 
-router = APIRouter(prefix="/api-keys", tags=["API Keys"])
+router = APIRouter(
+    prefix="/api-keys",
+    tags=["API Keys"],
+    dependencies=[Depends(require_admin)],
+)
 
 
 # ─── Schemas ─────────────────────────────────────────────
@@ -26,6 +32,12 @@ class CreateKeyRequest(BaseModel):
     max_requests_per_min: int = Field(default=60, description="Rate limit per minute")
     allowed_models: Optional[str] = Field(default=None, description="Comma-separated allowed models")
     denied_models: Optional[str] = Field(default=None, description="Comma-separated denied models")
+    enforcement_mode: str = Field(default="kill", description="kill or alert")
+    alert_threshold: float = Field(default=DEFAULT_ALERT_THRESHOLD, description="Fraction of the limit that triggers an alert")
+    alert_timeout_sec: int = Field(default=DEFAULT_ALERT_TIMEOUT_SEC, description="How long to wait for human approval")
+    alert_channels: list[str] = Field(default_factory=list, description="email, webhook")
+    alert_email: Optional[str] = Field(default=None, description="Email recipient for alert mode")
+    alert_webhook_url: Optional[str] = Field(default=None, description="Webhook target for alert mode")
 
 
 class KeyResponse(BaseModel):
@@ -37,6 +49,12 @@ class KeyResponse(BaseModel):
     max_requests_per_min: int
     allowed_models: Optional[str] = None
     denied_models: Optional[str] = None
+    enforcement_mode: str
+    alert_threshold: float
+    alert_timeout_sec: int
+    alert_channels: list[str]
+    alert_email: Optional[str] = None
+    alert_webhook_url: Optional[str] = None
     is_active: bool
     total_requests: int
     total_cost: float
@@ -59,6 +77,12 @@ class UpdateKeyRequest(BaseModel):
     max_requests_per_min: Optional[int] = None
     allowed_models: Optional[str] = None
     denied_models: Optional[str] = None
+    enforcement_mode: Optional[str] = None
+    alert_threshold: Optional[float] = None
+    alert_timeout_sec: Optional[int] = None
+    alert_channels: Optional[list[str]] = None
+    alert_email: Optional[str] = None
+    alert_webhook_url: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -90,6 +114,17 @@ def create_key(req: CreateKeyRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(api_key)
 
+    approval_service = ApprovalService(db)
+    enforcement = approval_service.get_or_create_api_key_enforcement(api_key.id)
+    enforcement.enforcement_mode = req.enforcement_mode
+    enforcement.alert_threshold = req.alert_threshold
+    enforcement.alert_timeout_sec = req.alert_timeout_sec
+    enforcement.alert_channels_json = req.alert_channels
+    enforcement.alert_email = req.alert_email
+    enforcement.alert_webhook_url = req.alert_webhook_url
+    db.commit()
+    db.refresh(enforcement)
+
     return KeyCreatedResponse(
         id=api_key.id,
         name=api_key.name,
@@ -100,6 +135,12 @@ def create_key(req: CreateKeyRequest, db: Session = Depends(get_db)):
         max_requests_per_min=api_key.max_requests_per_min,
         allowed_models=api_key.allowed_models,
         denied_models=api_key.denied_models,
+        enforcement_mode=enforcement.enforcement_mode,
+        alert_threshold=enforcement.alert_threshold,
+        alert_timeout_sec=enforcement.alert_timeout_sec,
+        alert_channels=enforcement.alert_channels_json or [],
+        alert_email=enforcement.alert_email,
+        alert_webhook_url=enforcement.alert_webhook_url,
         is_active=api_key.is_active,
         total_requests=api_key.total_requests,
         total_cost=api_key.total_cost,
@@ -112,27 +153,13 @@ def create_key(req: CreateKeyRequest, db: Session = Depends(get_db)):
 @router.get("/", response_model=KeyListResponse)
 def list_keys(db: Session = Depends(get_db)):
     """List all API keys (without the raw key)."""
+    approval_service = ApprovalService(db)
     total = db.query(func.count(APIKey.id)).scalar()
     keys = db.query(APIKey).order_by(APIKey.created_at.desc()).all()
 
     return KeyListResponse(
         keys=[
-            KeyResponse(
-                id=k.id,
-                name=k.name,
-                key_prefix=k.key_prefix,
-                max_cost_usd=k.max_cost_usd,
-                max_cost_monthly=k.max_cost_monthly,
-                max_requests_per_min=k.max_requests_per_min,
-                allowed_models=k.allowed_models,
-                denied_models=k.denied_models,
-                is_active=k.is_active,
-                total_requests=k.total_requests,
-                total_cost=k.total_cost,
-                total_tokens=k.total_tokens,
-                last_used_at=k.last_used_at.isoformat() if k.last_used_at else None,
-                created_at=k.created_at.isoformat(),
-            )
+            _build_key_response(k, approval_service.get_api_key_enforcement(k.id))
             for k in keys
         ],
         total=total,
@@ -146,22 +173,8 @@ def get_key(key_id: str, db: Session = Depends(get_db)):
     if not api_key:
         raise HTTPException(status_code=404, detail="API key not found")
 
-    return KeyResponse(
-        id=api_key.id,
-        name=api_key.name,
-        key_prefix=api_key.key_prefix,
-        max_cost_usd=api_key.max_cost_usd,
-        max_cost_monthly=api_key.max_cost_monthly,
-        max_requests_per_min=api_key.max_requests_per_min,
-        allowed_models=api_key.allowed_models,
-        denied_models=api_key.denied_models,
-        is_active=api_key.is_active,
-        total_requests=api_key.total_requests,
-        total_cost=api_key.total_cost,
-        total_tokens=api_key.total_tokens,
-        last_used_at=api_key.last_used_at.isoformat() if api_key.last_used_at else None,
-        created_at=api_key.created_at.isoformat(),
-    )
+    approval_service = ApprovalService(db)
+    return _build_key_response(api_key, approval_service.get_api_key_enforcement(api_key.id))
 
 
 @router.put("/{key_id}", response_model=KeyResponse)
@@ -171,24 +184,46 @@ def update_key(key_id: str, req: UpdateKeyRequest, db: Session = Depends(get_db)
     if not api_key:
         raise HTTPException(status_code=404, detail="API key not found")
 
-    if req.name is not None:
+    provided_fields = req.model_fields_set
+
+    if "name" in provided_fields:
         api_key.name = req.name
-    if req.max_cost_usd is not None:
+    if "max_cost_usd" in provided_fields:
         api_key.max_cost_usd = req.max_cost_usd
-    if req.max_cost_monthly is not None:
+    if "max_cost_monthly" in provided_fields:
         api_key.max_cost_monthly = req.max_cost_monthly
-    if req.max_requests_per_min is not None:
+    if "max_requests_per_min" in provided_fields:
         api_key.max_requests_per_min = req.max_requests_per_min
-    if req.allowed_models is not None:
+    if "allowed_models" in provided_fields:
         api_key.allowed_models = req.allowed_models
-    if req.denied_models is not None:
+    if "denied_models" in provided_fields:
         api_key.denied_models = req.denied_models
-    if req.is_active is not None:
+    if "is_active" in provided_fields:
         api_key.is_active = req.is_active
+
+    approval_service = ApprovalService(db)
+    enforcement = approval_service.get_or_create_api_key_enforcement(api_key.id)
+    if "enforcement_mode" in provided_fields:
+        enforcement.enforcement_mode = req.enforcement_mode
+    if "alert_threshold" in provided_fields:
+        enforcement.alert_threshold = req.alert_threshold
+    if "alert_timeout_sec" in provided_fields:
+        enforcement.alert_timeout_sec = req.alert_timeout_sec
+    if "alert_channels" in provided_fields:
+        enforcement.alert_channels_json = req.alert_channels
+    if "alert_email" in provided_fields:
+        enforcement.alert_email = req.alert_email
+    if "alert_webhook_url" in provided_fields:
+        enforcement.alert_webhook_url = req.alert_webhook_url
 
     db.commit()
     db.refresh(api_key)
+    db.refresh(enforcement)
 
+    return _build_key_response(api_key, enforcement)
+
+
+def _build_key_response(api_key: APIKey, enforcement) -> KeyResponse:
     return KeyResponse(
         id=api_key.id,
         name=api_key.name,
@@ -198,6 +233,12 @@ def update_key(key_id: str, req: UpdateKeyRequest, db: Session = Depends(get_db)
         max_requests_per_min=api_key.max_requests_per_min,
         allowed_models=api_key.allowed_models,
         denied_models=api_key.denied_models,
+        enforcement_mode=enforcement.enforcement_mode,
+        alert_threshold=enforcement.alert_threshold,
+        alert_timeout_sec=enforcement.alert_timeout_sec,
+        alert_channels=enforcement.alert_channels_json or [],
+        alert_email=enforcement.alert_email,
+        alert_webhook_url=enforcement.alert_webhook_url,
         is_active=api_key.is_active,
         total_requests=api_key.total_requests,
         total_cost=api_key.total_cost,
