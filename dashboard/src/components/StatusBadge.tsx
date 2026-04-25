@@ -6,6 +6,7 @@ interface StatusBadgeProps {
 
 const statusConfig: Record<string, { icon: string; className: string }> = {
     running: { icon: "⚡", className: "status-running" },
+    awaiting_approval: { icon: "🔔", className: "status-awaiting-approval" },
     completed: { icon: "✅", className: "status-completed" },
     failed: { icon: "❌", className: "status-failed" },
     terminated: { icon: "⛔", className: "status-terminated" },

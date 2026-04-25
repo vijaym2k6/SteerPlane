@@ -8,6 +8,7 @@ import {
     updatePolicy,
     deletePolicy,
 } from "@/services/api";
+import { ADMIN_TOKEN_EVENT } from "@/services/admin-auth";
 
 /* ═══════════════════════════════════════════════════════
    Helper — empty policy object
@@ -312,10 +313,9 @@ export default function PoliciesPage() {
             const data = await fetchPolicies();
             setPolicies(data);
             setError(null);
-        } catch {
-            // If backend doesn't support policies yet, show empty
+        } catch (err) {
             setPolicies([]);
-            setError(null);
+            setError(err instanceof Error ? err.message : "Failed to load policies");
         } finally {
             setLoading(false);
         }
@@ -323,6 +323,8 @@ export default function PoliciesPage() {
 
     useEffect(() => {
         load();
+        window.addEventListener(ADMIN_TOKEN_EVENT, load);
+        return () => window.removeEventListener(ADMIN_TOKEN_EVENT, load);
     }, [load]);
 
     const handleCreate = async (p: PolicyConfig) => {

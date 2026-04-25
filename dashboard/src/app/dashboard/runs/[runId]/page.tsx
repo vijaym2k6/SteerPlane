@@ -89,6 +89,7 @@ export default function RunDetailPage() {
         { label: "Tokens", value: run.total_tokens.toLocaleString(), cls: "" },
         { label: "Duration", value: duration, cls: "" },
     ];
+    const isAwaitingApproval = run.status === "awaiting_approval";
 
     return (
         <>
@@ -180,8 +181,90 @@ export default function RunDetailPage() {
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.4 }}
                     >
-                        <h4>⛔ Run Error</h4>
-                        <p>{run.error}</p>
+                        <h4>{isAwaitingApproval ? "🔔 Awaiting Human Approval" : "⛔ Run Terminated"}</h4>
+                        <p style={{ fontSize: 15, marginBottom: run.error_details ? 16 : 0 }}>{run.error}</p>
+
+                        {run.error_details && (
+                            <div style={{
+                                background: "rgba(0,0,0,0.25)",
+                                borderRadius: 10,
+                                padding: "14px 18px",
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr",
+                                gap: "10px 24px",
+                                fontSize: 13,
+                                fontFamily: "var(--font-mono)",
+                            }}>
+                                <div>
+                                    <span style={{ color: "var(--text-dim)", display: "block", marginBottom: 2 }}>Error Type</span>
+                                    <span style={{
+                                        color: run.error_details.error_type === "policy_violation" ? "#ff6b6b"
+                                            : run.error_details.error_type === "loop_detected" ? "#feca57"
+                                            : run.error_details.error_type === "cost_limit_exceeded" ? "#ff9f43"
+                                            : "#a29bfe",
+                                        fontWeight: 600,
+                                    }}>
+                                        {run.error_details.error_type?.replace(/_/g, " ").toUpperCase()}
+                                    </span>
+                                </div>
+
+                                {run.error_details.blocked_action && (
+                                    <div>
+                                        <span style={{ color: "var(--text-dim)", display: "block", marginBottom: 2 }}>Blocked Action</span>
+                                        <span style={{ color: "#dfe6e9" }}>{run.error_details.blocked_action}</span>
+                                    </div>
+                                )}
+
+                                {run.error_details.rule_matched && (
+                                    <div>
+                                        <span style={{ color: "var(--text-dim)", display: "block", marginBottom: 2 }}>Rule Matched</span>
+                                        <span style={{ color: "#74b9ff" }}>{run.error_details.rule_matched}</span>
+                                    </div>
+                                )}
+
+                                {run.error_details.reason && (
+                                    <div style={{ gridColumn: "1 / -1" }}>
+                                        <span style={{ color: "var(--text-dim)", display: "block", marginBottom: 2 }}>Reason</span>
+                                        <span style={{ color: "#dfe6e9" }}>{run.error_details.reason}</span>
+                                    </div>
+                                )}
+
+                                {run.error_details.pattern_detected && (
+                                    <div style={{ gridColumn: "1 / -1" }}>
+                                        <span style={{ color: "var(--text-dim)", display: "block", marginBottom: 2 }}>Loop Pattern</span>
+                                        <span style={{ color: "#feca57" }}>
+                                            [{run.error_details.pattern_detected.join(" → ")}]
+                                            {run.error_details.window_size && <span style={{ color: "var(--text-dim)" }}> (window: {run.error_details.window_size})</span>}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {run.error_details.recent_actions && (
+                                    <div style={{ gridColumn: "1 / -1" }}>
+                                        <span style={{ color: "var(--text-dim)", display: "block", marginBottom: 2 }}>Recent Actions</span>
+                                        <span style={{ color: "#b2bec3", wordBreak: "break-all" }}>
+                                            {run.error_details.recent_actions.join(" → ")}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {run.error_details.current_cost !== undefined && run.error_details.max_cost !== undefined && (
+                                    <div>
+                                        <span style={{ color: "var(--text-dim)", display: "block", marginBottom: 2 }}>Cost at Termination</span>
+                                        <span style={{ color: "#ff9f43" }}>
+                                            ${run.error_details.current_cost.toFixed(4)} / ${run.error_details.max_cost.toFixed(2)} limit
+                                        </span>
+                                    </div>
+                                )}
+
+                                {run.error_details.step_number && (
+                                    <div>
+                                        <span style={{ color: "var(--text-dim)", display: "block", marginBottom: 2 }}>Terminated at Step</span>
+                                        <span style={{ color: "#dfe6e9" }}>{run.error_details.step_number}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>

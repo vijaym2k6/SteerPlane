@@ -1,4 +1,40 @@
+import { getAdminToken } from "./admin-auth";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const ADMIN_TOKEN_HEADER = "X-SteerPlane-Admin-Token";
+
+function withAdminHeaders(headers: HeadersInit = {}): HeadersInit {
+    const token = getAdminToken();
+    if (!token) return headers;
+    return {
+        ...headers,
+        [ADMIN_TOKEN_HEADER]: token,
+    };
+}
+
+async function readError(res: Response, fallback: string): Promise<Error> {
+    const clone = res.clone();
+    try {
+        const data = await res.json();
+        const detail = data?.detail ?? data?.message ?? data?.error;
+        if (typeof detail === "string" && detail.trim()) {
+            return new Error(detail);
+        }
+        if (detail && typeof detail.message === "string") {
+            return new Error(detail.message);
+        }
+    } catch {
+        try {
+            const text = await clone.text();
+            if (text.trim()) return new Error(text);
+        } catch {
+            // Ignore body parsing failures and fall back to the default message.
+        }
+    }
+    return new Error(fallback);
+}
+
+// ─── Data Types ────────────────────────────────────────
 
 export interface Step {
     id: string;
@@ -14,6 +50,31 @@ export interface Step {
     timestamp: string;
 }
 
+export interface ErrorDetails {
+    error_type: string;
+    blocked_action?: string;
+    rule_matched?: string;
+    reason?: string;
+    message?: string;
+    step_number?: number;
+    total_cost_at_termination?: number;
+    current_cost?: number;
+    max_cost?: number;
+    current_steps?: number;
+    max_steps?: number;
+    pattern_detected?: string[];
+    window_size?: number;
+    recent_actions?: string[];
+    elapsed_seconds?: number;
+    max_runtime_seconds?: number;
+    approval_id?: string;
+    approval_type?: string;
+    current_value?: number;
+    limit_value?: number;
+    unit?: string;
+    expires_at?: string;
+}
+
 export interface Run {
     id: string;
     agent_name: string;
@@ -26,6 +87,7 @@ export interface Run {
     max_cost_usd: number;
     max_steps_limit: number;
     error: string | null;
+    error_details: ErrorDetails | null;
 }
 
 export interface RunDetail extends Run {
@@ -38,6 +100,8 @@ export interface RunListResponse {
     limit: number;
     offset: number;
 }
+
+// ─── Runs API ────────────────────────────────────────
 
 export async function fetchRuns(limit = 50, offset = 0): Promise<RunListResponse> {
     const res = await fetch(`${API_BASE}/runs?limit=${limit}&offset=${offset}`, {
@@ -84,8 +148,11 @@ export interface PolicyListResponse {
 }
 
 export async function fetchPolicies(): Promise<PolicyConfig[]> {
-    const res = await fetch(`${API_BASE}/policies`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch policies");
+    const res = await fetch(`${API_BASE}/policies`, {
+        cache: "no-store",
+        headers: withAdminHeaders(),
+    });
+    if (!res.ok) throw await readError(res, "Failed to fetch policies");
     const data: PolicyListResponse = await res.json();
     return data.policies;
 }
@@ -93,18 +160,19 @@ export async function fetchPolicies(): Promise<PolicyConfig[]> {
 export async function fetchPolicy(policyId: string): Promise<PolicyConfig> {
     const res = await fetch(`${API_BASE}/policies/${policyId}`, {
         cache: "no-store",
+        headers: withAdminHeaders(),
     });
-    if (!res.ok) throw new Error(`Failed to fetch policy ${policyId}`);
+    if (!res.ok) throw await readError(res, `Failed to fetch policy ${policyId}`);
     return res.json();
 }
 
 export async function createPolicy(policy: PolicyConfig): Promise<PolicyConfig> {
     const res = await fetch(`${API_BASE}/policies`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withAdminHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(policy),
     });
-    if (!res.ok) throw new Error("Failed to create policy");
+    if (!res.ok) throw await readError(res, "Failed to create policy");
     return res.json();
 }
 
@@ -114,18 +182,19 @@ export async function updatePolicy(
 ): Promise<PolicyConfig> {
     const res = await fetch(`${API_BASE}/policies/${policyId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: withAdminHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(policy),
     });
-    if (!res.ok) throw new Error(`Failed to update policy ${policyId}`);
+    if (!res.ok) throw await readError(res, `Failed to update policy ${policyId}`);
     return res.json();
 }
 
 export async function deletePolicy(policyId: string): Promise<void> {
     const res = await fetch(`${API_BASE}/policies/${policyId}`, {
         method: "DELETE",
+        headers: withAdminHeaders(),
     });
-    if (!res.ok) throw new Error(`Failed to delete policy ${policyId}`);
+    if (!res.ok) throw await readError(res, `Failed to delete policy ${policyId}`);
 }
 
 // ─── API Keys ────────────────────────────────────────────
@@ -140,6 +209,12 @@ export interface APIKeyConfig {
     max_requests_per_min: number;
     allowed_models: string | null;
     denied_models: string | null;
+    enforcement_mode: string;
+    alert_threshold: number;
+    alert_timeout_sec: number;
+    alert_channels: string[];
+    alert_email: string | null;
+    alert_webhook_url: string | null;
     is_active: boolean;
     total_requests: number;
     total_cost: number;
@@ -160,11 +235,20 @@ export interface CreateKeyRequest {
     max_requests_per_min?: number;
     allowed_models?: string | null;
     denied_models?: string | null;
+    enforcement_mode?: string;
+    alert_threshold?: number;
+    alert_timeout_sec?: number;
+    alert_channels?: string[];
+    alert_email?: string | null;
+    alert_webhook_url?: string | null;
 }
 
 export async function fetchAPIKeys(): Promise<APIKeyConfig[]> {
-    const res = await fetch(`${API_BASE}/api-keys`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch API keys");
+    const res = await fetch(`${API_BASE}/api-keys`, {
+        cache: "no-store",
+        headers: withAdminHeaders(),
+    });
+    if (!res.ok) throw await readError(res, "Failed to fetch API keys");
     const data: APIKeyListResponse = await res.json();
     return data.keys;
 }
@@ -172,10 +256,10 @@ export async function fetchAPIKeys(): Promise<APIKeyConfig[]> {
 export async function createAPIKey(req: CreateKeyRequest): Promise<APIKeyConfig> {
     const res = await fetch(`${API_BASE}/api-keys`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withAdminHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(req),
     });
-    if (!res.ok) throw new Error("Failed to create API key");
+    if (!res.ok) throw await readError(res, "Failed to create API key");
     return res.json();
 }
 
@@ -185,16 +269,100 @@ export async function updateAPIKey(
 ): Promise<APIKeyConfig> {
     const res = await fetch(`${API_BASE}/api-keys/${keyId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: withAdminHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(updates),
     });
-    if (!res.ok) throw new Error(`Failed to update API key ${keyId}`);
+    if (!res.ok) throw await readError(res, `Failed to update API key ${keyId}`);
     return res.json();
 }
 
 export async function deleteAPIKey(keyId: string): Promise<void> {
     const res = await fetch(`${API_BASE}/api-keys/${keyId}`, {
         method: "DELETE",
+        headers: withAdminHeaders(),
     });
-    if (!res.ok) throw new Error(`Failed to delete API key ${keyId}`);
+    if (!res.ok) throw await readError(res, `Failed to delete API key ${keyId}`);
+}
+
+// ─── Approvals ───────────────────────────────────────────
+
+export interface ApprovalResolution {
+    decision?: string;
+    extension_value?: number;
+    new_limit?: number;
+    note?: string | null;
+    reason?: string | null;
+}
+
+export interface ApprovalRequest {
+    id: string;
+    run_id: string;
+    agent_name: string;
+    scope: string;
+    approval_type: string;
+    status: string;
+    message: string;
+    current_value: number;
+    limit_value: number;
+    unit: string;
+    timeout_sec: number;
+    session_id: string | null;
+    api_key_id: string | null;
+    channels_json: string[];
+    alert_email: string | null;
+    alert_webhook_url: string | null;
+    metadata_json: Record<string, unknown> | null;
+    resolution_json: ApprovalResolution | null;
+    created_at: string;
+    expires_at: string;
+    resolved_at: string | null;
+    resolved_by: string | null;
+    resolution_note: string | null;
+}
+
+export interface ApprovalListResponse {
+    approvals: ApprovalRequest[];
+    total: number;
+}
+
+export async function fetchApprovals(status?: string, limit = 100): Promise<ApprovalRequest[]> {
+    const params = new URLSearchParams();
+    params.set("limit", String(limit));
+    if (status && status.trim()) {
+        params.set("status", status);
+    }
+
+    const res = await fetch(`${API_BASE}/approvals?${params.toString()}`, {
+        cache: "no-store",
+        headers: withAdminHeaders(),
+    });
+    if (!res.ok) throw await readError(res, "Failed to fetch approvals");
+    const data: ApprovalListResponse = await res.json();
+    return data.approvals;
+}
+
+export async function approveRequest(
+    approvalId: string,
+    body: { note?: string; extension_value?: number } = {}
+): Promise<ApprovalRequest> {
+    const res = await fetch(`${API_BASE}/approvals/${approvalId}/approve`, {
+        method: "POST",
+        headers: withAdminHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) throw await readError(res, `Failed to approve request ${approvalId}`);
+    return res.json();
+}
+
+export async function denyRequest(
+    approvalId: string,
+    body: { note?: string } = {}
+): Promise<ApprovalRequest> {
+    const res = await fetch(`${API_BASE}/approvals/${approvalId}/deny`, {
+        method: "POST",
+        headers: withAdminHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) throw await readError(res, `Failed to deny request ${approvalId}`);
+    return res.json();
 }

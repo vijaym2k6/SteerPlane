@@ -56,7 +56,7 @@ const features = [
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
     ),
     title: "Hard Cost Ceiling",
-    desc: "Define per-run and monthly USD cost limits. Every step's token cost is tracked cumulatively across 25+ models with built-in pricing. The instant spend crosses your threshold, the run is terminated.",
+    desc: "Define per-run and monthly USD cost limits. Every step's token cost is tracked cumulatively across 25+ models with built-in pricing. Run in kill mode for automatic stops, or alert mode to pause near the limit and wait for human approval.",
   },
   {
     icon: (
@@ -94,7 +94,7 @@ const howSteps = [
   { num: 2, title: "Point to Gateway", desc: "Set your OpenAI client's base_url to SteerPlane. Or use the @guard decorator directly." },
   { num: 3, title: "Set Policies", desc: "Define cost limits, rate limits, allowed/denied actions, and approval workflows." },
   { num: 4, title: "Agent Runs", desc: "Your agent executes normally. SteerPlane intercepts every LLM call and action." },
-  { num: 5, title: "Guards Activate", desc: "Loop detection, cost limits, policy engine, and rate limits are enforced in real time." },
+  { num: 5, title: "Guards Activate", desc: "Loop detection, cost limits, alert-mode approvals, policy engine, and rate limits are enforced in real time." },
   { num: 6, title: "Dashboard Shows", desc: "Every run, step, cost, and policy violation is visualized in the live dashboard." },
 ];
 
@@ -438,7 +438,7 @@ export default function Home() {
               <Link href="/dashboard" className="btn-primary">Open Dashboard</Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
-              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="btn-secondary">
+              <a href="https://github.com/vijaym2k6/SteerPlane" target="_blank" rel="noopener noreferrer" className="btn-secondary">
                 View on GitHub →
               </a>
             </motion.div>

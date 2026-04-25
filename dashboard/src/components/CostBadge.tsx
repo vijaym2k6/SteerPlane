@@ -13,9 +13,9 @@ export default function CostBadge({ cost, size = "md" }: CostBadgeProps) {
     };
 
     const getColor = (c: number) => {
-        if (c < 0.1) return "var(--color-success)";
-        if (c < 1) return "var(--color-warning)";
-        return "var(--color-danger)";
+        if (c < 0.1) return "var(--success)";
+        if (c < 1) return "var(--warning)";
+        return "var(--danger)";
     };
 
     const sizeClass = {

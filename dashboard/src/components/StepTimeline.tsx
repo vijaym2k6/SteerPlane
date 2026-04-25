@@ -42,6 +42,8 @@ export default function StepTimeline({ steps }: StepTimelineProps) {
             case "completed": return "✓";
             case "failed": return "✗";
             case "terminated": return "⛔";
+            case "awaiting_approval": return "🔔";
+            case "blocked": return "⏸";
             default: return "⚡";
         }
     };
