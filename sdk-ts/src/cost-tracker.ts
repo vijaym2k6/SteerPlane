@@ -42,7 +42,7 @@ export interface CostSummary {
 }
 
 export class CostTracker {
-  public readonly maxCostUsd: number;
+  public maxCostUsd: number;
   public readonly model: string;
   public totalCost: number = 0;
   public totalTokens: number = 0;

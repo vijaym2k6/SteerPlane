@@ -54,14 +54,26 @@ export interface RunManagerOptions {
   logToConsole?: boolean;
   /** Policy engine configuration for action control. */
   policy?: PolicyEngineOptions;
+  enforcement?: "kill" | "alert";
+  alertThreshold?: number;
+  alertTimeoutSec?: number;
+  alertChannels?: string[];
+  alertEmail?: string;
+  alertWebhookUrl?: string;
 }
 
 export class RunManager {
   public readonly agentName: string;
   public readonly runId: string;
-  public readonly maxSteps: number;
-  public readonly maxRuntimeSec: number;
+  public maxSteps: number;
+  public maxRuntimeSec: number;
   public readonly logToConsole: boolean;
+  public readonly enforcement: "kill" | "alert";
+  public readonly alertThreshold: number;
+  public readonly alertTimeoutSec: number;
+  public readonly alertChannels: string[];
+  public readonly alertEmail?: string;
+  public readonly alertWebhookUrl?: string;
 
   public readonly client: SteerPlaneClient;
   public readonly loopDetector: LoopDetector;
@@ -82,6 +94,12 @@ export class RunManager {
     this.maxSteps = opts.maxSteps ?? 200;
     this.maxRuntimeSec = opts.maxRuntimeSec ?? 3600;
     this.logToConsole = opts.logToConsole ?? true;
+    this.enforcement = opts.enforcement ?? "kill";
+    this.alertThreshold = Math.min(Math.max(opts.alertThreshold ?? 0.8, 0), 1);
+    this.alertTimeoutSec = Math.max(opts.alertTimeoutSec ?? 1800, 1);
+    this.alertChannels = [...(opts.alertChannels ?? [])];
+    this.alertEmail = opts.alertEmail;
+    this.alertWebhookUrl = opts.alertWebhookUrl;
 
     this.client = new SteerPlaneClient(opts.apiUrl, opts.apiKey);
     this.loopDetector = new LoopDetector(opts.loopWindowSize ?? 8);
@@ -101,6 +119,11 @@ export class RunManager {
       console.log(
         `   Limits:  $${this.costTracker.maxCostUsd} cost / ${this.maxSteps} steps`
       );
+      if (this.enforcement === "alert") {
+        console.log(
+          `   Mode:    alert @ ${Math.round(this.alertThreshold * 100)}% (${this.alertTimeoutSec}s timeout)`
+        );
+      }
       console.log(`   ${"─".repeat(45)}`);
     }
 
@@ -143,18 +166,55 @@ export class RunManager {
     // Check step limit
     this.stepCount++;
     if (this.stepCount > this.maxSteps) {
-      await this.terminate("step_limit_exceeded");
-      throw new StepLimitExceeded(this.stepCount, this.maxSteps);
+      if (this.usesAlertMode()) {
+        await this.pauseForLimit({
+          approvalType: "step_limit",
+          action: opts.action,
+          currentValue: this.stepCount,
+          limitValue: this.maxSteps,
+          unit: "steps",
+          message:
+            `Run '${this.agentName}' hit its step limit ` +
+            `(${this.stepCount}/${this.maxSteps}). Approve to extend and continue.`,
+          metadata: {
+            blocked_action: opts.action,
+            current_steps: this.stepCount,
+            max_steps: this.maxSteps,
+          },
+        });
+      } else {
+        await this.terminate("step_limit_exceeded");
+        throw new StepLimitExceeded(this.stepCount, this.maxSteps);
+      }
     }
 
     // Check runtime limit
     const elapsed = Date.now() / 1000 - this.startTime;
     if (elapsed > this.maxRuntimeSec) {
-      await this.terminate("runtime_limit_exceeded");
-      throw new RunTerminatedError(
-        this.runId,
-        `Runtime exceeded: ${formatDuration(elapsed)} > ${formatDuration(this.maxRuntimeSec)}`
-      );
+      if (this.usesAlertMode()) {
+        await this.pauseForLimit({
+          approvalType: "runtime_limit",
+          action: opts.action,
+          currentValue: elapsed,
+          limitValue: this.maxRuntimeSec,
+          unit: "seconds",
+          message:
+            `Run '${this.agentName}' exceeded its runtime limit ` +
+            `(${formatDuration(elapsed)} > ${formatDuration(this.maxRuntimeSec)}). ` +
+            `Approve to continue or let it terminate.`,
+          metadata: {
+            blocked_action: opts.action,
+            elapsed_seconds: elapsed,
+            max_runtime_seconds: this.maxRuntimeSec,
+          },
+        });
+      } else {
+        await this.terminate("runtime_limit_exceeded");
+        throw new RunTerminatedError(
+          this.runId,
+          `Runtime exceeded: ${formatDuration(elapsed)} > ${formatDuration(this.maxRuntimeSec)}`
+        );
+      }
     }
 
     // Calculate cost
@@ -198,9 +258,29 @@ export class RunManager {
       this.costTracker.addStep(stepCost);
     } catch (err) {
       if (err instanceof CostLimitExceeded) {
-        await this.terminate("cost_limit_exceeded");
+        if (this.usesAlertMode()) {
+          await this.pauseForLimit({
+            approvalType: "cost_limit",
+            action: opts.action,
+            currentValue: err.currentCost,
+            limitValue: err.maxCost,
+            unit: "usd",
+            message:
+              `Run '${this.agentName}' exceeded its cost limit ` +
+              `($${err.currentCost.toFixed(4)} > $${err.maxCost.toFixed(2)}). ` +
+              `Approve to extend and continue or let it terminate.`,
+            metadata: {
+              blocked_action: opts.action,
+              current_cost: err.currentCost,
+              max_cost: err.maxCost,
+              step_number: this.stepCount,
+            },
+          });
+        } else {
+          await this.terminate("cost_limit_exceeded");
+          throw err;
+        }
       }
-      throw err;
     }
 
     // 2. Loop detection
@@ -209,6 +289,8 @@ export class RunManager {
       await this.terminate("loop_detected");
       throw new LoopDetectedError(result.pattern, result.windowSize);
     }
+
+    await this.checkAlertThresholds(opts.action);
 
     return stepCost;
   }
@@ -265,5 +347,200 @@ export class RunManager {
     this.terminated = true;
     this.terminationReason = reason;
     await this.end("terminated", reason);
+  }
+
+  private usesAlertMode(): boolean {
+    return this.enforcement === "alert";
+  }
+
+  private async checkAlertThresholds(action: string): Promise<void> {
+    if (!this.usesAlertMode()) {
+      return;
+    }
+
+    if (
+      this.costTracker.maxCostUsd > 0 &&
+      this.costTracker.totalCost >= this.costTracker.maxCostUsd * this.alertThreshold
+    ) {
+      await this.pauseForLimit({
+        approvalType: "cost_limit",
+        action,
+        currentValue: this.costTracker.totalCost,
+        limitValue: this.costTracker.maxCostUsd,
+        unit: "usd",
+        message:
+          `Run '${this.agentName}' has crossed ${Math.round(this.alertThreshold * 100)}% ` +
+          `of its cost budget ($${this.costTracker.totalCost.toFixed(4)}/$${this.costTracker.maxCostUsd.toFixed(2)}). ` +
+          `Approve to continue or let it terminate on timeout.`,
+        metadata: {
+          blocked_action: action,
+          current_cost: this.costTracker.totalCost,
+          max_cost: this.costTracker.maxCostUsd,
+          step_number: this.stepCount,
+          threshold: this.alertThreshold,
+        },
+      });
+      return;
+    }
+
+    const elapsed = Date.now() / 1000 - this.startTime;
+    if (
+      this.maxRuntimeSec > 0 &&
+      elapsed >= this.maxRuntimeSec * this.alertThreshold
+    ) {
+      await this.pauseForLimit({
+        approvalType: "runtime_limit",
+        action,
+        currentValue: elapsed,
+        limitValue: this.maxRuntimeSec,
+        unit: "seconds",
+        message:
+          `Run '${this.agentName}' has crossed ${Math.round(this.alertThreshold * 100)}% ` +
+          `of its runtime budget (${formatDuration(elapsed)}/${formatDuration(this.maxRuntimeSec)}). ` +
+          `Approve to continue or let it terminate on timeout.`,
+        metadata: {
+          blocked_action: action,
+          elapsed_seconds: elapsed,
+          max_runtime_seconds: this.maxRuntimeSec,
+          step_number: this.stepCount,
+          threshold: this.alertThreshold,
+        },
+      });
+      return;
+    }
+
+    if (
+      this.maxSteps > 0 &&
+      this.stepCount >= this.maxSteps * this.alertThreshold
+    ) {
+      await this.pauseForLimit({
+        approvalType: "step_limit",
+        action,
+        currentValue: this.stepCount,
+        limitValue: this.maxSteps,
+        unit: "steps",
+        message:
+          `Run '${this.agentName}' has crossed ${Math.round(this.alertThreshold * 100)}% ` +
+          `of its step budget (${this.stepCount}/${this.maxSteps}). ` +
+          `Approve to continue or let it terminate on timeout.`,
+        metadata: {
+          blocked_action: action,
+          current_steps: this.stepCount,
+          max_steps: this.maxSteps,
+          step_number: this.stepCount,
+          threshold: this.alertThreshold,
+        },
+      });
+    }
+  }
+
+  private async pauseForLimit(opts: {
+    approvalType: string;
+    action: string;
+    currentValue: number;
+    limitValue: number;
+    unit: string;
+    message: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<void> {
+    if (!this.client.isConnected) {
+      await this.terminate("alert_mode_unavailable");
+      throw new RunTerminatedError(
+        this.runId,
+        "Alert mode requires a reachable SteerPlane API but the API is offline"
+      );
+    }
+
+    const approval = await this.client.requestApproval({
+      run_id: this.runId,
+      agent_name: this.agentName,
+      approval_type: opts.approvalType,
+      current_value: opts.currentValue,
+      limit_value: opts.limitValue,
+      unit: opts.unit,
+      message: opts.message,
+      timeout_sec: this.alertTimeoutSec,
+      channels: this.alertChannels,
+      alert_email: this.alertEmail ?? null,
+      alert_webhook_url: this.alertWebhookUrl ?? null,
+      metadata: opts.metadata ?? {},
+    });
+
+    if (!approval || typeof approval.id !== "string") {
+      await this.terminate("approval_request_failed");
+      throw new RunTerminatedError(
+        this.runId,
+        "Could not create a SteerPlane approval request"
+      );
+    }
+
+    this.status = "awaiting_approval";
+
+    if (this.logToConsole) {
+      console.log(
+        `   🔔 Approval requested for ${opts.approvalType.replace(/_/g, " ")} ` +
+          `(${opts.currentValue.toFixed(4)} ${opts.unit} / ${opts.limitValue.toFixed(4)} ${opts.unit})`
+      );
+      console.log(`      Waiting up to ${this.alertTimeoutSec}s for continue/kill...`);
+    }
+
+    const deadline = Date.now() + (this.alertTimeoutSec + 1) * 1000;
+    while (Date.now() <= deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      const latest = await this.client.getApproval(approval.id);
+      if (!latest || typeof latest.status !== "string") {
+        continue;
+      }
+
+      const latestStatus = latest.status.toLowerCase();
+      if (latestStatus === "pending") {
+        continue;
+      }
+
+      if (latestStatus === "approved") {
+        this.applyApprovalResolution(
+          opts.approvalType,
+          (latest.resolution_json ?? {}) as Record<string, unknown>
+        );
+        this.status = "running";
+        return;
+      }
+
+      const resolution =
+        (latest.resolution_json ?? null) as Record<string, unknown> | null;
+      const message =
+        latest.resolution_note ??
+        (typeof resolution?.reason === "string" ? resolution.reason : null) ??
+        latest.message ??
+        `Approval ${latestStatus}`;
+      await this.terminate(latestStatus === "denied" ? "approval_denied" : "alert_timeout");
+      throw new RunTerminatedError(this.runId, String(message));
+    }
+
+    await this.terminate("alert_timeout");
+    throw new RunTerminatedError(
+      this.runId,
+      `Approval timed out while waiting for ${opts.approvalType.replace(/_/g, " ")} continuation`
+    );
+  }
+
+  private applyApprovalResolution(
+    approvalType: string,
+    resolution: Record<string, unknown>
+  ): void {
+    const nextLimit = typeof resolution.new_limit === "number"
+      ? resolution.new_limit
+      : null;
+    if (nextLimit === null) {
+      return;
+    }
+
+    if (approvalType === "cost_limit") {
+      this.costTracker.maxCostUsd = nextLimit;
+    } else if (approvalType === "step_limit") {
+      this.maxSteps = Math.trunc(nextLimit);
+    } else if (approvalType === "runtime_limit") {
+      this.maxRuntimeSec = Math.trunc(nextLimit);
+    }
   }
 }

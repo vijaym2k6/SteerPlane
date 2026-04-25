@@ -27,7 +27,7 @@ export class SteerPlaneClient {
     const url = `${this.apiUrl}${path}`;
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "User-Agent": "SteerPlane-SDK-TS/0.1.0",
+      "User-Agent": "SteerPlane-SDK-TS/0.3.0",
     };
     if (this.apiKey) {
       headers["Authorization"] = `Bearer ${this.apiKey}`;
@@ -133,6 +133,30 @@ export class SteerPlaneClient {
   /** List recent runs. */
   async listRuns(limit: number = 50, offset: number = 0) {
     return this.request("GET", `/runs?limit=${limit}&offset=${offset}`);
+  }
+
+  async requestApproval(body: {
+    run_id: string;
+    agent_name: string;
+    approval_type: string;
+    current_value: number;
+    limit_value: number;
+    unit: string;
+    message: string;
+    timeout_sec: number;
+    scope?: string;
+    session_id?: string | null;
+    api_key_id?: string | null;
+    channels?: string[];
+    alert_email?: string | null;
+    alert_webhook_url?: string | null;
+    metadata?: Record<string, unknown>;
+  }) {
+    return this.request("POST", "/approvals/request", body);
+  }
+
+  async getApproval(approvalId: string) {
+    return this.request("GET", `/approvals/${approvalId}`);
   }
 
   /** Check if API is reachable. */
