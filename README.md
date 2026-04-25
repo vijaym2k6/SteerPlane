@@ -14,7 +14,7 @@
 
 <p align="center">
   <b>Runtime guardrails for autonomous AI agents.</b><br>
-  Cost limits · Loop detection · Step caps · Policy engine · Full telemetry · Real-time dashboard<br><br>
+  Cost limits · Loop detection · Dual enforcement (Kill/Alert) · Gateway proxy · Policy engine · Human-in-the-loop approvals · Real-time dashboard<br><br>
   <code>pip install steerplane</code> · <code>npm install steerplane</code>
 </p>
 
@@ -78,15 +78,18 @@ def run_agent():
 
 | | Feature | What It Does |
 |---|---------|-------------|
-| 🔄 | **Loop Detection** | Sliding-window pattern detector catches repeating agent behavior in real time |
-| 💰 | **Hard Cost Ceiling** | Set a per-run USD limit with built-in pricing for GPT-4o, Claude 3, Gemini Pro, and more |
-| 🔔 | **Alert Mode** | Pause near a limit, notify a human, and resume only after approval or auto-timeout |
+| 🔄 | **Loop Detection** | O(W²) sliding-window algorithm catches single-action, alternating, and multi-step repeating patterns in sub-millisecond time — no LLM calls |
+| 💰 | **Hard Cost Ceiling** | Per-run USD limits with built-in pricing for 25+ models across OpenAI, Anthropic, Google, Meta, and Mistral |
+| 🔔 | **Dual Enforcement (Kill/Alert)** | Kill mode terminates instantly. Alert mode pauses, notifies humans (email/webhook), and waits for approve/deny/extend |
 | 🚫 | **Step Limit** | Cap maximum execution steps to prevent unbounded resource consumption |
 | ⏱️ | **Runtime Limit** | Maximum wall-clock time per run — either alerts or terminates based on enforcement mode |
-| 🛡️ | **Policy Engine** | Allow/deny lists with glob patterns, sliding-window rate limits, and human-in-the-loop approval workflows |
+| 🛡️ | **Policy Engine** | Allow/deny lists with glob patterns (`fnmatch`), sliding-window rate limits, and human-in-the-loop approval gates |
+| 🌐 | **Gateway Proxy** | OpenAI-compatible API proxy — change only `base_url` for zero-code enforcement. Real LLM keys never exposed to agents |
 | 📊 | **Deep Telemetry** | Every step's action name, tokens, cost, latency, and status — captured automatically |
-| 🖥️ | **Real-Time Dashboard** | Next.js dashboard with 3-second auto-refresh, animated timelines, cost breakdowns, and policy management |
-| 🔌 | **Graceful Degradation** | If the API goes down, the SDK enforces all limits locally. Agents are never unprotected |
+| 🖥️ | **Real-Time Dashboard** | Next.js dashboard with 3s auto-refresh, animated timelines, cost breakdowns, policy management, and approval workflows |
+| 🔗 | **LangChain Integration** | Drop-in callback handler for LangChain/LangGraph agents — zero refactoring |
+| 📧 | **Notifications** | Multi-channel dispatch — SMTP email and HTTP webhooks (Slack, Discord, PagerDuty, etc.) |
+| 🔌 | **Graceful Degradation** | If the API goes down, the SDK enforces all limits locally. Alert mode degrades to kill mode. Agents are never unprotected |
 
 ---
 
@@ -129,7 +132,7 @@ python examples/simple_agent/agent_example.py
 
 Open **[localhost:3000](http://localhost:3000)** → See your agent run in real time.
 
-Use the dashboard's `Admin Token` button to unlock policy and API key management.
+Use the dashboard's `Admin Token` button to unlock policy, API key, and approval management.
 
 ---
 
@@ -215,6 +218,59 @@ def run_agent():
 
 ---
 
+## Gateway Proxy (Zero-Code Mode)
+
+For agents you can't modify, SteerPlane provides an OpenAI-compatible gateway proxy. Change **two lines** — the agent gets full enforcement without touching its code:
+
+```python
+from openai import OpenAI
+
+# Before: direct to OpenAI
+# client = OpenAI(api_key="sk-...")
+
+# After: route through SteerPlane gateway
+client = OpenAI(
+    base_url="http://localhost:8000/gateway/v1",
+    api_key="sp_your_steerplane_key",  # SteerPlane key — real LLM key stays server-side
+)
+
+# Everything else stays the same
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Hello"}],
+)
+```
+
+**Security model:** The agent process never holds the real LLM API key. SteerPlane stores it server-side and injects it during request forwarding.
+
+**What the gateway enforces per request:**
+- Policy rules (deny/allow/rate limits)
+- Session cost vs. ceiling
+- SHA-256 prompt-hash loop detection
+- Per-key enforcement mode (kill or alert)
+- Monthly budget tracking
+
+---
+
+## LangChain Integration
+
+```python
+from steerplane.integrations.langchain import SteerPlaneCallbackHandler
+
+handler = SteerPlaneCallbackHandler(
+    agent_name="research_bot",
+    max_cost_usd=5.0,
+    max_steps=30,
+)
+
+# Pass as callback to any LangChain agent or chain
+agent.run("Analyze this data", callbacks=[handler])
+```
+
+Zero refactoring. Works with LangChain, LangGraph, and any `Runnable`.
+
+---
+
 ## Policy Engine
 
 The policy engine runs **before** any cost is incurred, enforcing rules in strict priority order:
@@ -257,24 +313,46 @@ Available in both Python and TypeScript SDKs, and manageable via the dashboard U
 ## Architecture
 
 ```
-┌─────────────┐     ┌──────────────────────┐     ┌────────────┐     ┌───────────────┐
-│  AI Agent   │────▶│    SteerPlane SDK     │────▶│  FastAPI    │────▶│  PostgreSQL   │
-│  (Your App) │     │                      │     │  Server     │     │  / SQLite     │
-└─────────────┘     │  Guard Engine        │     └────────────┘     └───────────────┘
-                    │  Policy Engine       │            │
-                    │  Cost Tracker        │            ▼
-                    │  Loop Detector       │     ┌───────────────┐
-                    │  Run Manager         │     │   Next.js     │
-                    │  Telemetry Client    │     │   Dashboard   │
-                    └──────────────────────┘     └───────────────┘
+┌──────────────────────────────────────────────────────┐
+│                  Agent Application                   │
+│         (OpenAI SDK, LangChain, CrewAI, etc.)        │
+└──────────────┬────────────────────┬──────────────────┘
+               │                    │
+      SDK Mode │          Gateway Mode
+     (@guard)  │       (base_url change)
+               ▼                    ▼
+┌──────────────────────┐  ┌──────────────────────────┐
+│   SteerPlane SDK     │  │   Gateway Proxy          │
+│   (In-Process)       │  │   (Network Layer)        │
+│                      │  │                          │
+│   Guard Engine       │  │   Auth → Policy → Cost   │
+│   Policy Engine      │  │   → Loop → Forward       │
+│   Cost Tracker       │  │                          │
+│   Loop Detector      │  │   Real LLM key stored    │
+│   Run Manager        │  │   server-side only       │
+└──────────┬───────────┘  └──────────┬───────────────┘
+           │                         │
+           ▼                         ▼
+┌────────────────────────────────────────────────────┐
+│              SteerPlane API Server                  │
+│      (FastAPI + SQLAlchemy + PostgreSQL/SQLite)     │
+│    Runs · Steps · Policies · Approvals · API Keys  │
+└───────────────┬──────────────┬─────────────────────┘
+                │              │
+        ┌───────▼──────┐  ┌───▼──────────────────┐
+        │   Next.js    │  │  Notifications       │
+        │   Dashboard  │  │  (Email / Webhook)   │
+        └──────────────┘  └──────────────────────┘
 ```
 
 | Layer | Stack | Purpose |
 |-------|-------|---------|
-| **SDK** | Python 3.10+ / Node.js 18+ | `@guard` decorator, cost tracking, loop detection, policy engine |
-| **API** | FastAPI + SQLAlchemy | REST endpoints for runs, steps, policies, telemetry |
-| **Database** | PostgreSQL 17 / SQLite | Persistent storage for runs, steps, and policies |
-| **Dashboard** | Next.js 16 + React 19 + Framer Motion | Real-time monitoring, run timelines, policy management |
+| **SDK** | Python 3.10+ / Node.js 18+ | `@guard` decorator, cost tracking, loop detection, policy engine, dual enforcement |
+| **Gateway Proxy** | FastAPI + HTTPX | OpenAI-compatible proxy with policy enforcement, cost tracking, and key isolation |
+| **API** | FastAPI + SQLAlchemy + Pydantic | REST endpoints for runs, steps, policies, approvals, API keys, telemetry |
+| **Database** | PostgreSQL / SQLite | Persistent storage for runs, steps, policies, approvals, and API keys |
+| **Dashboard** | Next.js + React + Framer Motion | Real-time monitoring, run timelines, policy management, approval workflows |
+| **Notifications** | smtplib + HTTPX | Multi-channel alert dispatch (email, Slack, Discord, PagerDuty) |
 
 ---
 
@@ -285,17 +363,20 @@ SteerPlane/
 ├── sdk/                     # Python SDK (pip install steerplane)
 │   └── steerplane/
 │       ├── guard.py         # @guard decorator + SteerPlane class
-│       ├── run_manager.py   # Run lifecycle orchestration
-│       ├── cost_tracker.py  # Cost calculation + limit enforcement
-│       ├── loop_detector.py # Sliding-window loop detection
-│       ├── policy_engine.py # Allow/deny, rate limits, approval
-│       ├── telemetry.py     # Step event collection
+│       ├── run_manager.py   # Run lifecycle + dual enforcement (kill/alert)
+│       ├── cost_tracker.py  # Cost calculation + 9 model pricing
+│       ├── loop_detector.py # O(W²) sliding-window loop detection
+│       ├── policy_engine.py # Allow/deny, rate limits, approval gates
 │       ├── client.py        # HTTP client with graceful degradation
-│       └── exceptions.py    # 6 typed exception classes
+│       ├── runtime_context.py # Active run tracking for signal handling
+│       ├── telemetry.py     # Step event collection
+│       ├── exceptions.py    # 6 typed exception classes
+│       └── integrations/
+│           └── langchain.py # LangChain/LangGraph callback handler
 ├── sdk-ts/                  # TypeScript SDK (npm install steerplane)
 │   └── src/
 │       ├── guard.ts         # guard() HOF + SteerPlane class
-│       ├── run-manager.ts   # Run lifecycle orchestration
+│       ├── run-manager.ts   # Run lifecycle + dual enforcement
 │       ├── cost-tracker.ts  # Cost tracking + limits
 │       ├── loop-detector.ts # Loop detection
 │       ├── policy-engine.ts # Policy engine + glob matching
@@ -304,15 +385,31 @@ SteerPlane/
 ├── api/                     # FastAPI backend
 │   └── app/
 │       ├── main.py          # App entry point + CORS + startup
-│       ├── routes/          # runs, policies, telemetry endpoints
-│       ├── models/          # Run, Step, Policy ORM models
+│       ├── security.py      # Admin token auth middleware
+│       ├── routes/
+│       │   ├── runs.py      # Run lifecycle endpoints
+│       │   ├── policies.py  # Policy CRUD + evaluation
+│       │   ├── approvals.py # Approval create/approve/deny/list
+│       │   ├── gateway.py   # OpenAI-compatible proxy endpoints
+│       │   ├── api_keys.py  # API key management with enforcement
+│       │   └── telemetry.py # Batch telemetry ingestion
+│       ├── models/          # Run, Step, Policy, ApprovalRequest, APIKeyEnforcement
 │       ├── schemas/         # Pydantic request/response schemas
-│       └── services/        # Run + Policy business logic
+│       └── services/
+│           ├── run_service.py       # Run business logic
+│           ├── policy_service.py    # Policy business logic
+│           ├── gateway_service.py   # Gateway proxy + 25 model pricing
+│           ├── approval_service.py  # Approval lifecycle management
+│           └── notification_service.py # Email (SMTP) + webhook dispatch
 ├── dashboard/               # Next.js real-time dashboard
 │   └── src/
-│       ├── app/             # Landing, dashboard, run detail, policies
-│       ├── components/      # RunTable, StepTimeline, StatusBadge, CostBadge
-│       └── services/        # API client
+│       ├── app/
+│       │   ├── dashboard/   # Run list + run detail pages
+│       │   ├── policies/    # Policy management UI
+│       │   ├── approvals/   # Approve/deny/extend pending requests
+│       │   └── api-keys/    # API key management with enforcement config
+│       ├── components/      # RunTable, StepTimeline, StatusBadge, CostBadge, Navbar
+│       └── services/        # API client + admin auth
 ├── examples/                # Example agent integrations
 │   ├── simple_agent/        # 3-scenario demo (normal, loop, cost)
 │   ├── simple_llm_agent/    # Minimal @guard decorator usage
@@ -325,23 +422,63 @@ SteerPlane/
 
 ## API Endpoints
 
-The FastAPI server exposes 11 endpoints with auto-generated docs at `/docs`:
+The FastAPI server exposes endpoints with auto-generated docs at `/docs`:
 
+**Runs**
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/health` | Health check |
 | `POST` | `/runs/start` | Start a governed agent run |
 | `POST` | `/runs/step` | Log an execution step |
 | `POST` | `/runs/end` | Finalize a run |
 | `GET` | `/runs/{run_id}` | Get run details with all steps |
 | `GET` | `/runs` | List runs (paginated) |
-| `POST` | `/telemetry` | Batch ingest telemetry events |
+
+**Policies**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | `POST` | `/policies` | Create a policy |
-| `GET` | `/policies` | List policies (paginated) |
+| `GET` | `/policies` | List policies |
 | `GET` | `/policies/{policy_id}` | Get a policy |
 | `PUT` | `/policies/{policy_id}` | Update a policy |
 | `DELETE` | `/policies/{policy_id}` | Delete a policy |
 | `POST` | `/policies/{policy_id}/evaluate` | Evaluate an action against a policy |
+
+**Approvals (Human-in-the-Loop)**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/approvals` | Create an approval request |
+| `GET` | `/approvals` | List pending/resolved approvals |
+| `POST` | `/approvals/{id}/approve` | Approve with optional limit extension |
+| `POST` | `/approvals/{id}/deny` | Deny and terminate the run |
+
+**Gateway Proxy**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/gateway/v1/chat/completions` | OpenAI-compatible chat completions proxy |
+| `GET` | `/gateway/v1/models` | List available models |
+
+**API Keys**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api-keys` | Create an API key with enforcement config |
+| `GET` | `/api-keys` | List API keys |
+| `DELETE` | `/api-keys/{key_id}` | Revoke an API key |
+
+---
+
+## Supported Models (25+)
+
+Built-in pricing for cost tracking across all major providers:
+
+| Provider | Models |
+|----------|--------|
+| **OpenAI** | GPT-4o, GPT-4o-mini, GPT-4-Turbo, GPT-4, GPT-3.5-Turbo, o1, o1-mini, o3-mini |
+| **Anthropic** | Claude 4 Opus/Sonnet, Claude 3.5 Sonnet/Haiku, Claude 3 Opus/Sonnet/Haiku |
+| **Google** | Gemini 2.0 Flash, Gemini 1.5 Pro/Flash, Gemini Pro |
+| **Meta** | Llama 3 70B, Llama 3 8B |
+| **Mistral** | Mistral Large, Mistral Small |
+
+Custom models can be added via the pricing table.
 
 ---
 
@@ -362,8 +499,8 @@ The FastAPI server exposes 11 endpoints with auto-generated docs at `/docs`:
 
 - [x] Python SDK with `@guard` decorator and context manager API
 - [x] TypeScript SDK with `guard()` HOF and class API
-- [x] Cost tracking with built-in pricing for 9 models
-- [x] Sliding-window infinite loop detection
+- [x] Cost tracking with built-in pricing for 25+ models (5 providers)
+- [x] O(W²) sliding-window infinite loop detection
 - [x] Step limit and runtime limit enforcement
 - [x] Policy engine — allow/deny lists, rate limits, approval workflows
 - [x] Real-time Next.js dashboard with auto-refresh
@@ -372,9 +509,19 @@ The FastAPI server exposes 11 endpoints with auto-generated docs at `/docs`:
 - [x] Full per-step telemetry capture
 - [x] Graceful offline degradation
 - [x] REST API with policy CRUD and evaluation
-- [ ] Webhook alerts (Slack, Discord, email)
-- [ ] Multi-agent fleet monitoring
+- [x] Dual enforcement — kill mode + alert mode
+- [x] Human-in-the-loop approval workflow with approve/deny/extend
+- [x] Notification dispatch — SMTP email + HTTP webhooks
+- [x] OpenAI-compatible gateway proxy (zero-code enforcement)
+- [x] LangChain/LangGraph callback handler integration
+- [x] API key management with per-key enforcement config
+- [x] Dashboard approval management page
+- [ ] Docker Compose for one-command deployment
+- [ ] SSE streaming support in gateway proxy
+- [ ] Multi-tenant RBAC authentication
+- [ ] Multi-agent fleet monitoring dashboard
 - [ ] SDK ↔ API policy sync (fetch stored policies into SDK)
+- [ ] CLI tool (`steerplane init`, `steerplane status`)
 - [ ] Cloud-hosted dashboard (SaaS)
 
 ---
