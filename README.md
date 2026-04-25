@@ -310,6 +310,32 @@ Available in both Python and TypeScript SDKs, and manageable via the dashboard U
 
 ---
 
+## Dual Enforcement (Kill / Alert)
+
+SteerPlane supports two enforcement modes for every limit:
+
+| Mode | Behavior |
+|------|----------|
+| **Kill** (default) | Immediately terminates the agent on any violation. Fast, deterministic. |
+| **Alert** | Pauses execution → dispatches notifications (email/webhook) → waits for human to approve, deny, or extend the limit → auto-terminates on timeout as safety net |
+
+```python
+@guard(
+    max_cost_usd=10.00,
+    enforcement="alert",      # "kill" or "alert"
+    alert_threshold=0.8,      # Pause at 80% of limit
+    alert_timeout_sec=1800,   # Auto-terminate after 30min if no response
+    alert_email="ops@company.com",
+    alert_webhook_url="https://hooks.slack.com/services/xxx",
+)
+def run_agent():
+    agent.run()
+```
+
+> **Safety invariant:** Loop detection and policy violations **always** trigger immediate termination regardless of enforcement mode. These are non-overridable security constraints.
+
+---
+
 ## Architecture
 
 ```
@@ -364,7 +390,7 @@ SteerPlane/
 │   └── steerplane/
 │       ├── guard.py         # @guard decorator + SteerPlane class
 │       ├── run_manager.py   # Run lifecycle + dual enforcement (kill/alert)
-│       ├── cost_tracker.py  # Cost calculation + 9 model pricing
+│       ├── cost_tracker.py  # Cost calculation + model pricing
 │       ├── loop_detector.py # O(W²) sliding-window loop detection
 │       ├── policy_engine.py # Allow/deny, rate limits, approval gates
 │       ├── client.py        # HTTP client with graceful degradation
@@ -464,6 +490,12 @@ The FastAPI server exposes endpoints with auto-generated docs at `/docs`:
 | `GET` | `/api-keys` | List API keys |
 | `DELETE` | `/api-keys/{key_id}` | Revoke an API key |
 
+**Other**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health check |
+| `POST` | `/telemetry` | Batch ingest telemetry events |
+
 ---
 
 ## Supported Models (25+)
@@ -541,8 +573,11 @@ cd api && pip install -r requirements.txt
 # Set up the dashboard
 cd dashboard && npm install
 
-# Run tests
+# Run SDK tests
 cd sdk && python -m pytest tests/
+
+# Run API tests
+cd api && python -m pytest tests/
 ```
 
 ---
