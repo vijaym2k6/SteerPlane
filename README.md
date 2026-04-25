@@ -9,6 +9,7 @@
   <img src="https://img.shields.io/badge/Python-3.10+-blue?style=flat-square&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Node.js-18+-green?style=flat-square&logo=node.js&logoColor=white" alt="Node">
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome"></a>
+  <a href="PATENTS.md"><img src="https://img.shields.io/badge/Patent-Pending-orange?style=flat-square" alt="Patent Pending"></a>
 </p>
 
 <p align="center">
@@ -39,11 +40,15 @@ from steerplane import guard
     max_cost_usd=10.00,
     max_steps=50,
     denied_actions=["delete_*", "sudo_*"],
+    enforcement="alert",
+    alert_threshold=0.8,
+    alert_timeout_sec=1800,
 )
 def run_agent():
     # Your agent runs normally.
     # SteerPlane silently monitors every step.
-    # If it loops, overspends, or violates policy — terminated instantly.
+    # Financial/runtime limits can pause for human approval.
+    # Loops and policy violations still terminate immediately.
     agent.run()
 ```
 
@@ -75,8 +80,9 @@ def run_agent():
 |---|---------|-------------|
 | 🔄 | **Loop Detection** | Sliding-window pattern detector catches repeating agent behavior in real time |
 | 💰 | **Hard Cost Ceiling** | Set a per-run USD limit with built-in pricing for GPT-4o, Claude 3, Gemini Pro, and more |
+| 🔔 | **Alert Mode** | Pause near a limit, notify a human, and resume only after approval or auto-timeout |
 | 🚫 | **Step Limit** | Cap maximum execution steps to prevent unbounded resource consumption |
-| ⏱️ | **Runtime Limit** | Maximum wall-clock time per run — terminates agents that hang or stall |
+| ⏱️ | **Runtime Limit** | Maximum wall-clock time per run — either alerts or terminates based on enforcement mode |
 | 🛡️ | **Policy Engine** | Allow/deny lists with glob patterns, sliding-window rate limits, and human-in-the-loop approval workflows |
 | 📊 | **Deep Telemetry** | Every step's action name, tokens, cost, latency, and status — captured automatically |
 | 🖥️ | **Real-Time Dashboard** | Next.js dashboard with 3-second auto-refresh, animated timelines, cost breakdowns, and policy management |
@@ -104,6 +110,10 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
+If you want a stable admin token for dashboard management screens, set
+`STEERPLANE_ADMIN_TOKEN` before starting the API. Otherwise SteerPlane
+generates a temporary token and prints it in the startup logs.
+
 ### Start the Dashboard
 
 ```bash
@@ -119,6 +129,8 @@ python examples/simple_agent/agent_example.py
 
 Open **[localhost:3000](http://localhost:3000)** → See your agent run in real time.
 
+Use the dashboard's `Admin Token` button to unlock policy and API key management.
+
 ---
 
 ## SDK Reference
@@ -133,6 +145,9 @@ from steerplane import guard
     max_cost_usd=10.00,
     max_steps=50,
     max_runtime_sec=300,
+    enforcement="alert",
+    alert_threshold=0.8,
+    alert_timeout_sec=1800,
     denied_actions=["delete_*", "sudo_*"],
     allowed_actions=["search_*", "read_*", "generate_*"],
     rate_limits=[{"pattern": "call_llm*", "max_count": 20, "window_seconds": 60}],
