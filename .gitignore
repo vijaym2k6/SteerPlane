@@ -46,3 +46,6 @@ SteerPlane_PRD*
 *.webm
 # Exception: keep the dashboard background video
 !dashboard/public/bg-video-2.mp4
+
+# SteerPlane demo examples (local only, includes cloned repos)
+For-SteerPlane-Examples/
