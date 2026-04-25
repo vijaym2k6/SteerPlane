@@ -85,8 +85,11 @@ class RunService:
         total_cost: float = 0.0,
         total_steps: int = 0,
         error: Optional[str] = None,
+        error_details: Optional[dict] = None,
     ) -> Optional[Run]:
-        """Finalize a run."""
+        """Finalize a run with optional structured error details."""
+        import json
+
         run = self.db.query(Run).filter(Run.id == run_id).first()
         if not run:
             return None
@@ -97,6 +100,8 @@ class RunService:
         run.total_steps = total_steps
         if error:
             run.error = error
+        if error_details:
+            run.error_details = json.dumps(error_details)
 
         self.db.commit()
         self.db.refresh(run)

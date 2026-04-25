@@ -77,6 +77,7 @@ def end_run(req: EndRunRequest, db: Session = Depends(get_db)):
         total_cost=req.total_cost,
         total_steps=req.total_steps,
         error=req.error,
+        error_details=req.error_details,
     )
     if not run:
         raise HTTPException(status_code=404, detail=f"Run {req.run_id} not found")

@@ -13,6 +13,7 @@ from datetime import datetime
 from ..db.database import get_db
 from ..services.policy_service import PolicyService
 from ..schemas import StatusResponse
+from ..security import require_admin
 
 
 # ──────────────── Request / Response Schemas ────────────────
@@ -75,7 +76,11 @@ class EvaluateActionResponse(BaseModel):
 
 # ──────────────── Router ────────────────
 
-router = APIRouter(prefix="/policies", tags=["policies"])
+router = APIRouter(
+    prefix="/policies",
+    tags=["policies"],
+    dependencies=[Depends(require_admin)],
+)
 
 
 @router.post("", response_model=PolicyResponse, status_code=201)

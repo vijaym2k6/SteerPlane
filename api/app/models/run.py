@@ -25,6 +25,7 @@ class Run(Base):
     max_cost_usd = Column(Float, nullable=False, default=50.0)
     max_steps_limit = Column(Integer, nullable=False, default=200)
     error = Column(Text, nullable=True)
+    error_details = Column(Text, nullable=True)  # JSON: {error_type, blocked_action, rule_matched, ...}
 
     # Relationship to steps
     steps = relationship("Step", back_populates="run", cascade="all, delete-orphan", order_by="Step.step_number")

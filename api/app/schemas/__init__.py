@@ -4,7 +4,7 @@ SteerPlane API — Pydantic Schemas
 Request and response schemas for the API endpoints.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Optional
 
@@ -36,6 +36,7 @@ class EndRunRequest(BaseModel):
     total_cost: float = Field(default=0.0, description="Total run cost")
     total_steps: int = Field(default=0, description="Total steps executed")
     error: Optional[str] = Field(default=None, description="Error if failed/terminated")
+    error_details: Optional[dict] = Field(default=None, description="Structured error context: {error_type, blocked_action, rule_matched, reason, ...}")
 
 
 # ──────────────── Response Schemas ────────────────
@@ -69,6 +70,18 @@ class RunResponse(BaseModel):
     max_cost_usd: float
     max_steps_limit: int
     error: Optional[str] = None
+    error_details: Optional[dict] = None
+
+    @field_validator("error_details", mode="before")
+    @classmethod
+    def parse_error_details(cls, v):
+        if isinstance(v, str):
+            import json
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return v
 
     class Config:
         from_attributes = True

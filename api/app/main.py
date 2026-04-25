@@ -14,6 +14,7 @@ from .routes.telemetry import router as telemetry_router
 from .routes.policies import router as policies_router
 from .routes.gateway import router as gateway_router
 from .routes.api_keys import router as api_keys_router
+from .routes.approvals import router as approvals_router
 
 
 app = FastAPI(
@@ -39,6 +40,7 @@ app.include_router(telemetry_router)
 app.include_router(policies_router)
 app.include_router(gateway_router)
 app.include_router(api_keys_router)
+app.include_router(approvals_router)
 
 
 @app.on_event("startup")
@@ -49,6 +51,11 @@ def on_startup():
     print(f"   Database: {settings.DATABASE_URL}")
     print(f"   Gateway: http://localhost:8000/gateway/v1")
     print(f"   Docs: http://localhost:8000/docs\n")
+    if settings.ADMIN_TOKEN_SOURCE == "generated":
+        print("   Admin auth: enabled with a generated token for this process only")
+        print(f"   {settings.ADMIN_TOKEN_HEADER}: {settings.ADMIN_TOKEN}\n")
+    else:
+        print(f"   Admin auth: enabled via {settings.ADMIN_TOKEN_HEADER}\n")
 
 
 @app.get("/health")

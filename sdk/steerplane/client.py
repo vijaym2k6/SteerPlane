@@ -30,7 +30,7 @@ class SteerPlaneClient:
         self.session = requests.Session()
         self.session.headers.update({
             "Content-Type": "application/json",
-            "User-Agent": "SteerPlane-SDK/0.1.0",
+            "User-Agent": "SteerPlane-SDK/0.3.0",
         })
         if self.api_key:
             self.session.headers["Authorization"] = f"Bearer {self.api_key}"
@@ -105,15 +105,19 @@ class SteerPlaneClient:
         total_cost: float = 0.0,
         total_steps: int = 0,
         error: str | None = None,
+        error_details: dict | None = None,
     ) -> dict | None:
-        """Finalize a run."""
-        return self._request("POST", "/runs/end", json={
+        """Finalize a run with detailed error context."""
+        payload = {
             "run_id": run_id,
             "status": status,
             "total_cost": total_cost,
             "total_steps": total_steps,
             "error": error,
-        })
+        }
+        if error_details:
+            payload["error_details"] = error_details
+        return self._request("POST", "/runs/end", json=payload)
 
     def get_run(self, run_id: str) -> dict | None:
         """Fetch run details."""
@@ -122,6 +126,48 @@ class SteerPlaneClient:
     def list_runs(self, limit: int = 50, offset: int = 0) -> dict | None:
         """List recent runs."""
         return self._request("GET", f"/runs?limit={limit}&offset={offset}")
+
+    def request_approval(
+        self,
+        *,
+        run_id: str,
+        agent_name: str,
+        approval_type: str,
+        current_value: float,
+        limit_value: float,
+        unit: str,
+        message: str,
+        timeout_sec: int,
+        scope: str = "sdk",
+        session_id: str | None = None,
+        api_key_id: str | None = None,
+        channels: list[str] | None = None,
+        alert_email: str | None = None,
+        alert_webhook_url: str | None = None,
+        metadata: dict | None = None,
+    ) -> dict | None:
+        """Create or fetch a pending approval request."""
+        return self._request("POST", "/approvals/request", json={
+            "run_id": run_id,
+            "agent_name": agent_name,
+            "approval_type": approval_type,
+            "current_value": current_value,
+            "limit_value": limit_value,
+            "unit": unit,
+            "message": message,
+            "timeout_sec": timeout_sec,
+            "scope": scope,
+            "session_id": session_id,
+            "api_key_id": api_key_id,
+            "channels": channels or [],
+            "alert_email": alert_email,
+            "alert_webhook_url": alert_webhook_url,
+            "metadata": metadata or {},
+        })
+
+    def get_approval(self, approval_id: str) -> dict | None:
+        """Fetch a pending or resolved approval request."""
+        return self._request("GET", f"/approvals/{approval_id}")
 
     @property
     def is_connected(self) -> bool:

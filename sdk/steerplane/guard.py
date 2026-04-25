@@ -18,17 +18,9 @@ from typing import Callable, Any
 
 from .run_manager import RunManager
 from .policy_engine import PolicyEngine, RateLimitSpec
+from .runtime_context import get_active_run
 
 logger = logging.getLogger("steerplane")
-
-
-# Thread-local storage for the active run manager
-_active_run: RunManager | None = None
-
-
-def get_active_run() -> RunManager | None:
-    """Get the currently active RunManager (if inside a guarded function)."""
-    return _active_run
 
 
 def guard(
@@ -46,6 +38,12 @@ def guard(
     rate_limits: list[RateLimitSpec | dict] | None = None,
     require_approval: list[str] | None = None,
     approval_callback: Callable[[str, dict | None], bool] | None = None,
+    enforcement: str = "kill",
+    alert_threshold: float = 0.8,
+    alert_timeout_sec: int = 1800,
+    alert_channels: list[str] | None = None,
+    alert_email: str | None = None,
+    alert_webhook_url: str | None = None,
 ) -> Callable:
     """
     Guard decorator for agent functions.
@@ -73,6 +71,12 @@ def guard(
         rate_limits: Per-action rate limits.
         require_approval: Actions requiring human approval.
         approval_callback: Callback for approval workflow.
+        enforcement: "kill" or "alert" for financial/runtime limits.
+        alert_threshold: Trigger approval at this fraction of the limit.
+        alert_timeout_sec: Timeout before an unanswered alert auto-terminates.
+        alert_channels: Notification channels such as ["email", "webhook"].
+        alert_email: Email recipient for alert notifications.
+        alert_webhook_url: Webhook target for alert notifications.
         
     Returns:
         Decorated function with guard capabilities.
@@ -85,8 +89,6 @@ def guard(
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> Any:
-            global _active_run
-
             name = agent_name or func.__name__
 
             # Build policy engine if any rules are specified
@@ -112,10 +114,13 @@ def guard(
                 api_key=api_key,
                 log_to_console=log_to_console,
                 policy=policy,
+                enforcement=enforcement,
+                alert_threshold=alert_threshold,
+                alert_timeout_sec=alert_timeout_sec,
+                alert_channels=alert_channels,
+                alert_email=alert_email,
+                alert_webhook_url=alert_webhook_url,
             )
-
-            # Set as active run
-            _active_run = run
 
             try:
                 run.start()
@@ -125,8 +130,6 @@ def guard(
             except Exception as e:
                 run.end(status="failed", error=str(e))
                 raise
-            finally:
-                _active_run = None
 
         # Attach run manager accessor to the wrapper
         wrapper._steerplane_guarded = True
@@ -180,6 +183,12 @@ class SteerPlane:
         rate_limits: list[RateLimitSpec | dict] | None = None,
         require_approval: list[str] | None = None,
         approval_callback: Callable[[str, dict | None], bool] | None = None,
+        enforcement: str = "kill",
+        alert_threshold: float = 0.8,
+        alert_timeout_sec: int = 1800,
+        alert_channels: list[str] | None = None,
+        alert_email: str | None = None,
+        alert_webhook_url: str | None = None,
     ) -> RunManager:
         """
         Create a new run context manager.
@@ -211,6 +220,12 @@ class SteerPlane:
             api_key=self.api_key,
             log_to_console=log_to_console,
             policy=policy,
+            enforcement=enforcement,
+            alert_threshold=alert_threshold,
+            alert_timeout_sec=alert_timeout_sec,
+            alert_channels=alert_channels,
+            alert_email=alert_email,
+            alert_webhook_url=alert_webhook_url,
         )
 
     def create_run(self, **kwargs) -> RunManager:
