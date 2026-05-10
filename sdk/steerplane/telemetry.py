@@ -5,7 +5,6 @@ Step event generation, structured telemetry data, and event sending.
 """
 
 from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
 from typing import Any
 
 from .utils import generate_step_id, now_iso
@@ -14,6 +13,7 @@ from .utils import generate_step_id, now_iso
 @dataclass
 class StepEvent:
     """A single execution step event."""
+
     step_id: str
     run_id: str
     step_number: int
@@ -65,7 +65,7 @@ class TelemetryCollector:
     ) -> StepEvent:
         """
         Create and record a step event.
-        
+
         Args:
             action: Name of the action (e.g., 'search_web', 'call_llm').
             tokens: Total tokens used.
@@ -76,7 +76,7 @@ class TelemetryCollector:
             status: Step status.
             error: Error message if step failed.
             metadata: Additional metadata.
-            
+
         Returns:
             The created StepEvent.
         """

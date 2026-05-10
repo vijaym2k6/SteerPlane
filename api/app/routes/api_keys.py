@@ -13,7 +13,11 @@ from sqlalchemy import func
 from ..db.database import get_db
 from ..models.api_key import APIKey, generate_api_key, hash_api_key
 from ..security import require_admin
-from ..services.approval_service import ApprovalService, DEFAULT_ALERT_THRESHOLD, DEFAULT_ALERT_TIMEOUT_SEC
+from ..services.approval_service import (
+    ApprovalService,
+    DEFAULT_ALERT_THRESHOLD,
+    DEFAULT_ALERT_TIMEOUT_SEC,
+)
 
 
 router = APIRouter(
@@ -25,19 +29,28 @@ router = APIRouter(
 
 # ─── Schemas ─────────────────────────────────────────────
 
+
 class CreateKeyRequest(BaseModel):
     name: str = Field(..., description="Human-readable name for this key")
     max_cost_usd: float = Field(default=50.0, description="Per-session cost ceiling in USD")
     max_cost_monthly: float = Field(default=500.0, description="Monthly budget in USD")
     max_requests_per_min: int = Field(default=60, description="Rate limit per minute")
-    allowed_models: Optional[str] = Field(default=None, description="Comma-separated allowed models")
+    allowed_models: Optional[str] = Field(
+        default=None, description="Comma-separated allowed models"
+    )
     denied_models: Optional[str] = Field(default=None, description="Comma-separated denied models")
     enforcement_mode: str = Field(default="kill", description="kill or alert")
-    alert_threshold: float = Field(default=DEFAULT_ALERT_THRESHOLD, description="Fraction of the limit that triggers an alert")
-    alert_timeout_sec: int = Field(default=DEFAULT_ALERT_TIMEOUT_SEC, description="How long to wait for human approval")
+    alert_threshold: float = Field(
+        default=DEFAULT_ALERT_THRESHOLD, description="Fraction of the limit that triggers an alert"
+    )
+    alert_timeout_sec: int = Field(
+        default=DEFAULT_ALERT_TIMEOUT_SEC, description="How long to wait for human approval"
+    )
     alert_channels: list[str] = Field(default_factory=list, description="email, webhook")
     alert_email: Optional[str] = Field(default=None, description="Email recipient for alert mode")
-    alert_webhook_url: Optional[str] = Field(default=None, description="Webhook target for alert mode")
+    alert_webhook_url: Optional[str] = Field(
+        default=None, description="Webhook target for alert mode"
+    )
 
 
 class KeyResponse(BaseModel):
@@ -92,6 +105,7 @@ class KeyListResponse(BaseModel):
 
 
 # ─── Endpoints ───────────────────────────────────────────
+
 
 @router.post("/", response_model=KeyCreatedResponse, status_code=201)
 def create_key(req: CreateKeyRequest, db: Session = Depends(get_db)):
@@ -158,10 +172,7 @@ def list_keys(db: Session = Depends(get_db)):
     keys = db.query(APIKey).order_by(APIKey.created_at.desc()).all()
 
     return KeyListResponse(
-        keys=[
-            _build_key_response(k, approval_service.get_api_key_enforcement(k.id))
-            for k in keys
-        ],
+        keys=[_build_key_response(k, approval_service.get_api_key_enforcement(k.id)) for k in keys],
         total=total,
     )
 

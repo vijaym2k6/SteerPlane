@@ -23,7 +23,6 @@ Usage:
     hooks.finish()
 """
 
-import time
 import logging
 from typing import Any, Optional
 
@@ -63,9 +62,7 @@ def _estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
                 8,
             )
     # Default pricing
-    return round(
-        input_tokens * 2.0 / 1_000_000 + output_tokens * 2.0 / 1_000_000, 8
-    )
+    return round(input_tokens * 2.0 / 1_000_000 + output_tokens * 2.0 / 1_000_000, 8)
 
 
 class SteerPlaneAgentHooks:

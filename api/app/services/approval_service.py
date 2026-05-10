@@ -67,11 +67,7 @@ class ApprovalService:
         return None
 
     def get_approval(self, approval_id: str) -> Optional[ApprovalRequest]:
-        approval = (
-            self.db.query(ApprovalRequest)
-            .filter(ApprovalRequest.id == approval_id)
-            .first()
-        )
+        approval = self.db.query(ApprovalRequest).filter(ApprovalRequest.id == approval_id).first()
         if approval:
             return self.sync_expiry(approval)
         return None
@@ -85,18 +81,10 @@ class ApprovalService:
         query = self.db.query(ApprovalRequest)
         if status:
             query = query.filter(ApprovalRequest.status == status)
-        return (
-            query.order_by(ApprovalRequest.created_at.desc())
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(ApprovalRequest.created_at.desc()).limit(limit).all()
 
     def expire_stale_pending(self):
-        pending = (
-            self.db.query(ApprovalRequest)
-            .filter(ApprovalRequest.status == "pending")
-            .all()
-        )
+        pending = self.db.query(ApprovalRequest).filter(ApprovalRequest.status == "pending").all()
         for approval in pending:
             self.sync_expiry(approval)
 

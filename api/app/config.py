@@ -37,9 +37,7 @@ class Settings:
     CORS_ORIGINS: list[str] = _parse_cors_origins()
     ADMIN_TOKEN_HEADER: str = "X-SteerPlane-Admin-Token"
     ADMIN_TOKEN, ADMIN_TOKEN_SOURCE = _resolve_admin_token()
-    GATEWAY_SESSION_IDLE_SEC: int = int(
-        os.getenv("STEERPLANE_GATEWAY_SESSION_IDLE_SEC", "1800")
-    )
+    GATEWAY_SESSION_IDLE_SEC: int = int(os.getenv("STEERPLANE_GATEWAY_SESSION_IDLE_SEC", "1800"))
     ALLOWED_PROVIDER_URLS: list[str] = _parse_allowed_provider_urls()
     DASHBOARD_URL: str = os.getenv("STEERPLANE_DASHBOARD_URL", "http://localhost:3000").rstrip("/")
     SMTP_HOST: str = os.getenv("STEERPLANE_SMTP_HOST", "").strip()

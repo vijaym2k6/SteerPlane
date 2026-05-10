@@ -31,7 +31,6 @@ def require_admin(request: Request) -> None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=(
-                "Missing or invalid admin token. Send "
-                f"'{settings.ADMIN_TOKEN_HEADER}: <token>'."
+                f"Missing or invalid admin token. Send '{settings.ADMIN_TOKEN_HEADER}: <token>'."
             ),
         )

@@ -1,6 +1,7 @@
 """
 Tests for the PolicyEngine — allow/deny lists, rate limiting, and approval workflow.
 """
+
 import time
 import pytest
 from steerplane.policy_engine import PolicyEngine, RateLimitSpec
@@ -97,9 +98,7 @@ class TestRateLimiting:
 
     def test_rate_limit_from_dict(self):
         """Rate limits can also be passed as plain dicts."""
-        engine = PolicyEngine(
-            rate_limits=[{"pattern": "x", "max_count": 1, "window_seconds": 60}]
-        )
+        engine = PolicyEngine(rate_limits=[{"pattern": "x", "max_count": 1, "window_seconds": 60}])
         engine.check("x")
         with pytest.raises(PolicyViolationError, match="Rate limit"):
             engine.check("x")

@@ -22,7 +22,9 @@ class Step(Base):
     tokens = Column(Integer, nullable=False, default=0)
     cost_usd = Column(Float, nullable=False, default=0.0)
     latency_ms = Column(Float, nullable=False, default=0.0)
-    status = Column(String(50), nullable=False, default="completed")  # completed, failed, terminated
+    status = Column(
+        String(50), nullable=False, default="completed"
+    )  # completed, failed, terminated
     error = Column(Text, nullable=True)
     metadata_json = Column(JSON, nullable=True)
     timestamp = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))

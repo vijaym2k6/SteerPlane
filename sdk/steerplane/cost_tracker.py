@@ -26,6 +26,7 @@ DEFAULT_PRICING = {
 @dataclass
 class StepCost:
     """Cost breakdown for a single step."""
+
     input_tokens: int = 0
     output_tokens: int = 0
     total_tokens: int = 0
@@ -36,6 +37,7 @@ class StepCost:
 @dataclass
 class CostSummary:
     """Cumulative cost summary for an entire run."""
+
     total_input_tokens: int = 0
     total_output_tokens: int = 0
     total_tokens: int = 0
@@ -47,7 +49,7 @@ class CostSummary:
 class CostTracker:
     """
     Tracks cumulative cost across an agent run.
-    
+
     Enforces cost limits and provides real-time cost projection.
     """
 
@@ -75,14 +77,14 @@ class CostTracker:
     ) -> StepCost:
         """
         Calculate cost for a single step.
-        
+
         Args:
             input_tokens: Number of input/prompt tokens.
             output_tokens: Number of output/completion tokens.
             total_tokens: Total tokens (used if input/output not split).
             model: Model name for pricing (overrides default).
             cost_override: Directly specify cost (skips calculation).
-            
+
         Returns:
             StepCost with the calculated cost.
         """
@@ -113,13 +115,13 @@ class CostTracker:
     def add_step(self, step_cost: StepCost) -> float:
         """
         Add a step's cost to the running total and enforce limits.
-        
+
         Args:
             step_cost: The StepCost to add.
-            
+
         Returns:
             The new cumulative cost.
-            
+
         Raises:
             CostLimitExceeded: If cost exceeds the configured limit.
         """
@@ -134,16 +136,14 @@ class CostTracker:
 
         return self.total_cost
 
-    def project_final_cost(
-        self, steps_completed: int, expected_total_steps: int
-    ) -> float:
+    def project_final_cost(self, steps_completed: int, expected_total_steps: int) -> float:
         """
         Project the final cost based on current spending rate.
-        
+
         Args:
             steps_completed: Number of steps completed so far.
             expected_total_steps: Expected total number of steps.
-            
+
         Returns:
             Projected final cost in USD.
         """

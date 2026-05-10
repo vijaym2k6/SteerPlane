@@ -34,8 +34,8 @@ class APIKey(Base):
     key_prefix = Column(String(16), nullable=False)  # e.g. "sk_sp_a1b2c3..."
 
     # Limits
-    max_cost_usd = Column(Float, nullable=False, default=50.0)       # Per-session cost ceiling
-    max_cost_monthly = Column(Float, nullable=False, default=500.0)   # Monthly budget
+    max_cost_usd = Column(Float, nullable=False, default=50.0)  # Per-session cost ceiling
+    max_cost_monthly = Column(Float, nullable=False, default=500.0)  # Monthly budget
     max_requests_per_min = Column(Integer, nullable=False, default=60)
 
     # Usage tracking

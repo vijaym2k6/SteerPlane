@@ -18,13 +18,22 @@ from ..security import require_admin
 
 # ──────────────── Request / Response Schemas ────────────────
 
+
 class CreatePolicyRequest(BaseModel):
     name: str = Field(..., description="Unique policy name")
     description: Optional[str] = Field(default=None, description="Human-readable description")
-    allowed_actions: Optional[list[str]] = Field(default=None, description="Glob patterns for permitted actions")
-    denied_actions: Optional[list[str]] = Field(default=None, description="Glob patterns for forbidden actions")
-    rate_limits: Optional[list[dict]] = Field(default=None, description="Per-action rate limits [{pattern, max_count, window_seconds}]")
-    require_approval: Optional[list[str]] = Field(default=None, description="Actions requiring human approval")
+    allowed_actions: Optional[list[str]] = Field(
+        default=None, description="Glob patterns for permitted actions"
+    )
+    denied_actions: Optional[list[str]] = Field(
+        default=None, description="Glob patterns for forbidden actions"
+    )
+    rate_limits: Optional[list[dict]] = Field(
+        default=None, description="Per-action rate limits [{pattern, max_count, window_seconds}]"
+    )
+    require_approval: Optional[list[str]] = Field(
+        default=None, description="Actions requiring human approval"
+    )
     is_active: bool = Field(default=True, description="Whether policy is active")
 
 

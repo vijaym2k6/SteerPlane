@@ -30,7 +30,4 @@ class APIKeyEnforcement(Base):
     )
 
     def __repr__(self):
-        return (
-            f"<APIKeyEnforcement(api_key_id={self.api_key_id}, "
-            f"mode={self.enforcement_mode})>"
-        )
+        return f"<APIKeyEnforcement(api_key_id={self.api_key_id}, mode={self.enforcement_mode})>"

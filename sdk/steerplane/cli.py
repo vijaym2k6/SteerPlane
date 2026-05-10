@@ -14,7 +14,6 @@ Commands:
     logs            Stream live telemetry (polling)
 """
 
-import json
 import os
 import sys
 import time
@@ -23,10 +22,7 @@ from datetime import datetime, timezone
 try:
     import click
 except ImportError:
-    print(
-        "SteerPlane CLI requires 'click'. Install with:\n"
-        "  pip install steerplane[cli]"
-    )
+    print("SteerPlane CLI requires 'click'. Install with:\n  pip install steerplane[cli]")
     sys.exit(1)
 
 import requests
@@ -94,6 +90,7 @@ def _delete(path: str) -> dict:
 
 # ─── Root Group ──────────────────────────────────────────────────────────
 
+
 @click.group()
 @click.version_option(__version__, prog_name="steerplane")
 def cli():
@@ -102,6 +99,7 @@ def cli():
 
 
 # ─── status ──────────────────────────────────────────────────────────────
+
 
 @cli.command()
 def status():
@@ -114,6 +112,7 @@ def status():
 
 
 # ─── runs ────────────────────────────────────────────────────────────────
+
 
 @cli.group()
 def runs():
@@ -180,9 +179,7 @@ def runs_inspect(run_id):
     click.echo(f"  Ended:       {data.get('ended_at', 'still running')}")
 
     if data.get("termination_reason"):
-        click.echo(
-            click.style(f"  Terminated:  {data['termination_reason']}", fg="red")
-        )
+        click.echo(click.style(f"  Terminated:  {data['termination_reason']}", fg="red"))
 
     steps = data.get("steps", [])
     if steps:
@@ -193,9 +190,7 @@ def runs_inspect(run_id):
             cost = step.get("cost_usd", 0) or 0
             tokens = step.get("total_tokens", step.get("tokens", 0)) or 0
             latency = step.get("latency_ms", 0) or 0
-            click.echo(
-                f"  {i:<4}  {action:<30}  ${cost:>7.4f}  {tokens:>6}  {latency:>6.0f}ms"
-            )
+            click.echo(f"  {i:<4}  {action:<30}  ${cost:>7.4f}  {tokens:>6}  {latency:>6.0f}ms")
 
 
 @runs.command("kill")
@@ -204,11 +199,12 @@ def runs_inspect(run_id):
 @click.confirmation_option(prompt="Are you sure you want to kill this run?")
 def runs_kill(run_id, reason):
     """Force-terminate a live run."""
-    data = _post(f"/runs/end", {"run_id": run_id, "status": "terminated", "error": reason})
+    _post("/runs/end", {"run_id": run_id, "status": "terminated", "error": reason})
     click.echo(click.style(f"[OK] Run {run_id} terminated", fg="green"))
 
 
 # ─── keys ────────────────────────────────────────────────────────────────
+
 
 @cli.group()
 def keys():
@@ -278,11 +274,12 @@ def keys_create(name, max_cost, max_rpm):
 @click.confirmation_option(prompt="Are you sure you want to revoke this key?")
 def keys_revoke(key_id):
     """Revoke (deactivate) an API key."""
-    data = _delete(f"/api-keys/{key_id}")
+    _delete(f"/api-keys/{key_id}")
     click.echo(click.style(f"[OK] API key {key_id} revoked", fg="green"))
 
 
 # ─── logs ────────────────────────────────────────────────────────────────
+
 
 @cli.command()
 @click.option("--tail", "-f", is_flag=True, help="Continuously poll for new events")
@@ -309,9 +306,7 @@ def logs(tail, interval):
             if event_key not in seen_ids:
                 seen_ids.add(event_key)
                 ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
-                status_color = {"running": "cyan", "terminated": "red"}.get(
-                    status, "white"
-                )
+                status_color = {"running": "cyan", "terminated": "red"}.get(status, "white")
                 click.echo(
                     f"[{ts}] "
                     f"{click.style(agent, fg='white', bold=True)} "
@@ -331,6 +326,7 @@ def logs(tail, interval):
 
 
 # ─── Entry point ─────────────────────────────────────────────────────────
+
 
 def main():
     cli()

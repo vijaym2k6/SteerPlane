@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 @dataclass
 class LoopDetectionResult:
     """Result of a loop detection check."""
+
     loop_detected: bool
     pattern: list[str] = field(default_factory=list)
     repetitions: int = 0
@@ -20,7 +21,7 @@ class LoopDetectionResult:
 class LoopDetector:
     """
     Sliding window loop detector.
-    
+
     Monitors action history and detects repeating sequences.
     When a loop is detected, the run should be terminated.
     """
@@ -38,10 +39,10 @@ class LoopDetector:
     def record_action(self, action: str) -> LoopDetectionResult:
         """
         Record an action and check for loops.
-        
+
         Args:
             action: The action name (e.g., 'search_web', 'call_api').
-            
+
         Returns:
             LoopDetectionResult with detection status and pattern info.
         """
@@ -54,9 +55,7 @@ class LoopDetector:
             return LoopDetectionResult(loop_detected=False)
 
         return detect_loop(
-            self.action_history,
-            window_size=self.window_size,
-            min_repetitions=self.min_repetitions
+            self.action_history, window_size=self.window_size, min_repetitions=self.min_repetitions
         )
 
     def reset(self):
@@ -65,30 +64,28 @@ class LoopDetector:
 
 
 def detect_loop(
-    history: list[str],
-    window_size: int = 8,
-    min_repetitions: int = 2
+    history: list[str], window_size: int = 8, min_repetitions: int = 2
 ) -> LoopDetectionResult:
     """
     Detect repeating action sequences using a sliding window.
-    
+
     Algorithm:
     1. Take the last `window_size` actions
     2. For each possible pattern length (1 to window/2):
        - Extract the candidate pattern
        - Count how many times it repeats consecutively
        - If repetitions >= min_repetitions, it's a loop
-    
+
     Examples:
         ['search', 'search', 'search', 'search']  → Loop (pattern: ['search'])
         ['A', 'B', 'A', 'B', 'A', 'B']            → Loop (pattern: ['A', 'B'])
         ['A', 'B', 'C', 'D', 'E', 'F']            → No loop
-    
+
     Args:
         history: List of action names.
         window_size: Size of the sliding window to analyze.
         min_repetitions: Minimum consecutive repetitions to flag as loop.
-        
+
     Returns:
         LoopDetectionResult with detection status.
     """
@@ -104,7 +101,7 @@ def detect_loop(
         # Count consecutive repetitions of the pattern
         reps = 0
         for i in range(0, len(window), pattern_len):
-            chunk = window[i:i + pattern_len]
+            chunk = window[i : i + pattern_len]
             if chunk == pattern:
                 reps += 1
             else:

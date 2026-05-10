@@ -1,6 +1,5 @@
 """Tests for the loop detection engine."""
 
-import pytest
 from steerplane.loop_detector import detect_loop, LoopDetector
 
 

@@ -6,7 +6,6 @@ Business logic layer for policy CRUD and evaluation.
 
 import uuid
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -64,13 +63,7 @@ class PolicyService:
         if active_only:
             query = query.filter(Policy.is_active == True)
         total = query.count()
-        policies = (
-            query
-            .order_by(Policy.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-            .all()
-        )
+        policies = query.order_by(Policy.created_at.desc()).offset(offset).limit(limit).all()
         return policies, total
 
     def update_policy(

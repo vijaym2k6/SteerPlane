@@ -49,7 +49,4 @@ def ingest_telemetry(req: BatchTelemetryRequest, db: Session = Depends(get_db)):
             metadata=event.metadata,
         )
 
-    return StatusResponse(
-        status="ok",
-        message=f"{len(req.events)} events ingested"
-    )
+    return StatusResponse(status="ok", message=f"{len(req.events)} events ingested")

@@ -7,6 +7,7 @@ All errors raised by the SteerPlane guard system.
 
 class SteerPlaneError(Exception):
     """Base exception for all SteerPlane errors."""
+
     pass
 
 
@@ -41,8 +42,7 @@ class StepLimitExceeded(SteerPlaneError):
         self.current_steps = current_steps
         self.max_steps = max_steps
         super().__init__(
-            f"🚫 Step limit exceeded! Steps: {current_steps}, "
-            f"Limit: {max_steps}. Run terminated."
+            f"🚫 Step limit exceeded! Steps: {current_steps}, Limit: {max_steps}. Run terminated."
         )
 
 
@@ -52,9 +52,7 @@ class RunTerminatedError(SteerPlaneError):
     def __init__(self, run_id: str, reason: str = "Manual termination"):
         self.run_id = run_id
         self.reason = reason
-        super().__init__(
-            f"⛔ Run {run_id} terminated. Reason: {reason}"
-        )
+        super().__init__(f"⛔ Run {run_id} terminated. Reason: {reason}")
 
 
 class PolicyViolationError(SteerPlaneError):
@@ -64,9 +62,7 @@ class PolicyViolationError(SteerPlaneError):
         self.action = action
         self.rule = rule
         self.reason = reason
-        super().__init__(
-            f"🛡️ Policy violation: {reason} [rule={rule}]"
-        )
+        super().__init__(f"🛡️ Policy violation: {reason} [rule={rule}]")
 
 
 class APIConnectionError(SteerPlaneError):
@@ -75,6 +71,4 @@ class APIConnectionError(SteerPlaneError):
     def __init__(self, url: str, detail: str = ""):
         self.url = url
         self.detail = detail
-        super().__init__(
-            f"🔌 Cannot connect to SteerPlane API at {url}. {detail}"
-        )
+        super().__init__(f"🔌 Cannot connect to SteerPlane API at {url}. {detail}")

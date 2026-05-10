@@ -21,7 +21,6 @@ from typing import Callable, Any
 
 from .run_manager import RunManager
 from .policy_engine import PolicyEngine, RateLimitSpec
-from .runtime_context import get_active_run
 from .config_file import get_with_fallback
 
 logger = logging.getLogger("steerplane")
@@ -95,6 +94,7 @@ def guard(
         def run_my_agent():
             agent.run()
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> Any:

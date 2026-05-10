@@ -21,15 +21,19 @@ def __getattr__(name):
     """Lazy imports to avoid requiring all framework dependencies."""
     if name == "SteerPlaneCallbackHandler":
         from .langchain import SteerPlaneCallbackHandler
+
         return SteerPlaneCallbackHandler
     if name == "SteerPlaneAgentHooks":
         from .openai_agents import SteerPlaneAgentHooks
+
         return SteerPlaneAgentHooks
     if name == "SteerPlaneCrewMonitor":
         from .crewai import SteerPlaneCrewMonitor
+
         return SteerPlaneCrewMonitor
     if name == "SteerPlaneAutoGenMonitor":
         from .autogen import SteerPlaneAutoGenMonitor
+
         return SteerPlaneAutoGenMonitor
     raise AttributeError(f"module 'steerplane.integrations' has no attribute {name!r}")
 

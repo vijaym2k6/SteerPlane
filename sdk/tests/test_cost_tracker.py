@@ -6,7 +6,6 @@ from steerplane.exceptions import CostLimitExceeded
 
 
 class TestCostTracker:
-
     def test_basic_cost_tracking(self):
         tracker = CostTracker(max_cost_usd=10.0)
         step = tracker.calculate_step_cost(total_tokens=1000)

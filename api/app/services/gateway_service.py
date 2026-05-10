@@ -49,17 +49,13 @@ MODEL_PRICING = {
     "default": {"input": 2.00, "output": 2.00},
 }
 
-_SESSION_ID_ALLOWED = set(
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_:."
-)
+_SESSION_ID_ALLOWED = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_:.")
 
 
 def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
     """Calculate cost in USD from token counts. Pricing is per 1M tokens."""
     pricing = MODEL_PRICING.get(model, MODEL_PRICING["default"])
-    cost = (
-        input_tokens * pricing["input"] / 1_000_000
-    ) + (
+    cost = (input_tokens * pricing["input"] / 1_000_000) + (
         output_tokens * pricing["output"] / 1_000_000
     )
     return round(cost, 8)
@@ -125,29 +121,27 @@ class GatewayLoopDetector:
         history.append(prompt_hash)
 
         if len(history) > self._window_size * 2:
-            self._histories[storage_key] = history[-self._window_size * 2:]
+            self._histories[storage_key] = history[-self._window_size * 2 :]
             history = self._histories[storage_key]
 
         if len(history) < self._min_repetitions:
             return False, ""
 
-        recent = history[-self._min_repetitions:]
+        recent = history[-self._min_repetitions :]
         if len(set(recent)) == 1:
             return True, f"Same prompt repeated {self._min_repetitions} times"
 
-        window = history[-self._window_size:]
+        window = history[-self._window_size :]
         for pattern_len in range(1, len(window) // 2 + 1):
             pattern = window[:pattern_len]
             reps = 0
             for idx in range(0, len(window) - pattern_len + 1, pattern_len):
-                if window[idx:idx + pattern_len] == pattern:
+                if window[idx : idx + pattern_len] == pattern:
                     reps += 1
                 else:
                     break
             if reps >= self._min_repetitions:
-                return True, (
-                    f"Repeating pattern of length {pattern_len} detected ({reps} reps)"
-                )
+                return True, (f"Repeating pattern of length {pattern_len} detected ({reps} reps)")
 
         return False, ""
 
@@ -261,10 +255,14 @@ class GatewayService:
 
     def validate_api_key(self, raw_key: str) -> APIKey | None:
         key_hashed = hash_api_key(raw_key)
-        return self.db.query(APIKey).filter(
-            APIKey.key_hash == key_hashed,
-            APIKey.is_active == True,
-        ).first()
+        return (
+            self.db.query(APIKey)
+            .filter(
+                APIKey.key_hash == key_hashed,
+                APIKey.is_active == True,
+            )
+            .first()
+        )
 
     def close_expired_sessions(self, expired_sessions: list[GatewaySession]):
         """Mark expired auto sessions as completed in the dashboard."""
@@ -362,8 +360,7 @@ class GatewayService:
         if session_cost >= session_limit:
             return (
                 False,
-                "Session cost limit exceeded: "
-                f"${session_cost:.4f} >= ${session_limit:.2f}",
+                f"Session cost limit exceeded: ${session_cost:.4f} >= ${session_limit:.2f}",
                 session_limit,
             )
 
@@ -371,8 +368,7 @@ class GatewayService:
         if monthly_cost >= api_key.max_cost_monthly:
             return (
                 False,
-                "Monthly budget exceeded: "
-                f"${monthly_cost:.4f} >= ${api_key.max_cost_monthly:.2f}",
+                f"Monthly budget exceeded: ${monthly_cost:.4f} >= ${api_key.max_cost_monthly:.2f}",
                 session_limit,
             )
 

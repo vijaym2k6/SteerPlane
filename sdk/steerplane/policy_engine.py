@@ -9,8 +9,8 @@ and human-in-the-loop approval workflows.
 import time
 import fnmatch
 import logging
-from dataclasses import dataclass, field
-from typing import Callable, Optional
+from dataclasses import dataclass
+from typing import Callable
 
 from .exceptions import PolicyViolationError
 
@@ -20,15 +20,17 @@ logger = logging.getLogger("steerplane")
 @dataclass
 class PolicyDecision:
     """Result of a policy check."""
+
     allowed: bool
     action: str
-    rule: str = ""       # Which rule matched (e.g. "deny:delete_*")
-    reason: str = ""     # Human-readable explanation
+    rule: str = ""  # Which rule matched (e.g. "deny:delete_*")
+    reason: str = ""  # Human-readable explanation
 
 
 @dataclass
 class RateLimitSpec:
     """Rate limit specification for an action pattern."""
+
     pattern: str
     max_count: int
     window_seconds: float
@@ -70,16 +72,14 @@ class PolicyEngine:
 
         # Normalise rate-limit specs
         self.rate_limits: list[RateLimitSpec] = []
-        for rl in (rate_limits or []):
+        for rl in rate_limits or []:
             if isinstance(rl, dict):
                 self.rate_limits.append(RateLimitSpec(**rl))
             else:
                 self.rate_limits.append(rl)
 
         # Sliding-window timestamps keyed by pattern
-        self._rate_windows: dict[str, list[float]] = {
-            rl.pattern: [] for rl in self.rate_limits
-        }
+        self._rate_windows: dict[str, list[float]] = {rl.pattern: [] for rl in self.rate_limits}
 
     # ────────────────────── public API ──────────────────────
 
@@ -93,14 +93,18 @@ class PolicyEngine:
         # 1. Deny list — checked first, always wins
         for pattern in self.denied_actions:
             if fnmatch.fnmatch(action, pattern):
-                self._deny(action, rule=f"deny:{pattern}",
-                           reason=f"Action '{action}' matches deny pattern '{pattern}'")
+                self._deny(
+                    action,
+                    rule=f"deny:{pattern}",
+                    reason=f"Action '{action}' matches deny pattern '{pattern}'",
+                )
 
         # 2. Allow list — if non-empty, action MUST match at least one entry
         if self.allowed_actions:
             if not any(fnmatch.fnmatch(action, p) for p in self.allowed_actions):
-                self._deny(action, rule="allow_list",
-                           reason=f"Action '{action}' is not in the allow list")
+                self._deny(
+                    action, rule="allow_list", reason=f"Action '{action}' is not in the allow list"
+                )
 
         # 3. Rate limits
         now = time.monotonic()
@@ -145,10 +149,7 @@ class PolicyEngine:
     def has_rules(self) -> bool:
         """True if at least one rule is configured."""
         return bool(
-            self.allowed_actions
-            or self.denied_actions
-            or self.rate_limits
-            or self.require_approval
+            self.allowed_actions or self.denied_actions or self.rate_limits or self.require_approval
         )
 
     # ────────────────────── internals ──────────────────────

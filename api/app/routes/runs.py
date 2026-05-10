@@ -16,7 +16,6 @@ from ..schemas import (
     RunResponse,
     RunDetailResponse,
     RunListResponse,
-    StepResponse,
     StatusResponse,
 )
 

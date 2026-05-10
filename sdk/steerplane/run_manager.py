@@ -7,7 +7,6 @@ start_run → log_step → detect_loop → check_cost → end_run
 
 import time
 import logging
-from typing import Any
 from contextvars import Token
 
 from .client import SteerPlaneClient
@@ -15,7 +14,6 @@ from .telemetry import TelemetryCollector, StepEvent
 from .loop_detector import LoopDetector
 from .cost_tracker import CostTracker
 from .utils import generate_run_id, format_cost, format_duration
-from .config import get_config
 from .policy_engine import PolicyEngine
 from .runtime_context import reset_active_run, set_active_run
 from .exceptions import (
@@ -32,7 +30,7 @@ logger = logging.getLogger("steerplane")
 class RunManager:
     """
     Manages a single agent run with full guard capabilities.
-    
+
     Provides:
     - Step logging with telemetry
     - Loop detection
@@ -101,7 +99,7 @@ class RunManager:
         self._context_token = set_active_run(self)
 
         if self.log_to_console:
-            print(f"\n🚀 SteerPlane | Run Started")
+            print("\n🚀 SteerPlane | Run Started")
             print(f"   Run ID:  {self.run_id}")
             print(f"   Agent:   {self.agent_name}")
             print(f"   Limits:  ${self.cost_tracker.max_cost_usd} cost / {self.max_steps} steps")
@@ -135,7 +133,7 @@ class RunManager:
     ) -> StepEvent:
         """
         Log a step and run all guard checks.
-        
+
         Args:
             action: Action name (e.g., 'search_web').
             tokens: Total tokens (if not split into input/output).
@@ -147,10 +145,10 @@ class RunManager:
             error: Error message if failed.
             metadata: Additional data.
             model: Model name for cost calculation.
-            
+
         Returns:
             The logged StepEvent.
-            
+
         Raises:
             PolicyViolationError: If the action is blocked by policy.
             LoopDetectedError: If a loop pattern is detected.
@@ -166,15 +164,18 @@ class RunManager:
             try:
                 self.policy.check(action, metadata)
             except PolicyViolationError as e:
-                self._terminate("policy_violation", details={
-                    "error_type": "policy_violation",
-                    "blocked_action": action,
-                    "rule_matched": e.rule,
-                    "reason": e.reason,
-                    "step_number": self.telemetry.step_count + 1,
-                    "total_cost_at_termination": self.cost_tracker.total_cost,
-                    "message": str(e),
-                })
+                self._terminate(
+                    "policy_violation",
+                    details={
+                        "error_type": "policy_violation",
+                        "blocked_action": action,
+                        "rule_matched": e.rule,
+                        "reason": e.reason,
+                        "step_number": self.telemetry.step_count + 1,
+                        "total_cost_at_termination": self.cost_tracker.total_cost,
+                        "message": str(e),
+                    },
+                )
                 raise
 
         # Check step limit
@@ -198,14 +199,17 @@ class RunManager:
                     },
                 )
             else:
-                self._terminate("step_limit_exceeded", details={
-                    "error_type": "step_limit_exceeded",
-                    "blocked_action": action,
-                    "current_steps": step_number,
-                    "max_steps": self.max_steps,
-                    "total_cost_at_termination": self.cost_tracker.total_cost,
-                    "message": f"Step limit exceeded: {step_number}/{self.max_steps}. Agent attempted action '{action}'.",
-                })
+                self._terminate(
+                    "step_limit_exceeded",
+                    details={
+                        "error_type": "step_limit_exceeded",
+                        "blocked_action": action,
+                        "current_steps": step_number,
+                        "max_steps": self.max_steps,
+                        "total_cost_at_termination": self.cost_tracker.total_cost,
+                        "message": f"Step limit exceeded: {step_number}/{self.max_steps}. Agent attempted action '{action}'.",
+                    },
+                )
                 raise StepLimitExceeded(step_number, self.max_steps)
 
         # Check runtime limit
@@ -230,17 +234,20 @@ class RunManager:
                     },
                 )
             else:
-                self._terminate("runtime_limit_exceeded", details={
-                    "error_type": "runtime_limit_exceeded",
-                    "blocked_action": action,
-                    "elapsed_seconds": round(elapsed, 1),
-                    "max_runtime_seconds": self.max_runtime_sec,
-                    "total_cost_at_termination": self.cost_tracker.total_cost,
-                    "message": f"Runtime exceeded: {format_duration(elapsed)} > {format_duration(self.max_runtime_sec)}. Agent was running action '{action}'.",
-                })
+                self._terminate(
+                    "runtime_limit_exceeded",
+                    details={
+                        "error_type": "runtime_limit_exceeded",
+                        "blocked_action": action,
+                        "elapsed_seconds": round(elapsed, 1),
+                        "max_runtime_seconds": self.max_runtime_sec,
+                        "total_cost_at_termination": self.cost_tracker.total_cost,
+                        "message": f"Runtime exceeded: {format_duration(elapsed)} > {format_duration(self.max_runtime_sec)}. Agent was running action '{action}'.",
+                    },
+                )
                 raise RunTerminatedError(
                     self.run_id,
-                    f"Runtime exceeded: {format_duration(elapsed)} > {format_duration(self.max_runtime_sec)}"
+                    f"Runtime exceeded: {format_duration(elapsed)} > {format_duration(self.max_runtime_sec)}",
                 )
 
         # Calculate cost
@@ -314,29 +321,35 @@ class RunManager:
                     },
                 )
             else:
-                self._terminate("cost_limit_exceeded", details={
-                    "error_type": "cost_limit_exceeded",
-                    "blocked_action": action,
-                    "current_cost": e.current_cost,
-                    "max_cost": e.max_cost,
-                    "step_number": event.step_number,
-                    "message": f"Cost limit exceeded: ${e.current_cost:.4f} > ${e.max_cost:.2f}. Last action was '{action}'.",
-                })
+                self._terminate(
+                    "cost_limit_exceeded",
+                    details={
+                        "error_type": "cost_limit_exceeded",
+                        "blocked_action": action,
+                        "current_cost": e.current_cost,
+                        "max_cost": e.max_cost,
+                        "step_number": event.step_number,
+                        "message": f"Cost limit exceeded: ${e.current_cost:.4f} > ${e.max_cost:.2f}. Last action was '{action}'.",
+                    },
+                )
                 raise
 
         # 2. Loop detection
         result = self.loop_detector.record_action(action)
         if result.loop_detected:
-            self._terminate("loop_detected", details={
-                "error_type": "loop_detected",
-                "blocked_action": action,
-                "pattern_detected": result.pattern,
-                "window_size": result.window_size,
-                "step_number": event.step_number,
-                "total_cost_at_termination": self.cost_tracker.total_cost,
-                "recent_actions": list(self.loop_detector.action_history),
-                "message": f"Loop detected: pattern {result.pattern} repeating in last {result.window_size} actions. Run terminated at step {event.step_number}.",
-            })
+            self._terminate(
+                "loop_detected",
+                details={
+                    "error_type": "loop_detected",
+                    "blocked_action": action,
+                    "pattern_detected": result.pattern,
+                    "window_size": result.window_size,
+                    "step_number": event.step_number,
+                    "total_cost_at_termination": self.cost_tracker.total_cost,
+                    "recent_actions": list(self.loop_detector.action_history),
+                    "message": f"Loop detected: pattern {result.pattern} repeating in last {result.window_size} actions. Run terminated at step {event.step_number}.",
+                },
+            )
             raise LoopDetectedError(result.pattern, result.window_size)
 
         self._check_alert_thresholds(action, event.step_number)
@@ -354,7 +367,9 @@ class RunManager:
 
         if self.log_to_console:
             print(f"   {'─' * 45}")
-            status_icon = {"completed": "✅", "failed": "❌", "terminated": "⛔"}.get(self.status, "⬜")
+            status_icon = {"completed": "✅", "failed": "❌", "terminated": "⛔"}.get(
+                self.status, "⬜"
+            )
             print(f"\n{status_icon} SteerPlane | Run {self.status.upper()}")
             print(f"   Run ID:     {self.run_id}")
             print(f"   Steps:      {self.telemetry.step_count}")
@@ -477,15 +492,18 @@ class RunManager:
         metadata: dict | None = None,
     ):
         if not self.client.is_connected:
-            self._terminate("alert_mode_unavailable", details={
-                "error_type": "alert_mode_unavailable",
-                "approval_type": approval_type,
-                "blocked_action": action,
-                "message": (
-                    "Alert mode requires a reachable SteerPlane API. "
-                    "The API is offline, so the run was terminated instead."
-                ),
-            })
+            self._terminate(
+                "alert_mode_unavailable",
+                details={
+                    "error_type": "alert_mode_unavailable",
+                    "approval_type": approval_type,
+                    "blocked_action": action,
+                    "message": (
+                        "Alert mode requires a reachable SteerPlane API. "
+                        "The API is offline, so the run was terminated instead."
+                    ),
+                },
+            )
             raise RunTerminatedError(
                 self.run_id,
                 "Alert mode requires a reachable SteerPlane API but the API is offline",
@@ -506,15 +524,18 @@ class RunManager:
             metadata=metadata or {},
         )
         if not approval or not approval.get("id"):
-            self._terminate("approval_request_failed", details={
-                "error_type": "approval_request_failed",
-                "approval_type": approval_type,
-                "blocked_action": action,
-                "message": (
-                    "SteerPlane could not create an approval request, so the run was "
-                    "terminated instead of continuing without control."
-                ),
-            })
+            self._terminate(
+                "approval_request_failed",
+                details={
+                    "error_type": "approval_request_failed",
+                    "approval_type": approval_type,
+                    "blocked_action": action,
+                    "message": (
+                        "SteerPlane could not create an approval request, so the run was "
+                        "terminated instead of continuing without control."
+                    ),
+                },
+            )
             raise RunTerminatedError(
                 self.run_id,
                 "Could not create a SteerPlane approval request",
@@ -528,9 +549,7 @@ class RunManager:
                 f"   🔔 Approval requested for {approval_type.replace('_', ' ')} "
                 f"({current_value:.4f} {unit} / {limit_value:.4f} {unit})"
             )
-            print(
-                f"      Waiting up to {self.alert_timeout_sec}s for continue/kill..."
-            )
+            print(f"      Waiting up to {self.alert_timeout_sec}s for continue/kill...")
 
         local_deadline = time.time() + self.alert_timeout_sec + self.alert_poll_interval_sec
         while time.time() <= local_deadline:
@@ -565,25 +584,31 @@ class RunManager:
                 or latest.get("message")
                 or f"Approval {latest_status}"
             )
-            self._terminate(error_type, details={
-                "error_type": error_type,
+            self._terminate(
+                error_type,
+                details={
+                    "error_type": error_type,
+                    "approval_id": approval_id,
+                    "approval_type": approval_type,
+                    "blocked_action": action,
+                    "message": failure_message,
+                },
+            )
+            raise RunTerminatedError(self.run_id, failure_message)
+
+        self._terminate(
+            "alert_timeout",
+            details={
+                "error_type": "alert_timeout",
                 "approval_id": approval_id,
                 "approval_type": approval_type,
                 "blocked_action": action,
-                "message": failure_message,
-            })
-            raise RunTerminatedError(self.run_id, failure_message)
-
-        self._terminate("alert_timeout", details={
-            "error_type": "alert_timeout",
-            "approval_id": approval_id,
-            "approval_type": approval_type,
-            "blocked_action": action,
-            "message": (
-                f"Approval timed out locally while waiting for {approval_type.replace('_', ' ')} "
-                "continuation."
-            ),
-        })
+                "message": (
+                    f"Approval timed out locally while waiting for {approval_type.replace('_', ' ')} "
+                    "continuation."
+                ),
+            },
+        )
         raise RunTerminatedError(
             self.run_id,
             f"Approval timed out while waiting for {approval_type.replace('_', ' ')} continuation",

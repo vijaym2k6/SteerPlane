@@ -20,7 +20,9 @@ class ApprovalRequest(Base):
     agent_name = Column(String(200), nullable=False, default="default_agent")
     scope = Column(String(20), nullable=False, default="sdk")  # sdk, gateway
     approval_type = Column(String(50), nullable=False)  # cost_limit, step_limit, runtime_limit
-    status = Column(String(30), nullable=False, default="pending")  # pending, approved, denied, expired
+    status = Column(
+        String(30), nullable=False, default="pending"
+    )  # pending, approved, denied, expired
     message = Column(Text, nullable=False)
     current_value = Column(Float, nullable=False, default=0.0)
     limit_value = Column(Float, nullable=False, default=0.0)

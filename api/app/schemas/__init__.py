@@ -11,6 +11,7 @@ from typing import Optional
 
 # ──────────────── Request Schemas ────────────────
 
+
 class StartRunRequest(BaseModel):
     run_id: str = Field(..., description="Unique run identifier")
     agent_name: str = Field(default="default_agent", description="Agent name")
@@ -36,10 +37,14 @@ class EndRunRequest(BaseModel):
     total_cost: float = Field(default=0.0, description="Total run cost")
     total_steps: int = Field(default=0, description="Total steps executed")
     error: Optional[str] = Field(default=None, description="Error if failed/terminated")
-    error_details: Optional[dict] = Field(default=None, description="Structured error context: {error_type, blocked_action, rule_matched, reason, ...}")
+    error_details: Optional[dict] = Field(
+        default=None,
+        description="Structured error context: {error_type, blocked_action, rule_matched, reason, ...}",
+    )
 
 
 # ──────────────── Response Schemas ────────────────
+
 
 class StepResponse(BaseModel):
     id: str
@@ -77,6 +82,7 @@ class RunResponse(BaseModel):
     def parse_error_details(cls, v):
         if isinstance(v, str):
             import json
+
             try:
                 return json.loads(v)
             except (json.JSONDecodeError, TypeError):

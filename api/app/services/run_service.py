@@ -114,11 +114,5 @@ class RunService:
     def list_runs(self, limit: int = 50, offset: int = 0) -> tuple[list[Run], int]:
         """List runs with pagination."""
         total = self.db.query(func.count(Run.id)).scalar()
-        runs = (
-            self.db.query(Run)
-            .order_by(Run.start_time.desc())
-            .offset(offset)
-            .limit(limit)
-            .all()
-        )
+        runs = self.db.query(Run).order_by(Run.start_time.desc()).offset(offset).limit(limit).all()
         return runs, total

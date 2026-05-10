@@ -11,9 +11,9 @@ from steerplane.exceptions import (
 
 
 class TestGuardDecorator:
-
     def test_basic_guarded_function(self):
         """A guarded function should execute normally."""
+
         @guard(max_cost_usd=10, max_steps=50, log_to_console=False)
         def my_agent():
             return "done"
@@ -23,6 +23,7 @@ class TestGuardDecorator:
 
     def test_guard_marks_function(self):
         """Guarded functions should have the _steerplane_guarded attribute."""
+
         @guard(max_cost_usd=10, max_steps=50, log_to_console=False)
         def my_agent():
             pass
@@ -32,7 +33,6 @@ class TestGuardDecorator:
 
 
 class TestSteerPlaneClient:
-
     def test_context_manager_run(self):
         """Context manager should start and end a run."""
         sp = SteerPlane(agent_id="test_bot")

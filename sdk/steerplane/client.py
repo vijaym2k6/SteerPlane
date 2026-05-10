@@ -7,10 +7,8 @@ Handles run lifecycle: start → log steps → end.
 
 import requests
 import logging
-from typing import Any
 
 from .config import get_config
-from .exceptions import APIConnectionError
 
 logger = logging.getLogger("steerplane")
 
@@ -18,7 +16,7 @@ logger = logging.getLogger("steerplane")
 class SteerPlaneClient:
     """
     HTTP client for the SteerPlane API.
-    
+
     Sends run events, step telemetry, and receives commands.
     Gracefully degrades if API is unavailable (SDK still works locally).
     """
@@ -28,10 +26,12 @@ class SteerPlaneClient:
         self.api_url = (api_url or config.api_url).rstrip("/")
         self.api_key = api_key or config.api_key
         self.session = requests.Session()
-        self.session.headers.update({
-            "Content-Type": "application/json",
-            "User-Agent": "SteerPlane-SDK/0.4.0",
-        })
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "User-Agent": "SteerPlane-SDK/0.4.0",
+            }
+        )
         if self.api_key:
             self.session.headers["Authorization"] = f"Bearer {self.api_key}"
 
@@ -66,12 +66,16 @@ class SteerPlaneClient:
         max_steps: int = 0,
     ) -> dict | None:
         """Register a new run with the API."""
-        return self._request("POST", "/runs/start", json={
-            "run_id": run_id,
-            "agent_name": agent_name,
-            "max_cost_usd": max_cost_usd,
-            "max_steps": max_steps,
-        })
+        return self._request(
+            "POST",
+            "/runs/start",
+            json={
+                "run_id": run_id,
+                "agent_name": agent_name,
+                "max_cost_usd": max_cost_usd,
+                "max_steps": max_steps,
+            },
+        )
 
     def log_step(
         self,
@@ -86,17 +90,21 @@ class SteerPlaneClient:
         metadata: dict | None = None,
     ) -> dict | None:
         """Log a step event to the API."""
-        return self._request("POST", "/runs/step", json={
-            "run_id": run_id,
-            "step_number": step_number,
-            "action": action,
-            "tokens": tokens,
-            "cost_usd": cost_usd,
-            "latency_ms": latency_ms,
-            "status": status,
-            "error": error,
-            "metadata": metadata or {},
-        })
+        return self._request(
+            "POST",
+            "/runs/step",
+            json={
+                "run_id": run_id,
+                "step_number": step_number,
+                "action": action,
+                "tokens": tokens,
+                "cost_usd": cost_usd,
+                "latency_ms": latency_ms,
+                "status": status,
+                "error": error,
+                "metadata": metadata or {},
+            },
+        )
 
     def end_run(
         self,
@@ -147,23 +155,27 @@ class SteerPlaneClient:
         metadata: dict | None = None,
     ) -> dict | None:
         """Create or fetch a pending approval request."""
-        return self._request("POST", "/approvals/request", json={
-            "run_id": run_id,
-            "agent_name": agent_name,
-            "approval_type": approval_type,
-            "current_value": current_value,
-            "limit_value": limit_value,
-            "unit": unit,
-            "message": message,
-            "timeout_sec": timeout_sec,
-            "scope": scope,
-            "session_id": session_id,
-            "api_key_id": api_key_id,
-            "channels": channels or [],
-            "alert_email": alert_email,
-            "alert_webhook_url": alert_webhook_url,
-            "metadata": metadata or {},
-        })
+        return self._request(
+            "POST",
+            "/approvals/request",
+            json={
+                "run_id": run_id,
+                "agent_name": agent_name,
+                "approval_type": approval_type,
+                "current_value": current_value,
+                "limit_value": limit_value,
+                "unit": unit,
+                "message": message,
+                "timeout_sec": timeout_sec,
+                "scope": scope,
+                "session_id": session_id,
+                "api_key_id": api_key_id,
+                "channels": channels or [],
+                "alert_email": alert_email,
+                "alert_webhook_url": alert_webhook_url,
+                "metadata": metadata or {},
+            },
+        )
 
     def get_approval(self, approval_id: str) -> dict | None:
         """Fetch a pending or resolved approval request."""

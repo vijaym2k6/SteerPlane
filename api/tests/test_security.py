@@ -10,8 +10,7 @@ from api.app.security import extract_admin_token, require_admin
 
 def _request_with_headers(headers: dict[str, str]) -> Request:
     raw_headers = [
-        (key.lower().encode("latin-1"), value.encode("latin-1"))
-        for key, value in headers.items()
+        (key.lower().encode("latin-1"), value.encode("latin-1")) for key, value in headers.items()
     ]
     scope = {
         "type": "http",

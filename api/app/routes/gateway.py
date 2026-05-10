@@ -266,11 +266,13 @@ async def chat_completions(request: Request, db: Session = Depends(get_db)):
             "id": response_data.get("id", ""),
             "object": "chat.completion",
             "model": response_data.get("model", model),
-            "choices": [{
-                "index": 0,
-                "message": {"role": "assistant", "content": content_text},
-                "finish_reason": response_data.get("stop_reason", "stop"),
-            }],
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": content_text},
+                    "finish_reason": response_data.get("stop_reason", "stop"),
+                }
+            ],
             "usage": {
                 "prompt_tokens": input_tokens,
                 "completion_tokens": output_tokens,
@@ -400,9 +402,7 @@ async def _handle_streaming(
                             content = delta.get("content", "")
                             if content:
                                 # Rough estimate: ~4 chars per token
-                                stream_state["output_tokens"] += max(
-                                    1, len(content) // 4
-                                )
+                                stream_state["output_tokens"] += max(1, len(content) // 4)
 
                     except (ValueError, KeyError):
                         pass
@@ -419,9 +419,7 @@ async def _handle_streaming(
 
                             if msg_type == "message_start":
                                 usage = chunk.get("message", {}).get("usage", {})
-                                stream_state["input_tokens"] = usage.get(
-                                    "input_tokens", 0
-                                )
+                                stream_state["input_tokens"] = usage.get("input_tokens", 0)
                             elif msg_type == "message_delta":
                                 usage = chunk.get("usage", {})
                                 stream_state["output_tokens"] = usage.get(
@@ -512,11 +510,7 @@ async def list_models(request: Request, db: Session = Depends(get_db)):
     svc = GatewayService(db)
 
     auth_header = request.headers.get("Authorization", "")
-    sp_key = (
-        auth_header.replace("Bearer ", "").strip()
-        if auth_header.startswith("Bearer ")
-        else ""
-    )
+    sp_key = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else ""
 
     if sp_key.startswith("sk_sp_"):
         api_key = svc.validate_api_key(sp_key)
@@ -527,13 +521,15 @@ async def list_models(request: Request, db: Session = Depends(get_db)):
     for model_id, pricing in MODEL_PRICING.items():
         if model_id == "default":
             continue
-        models.append({
-            "id": model_id,
-            "object": "model",
-            "pricing": {
-                "input_per_1m": pricing["input"],
-                "output_per_1m": pricing["output"],
-            },
-        })
+        models.append(
+            {
+                "id": model_id,
+                "object": "model",
+                "pricing": {
+                    "input_per_1m": pricing["input"],
+                    "output_per_1m": pricing["output"],
+                },
+            }
+        )
 
     return {"object": "list", "data": models}

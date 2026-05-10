@@ -49,8 +49,8 @@ def on_startup():
     init_db()
     print(f"\n[STARTED] {settings.APP_NAME} v{settings.APP_VERSION}")
     print(f"   Database: {settings.DATABASE_URL}")
-    print(f"   Gateway: http://localhost:8000/gateway/v1")
-    print(f"   Docs: http://localhost:8000/docs\n")
+    print("   Gateway: http://localhost:8000/gateway/v1")
+    print("   Docs: http://localhost:8000/docs\n")
     if settings.ADMIN_TOKEN_SOURCE == "generated":
         print("   Admin auth: enabled with a generated token for this process only")
         print(f"   {settings.ADMIN_TOKEN_HEADER}: {settings.ADMIN_TOKEN}\n")
