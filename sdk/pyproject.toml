@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "steerplane"
-version = "0.3.0"
+version = "0.4.0"
 description = "Agent Control Plane for Autonomous Systems"
 readme = "README.md"
 license = {text = "MIT"}
@@ -17,10 +17,18 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=7.0",
-    "pytest-cov",
-]
+cli = ["click>=8.1.0"]
+yaml = ["pyyaml>=6.0"]
+langchain = ["langchain-core>=0.1.0"]
+all = ["click>=8.1.0", "pyyaml>=6.0", "langchain-core>=0.1.0"]
+dev = ["pytest>=7.0", "pytest-cov", "ruff"]
+
+[project.scripts]
+steerplane = "steerplane.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100

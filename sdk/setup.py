@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="steerplane",
-    version="0.3.0",
+    version="0.4.0",
     description="Agent Control Plane for Autonomous Systems — Runtime guards, loop detection, cost limits, and telemetry for AI agents.",
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
@@ -21,9 +21,35 @@ setup(
         "requests>=2.28.0",
     ],
     extras_require={
+        "cli": [
+            "click>=8.1.0",
+        ],
+        "yaml": [
+            "pyyaml>=6.0",
+        ],
+        "langchain": [
+            "langchain-core>=0.1.0",
+        ],
+        "crewai": [
+            "crewai>=0.30.0",
+        ],
+        "autogen": [
+            "pyautogen>=0.2.0",
+        ],
+        "all": [
+            "click>=8.1.0",
+            "pyyaml>=6.0",
+            "langchain-core>=0.1.0",
+        ],
         "dev": [
             "pytest>=7.0",
             "pytest-cov",
+            "ruff",
+        ],
+    },
+    entry_points={
+        "console_scripts": [
+            "steerplane=steerplane.cli:main",
         ],
     },
     classifiers=[
@@ -34,8 +60,9 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
         "Topic :: Software Development :: Libraries",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
-    keywords="ai agents guard safety monitoring telemetry llm",
+    keywords="ai agents guard safety monitoring telemetry llm steerplane",
 )
