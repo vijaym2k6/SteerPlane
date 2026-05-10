@@ -182,7 +182,7 @@ async def chat_completions(request: Request, db: Session = Depends(get_db)):
 
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
-            if is_streaming and provider != "anthropic":
+            if is_streaming:
                 return await _handle_streaming(
                     client=client,
                     target_url=target_url,
@@ -193,6 +193,7 @@ async def chat_completions(request: Request, db: Session = Depends(get_db)):
                     session=session,
                     model=model,
                     start_time=start_time,
+                    provider=provider,
                 )
             resp = await client.post(
                 target_url,
@@ -318,10 +319,25 @@ async def _handle_streaming(
     session: GatewaySession,
     model: str,
     start_time: float,
+    provider: str = "openai",
 ):
-    """Handle streaming OpenAI-compatible responses."""
-    body.setdefault("stream_options", {})
-    body["stream_options"]["include_usage"] = True
+    """
+    Handle streaming LLM responses with real-time chunk forwarding.
+
+    Key behaviors:
+    - Every SSE chunk is forwarded to the client immediately as it arrives
+    - Token counts are accumulated during the stream
+    - If cost ceiling is exceeded mid-stream, the stream is killed and a
+      termination event is injected
+    - Works with both OpenAI (data: {...}) and Anthropic (content_block_delta) formats
+    """
+    import json as _json
+
+    if provider != "anthropic":
+        body.setdefault("stream_options", {})
+        body["stream_options"]["include_usage"] = True
+    else:
+        body["stream"] = True
 
     req = client.build_request(
         "POST",
@@ -340,46 +356,142 @@ async def _handle_streaming(
             headers={"X-SteerPlane-Session-ID": session.session_id},
         )
 
-    collected_usage = {}
+    # Mutable accumulator shared between generator and finally block
+    stream_state = {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "terminated_mid_stream": False,
+        "chunks_forwarded": 0,
+    }
+
+    # Pre-compute cost ceiling for mid-stream check
+    cost_limit = svc.get_session_cost_limit(api_key, session)
+    session_cost_before = svc.get_session_cost(session)
 
     async def stream_generator():
-        nonlocal collected_usage
         try:
             async for line in resp.aiter_lines():
+                if not line.strip():
+                    continue
+
+                # --- OpenAI SSE format ---
                 if line.startswith("data: "):
                     data = line[6:]
-                    if data == "[DONE]":
+                    if data.strip() == "[DONE]":
                         yield "data: [DONE]\n\n"
                         break
-                    try:
-                        import json
 
-                        chunk = json.loads(data)
+                    try:
+                        chunk = _json.loads(data)
+
+                        # Extract usage from final chunk (stream_options)
                         if "usage" in chunk and chunk["usage"]:
-                            collected_usage = chunk["usage"]
-                    except Exception:
+                            stream_state["input_tokens"] = chunk["usage"].get(
+                                "prompt_tokens", stream_state["input_tokens"]
+                            )
+                            stream_state["output_tokens"] = chunk["usage"].get(
+                                "completion_tokens", stream_state["output_tokens"]
+                            )
+
+                        # Estimate output tokens from delta content length
+                        choices = chunk.get("choices", [])
+                        if choices:
+                            delta = choices[0].get("delta", {})
+                            content = delta.get("content", "")
+                            if content:
+                                # Rough estimate: ~4 chars per token
+                                stream_state["output_tokens"] += max(
+                                    1, len(content) // 4
+                                )
+
+                    except (ValueError, KeyError):
                         pass
-                    yield f"{line}\n\n"
-                elif line.strip():
-                    yield f"{line}\n\n"
+
+                # --- Anthropic SSE format ---
+                elif line.startswith("event: ") or (
+                    provider == "anthropic" and line.startswith("data: ")
+                ):
+                    if line.startswith("data: "):
+                        data = line[6:]
+                        try:
+                            chunk = _json.loads(data)
+                            msg_type = chunk.get("type", "")
+
+                            if msg_type == "message_start":
+                                usage = chunk.get("message", {}).get("usage", {})
+                                stream_state["input_tokens"] = usage.get(
+                                    "input_tokens", 0
+                                )
+                            elif msg_type == "message_delta":
+                                usage = chunk.get("usage", {})
+                                stream_state["output_tokens"] = usage.get(
+                                    "output_tokens", stream_state["output_tokens"]
+                                )
+                        except (ValueError, KeyError):
+                            pass
+
+                # --- Mid-stream cost enforcement ---
+                normalized = normalize_model_name(model)
+                running_cost = calculate_cost(
+                    normalized,
+                    stream_state["input_tokens"],
+                    stream_state["output_tokens"],
+                )
+                total_session_cost = session_cost_before + running_cost
+
+                if cost_limit and total_session_cost >= cost_limit:
+                    # Kill the stream — inject termination event
+                    termination_event = {
+                        "error": {
+                            "type": "steerplane_enforcement",
+                            "message": (
+                                f"Stream terminated: session cost ${total_session_cost:.4f} "
+                                f"exceeded ceiling ${cost_limit:.2f}"
+                            ),
+                            "code": "cost_limit_exceeded",
+                            "session_id": session.session_id,
+                        }
+                    }
+                    yield f"data: {_json.dumps(termination_event)}\n\n"
+                    yield "data: [DONE]\n\n"
+                    stream_state["terminated_mid_stream"] = True
+                    break
+
+                # Forward the chunk immediately
+                stream_state["chunks_forwarded"] += 1
+                yield f"{line}\n\n"
+
         finally:
             await resp.aclose()
 
+            # Log the completed (or terminated) stream
             latency_ms = (time.time() - start_time) * 1000
-            input_tokens = collected_usage.get("prompt_tokens", 0)
-            output_tokens = collected_usage.get("completion_tokens", 0)
             normalized = normalize_model_name(model)
-            cost = calculate_cost(normalized, input_tokens, output_tokens)
+            cost = calculate_cost(
+                normalized,
+                stream_state["input_tokens"],
+                stream_state["output_tokens"],
+            )
+            status = "terminated" if stream_state["terminated_mid_stream"] else None
+            error_msg = (
+                "Mid-stream cost ceiling exceeded"
+                if stream_state["terminated_mid_stream"]
+                else None
+            )
+
             svc.log_request(
                 api_key,
                 session,
                 model,
-                input_tokens,
-                output_tokens,
+                stream_state["input_tokens"],
+                stream_state["output_tokens"],
                 cost,
                 latency_ms,
+                status,
+                error_msg,
             )
-            svc.maybe_trigger_threshold_alert(api_key, session)
+            if not stream_state["terminated_mid_stream"]:
+                svc.maybe_trigger_threshold_alert(api_key, session)
 
     return StreamingResponse(
         stream_generator(),
@@ -387,8 +499,9 @@ async def _handle_streaming(
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
             "X-SteerPlane-Session-ID": session.session_id,
-            "X-SteerPlane-Session-Cost": str(svc.get_session_cost(session)),
+            "X-SteerPlane-Session-Cost": str(session_cost_before),
         },
     )
 
