@@ -58,8 +58,8 @@ await run.end();
 
 | Feature | Description |
 |---------|-------------|
-| 🛡️ **Policy Engine** *(New in v0.3.0)* | Strict allow/deny lists, sliding-window rate limits, and approval workflows. |
-| 🌉 **AI Gateway Proxy** *(New in v0.3.0)* | Zero-code integration. Set your OpenAI base url to the SteerPlane Gateway. |
+| 🛡️ **Policy Engine** *(New in v0.4.0)* | Strict allow/deny lists, sliding-window rate limits, and approval workflows. |
+| 🌉 **AI Gateway Proxy** *(New in v0.4.0)* | Zero-code integration. Set your OpenAI base url to the SteerPlane Gateway. |
 | 🔄 **Loop Detection** | Sliding-window pattern detector catches repeating agent behavior |
 | 💰 **Cost Limits** | Hard USD ceiling per run — terminate instantly when exceeded across 25+ models |
 | 🚫 **Step Limits** | Cap maximum execution steps |
@@ -100,3 +100,4 @@ const runAgent = guard(async () => {
 ## License
 
 MIT
+

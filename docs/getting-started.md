@@ -1,21 +1,21 @@
 # Getting Started
 
-Get SteerPlane running in under 5 minutes.
+Get SteerPlane running locally in a few minutes.
 
 ## Prerequisites
 
 - Python 3.10+
 - Node.js 18+
-- PostgreSQL 17 (optional — SQLite works for development)
+- PostgreSQL is optional. SQLite works out of the box for development.
 
-## Step 1: Clone the Repository
+## 1. Clone the Repo
 
 ```bash
 git clone https://github.com/vijaym2k6/SteerPlane.git
 cd SteerPlane
 ```
 
-## Step 2: Start the API Server
+## 2. Start the API
 
 ```bash
 cd api
@@ -23,9 +23,14 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-The API will be available at `http://localhost:8000`. Visit `http://localhost:8000/docs` for the interactive API documentation.
+The API starts on `http://localhost:8000`.
 
-## Step 3: Start the Dashboard
+Admin access:
+
+- Set `STEERPLANE_ADMIN_TOKEN` before startup for a stable admin token.
+- If you do not set one, the API generates a temporary admin token and prints it in the startup logs.
+
+## 3. Start the Dashboard
 
 ```bash
 cd dashboard
@@ -33,32 +38,47 @@ npm install
 npm run dev
 ```
 
-The dashboard will be available at `http://localhost:3000`.
+Open `http://localhost:3000`.
 
-## Step 4: Install the SDK
+When you visit the dashboard:
+
+- the navbar checks API health automatically
+- use the `Admin Token` button to paste the token from the API logs or environment
+- policies and API keys will stay locked until that token is set
+
+## 4. Install the Python SDK
 
 ```bash
 cd sdk
 pip install -e .
 ```
 
-## Step 5: Run the Demo
+## 5. Run a Demo Agent
 
 ```bash
 python examples/simple_agent/agent_example.py
 ```
 
-This runs three demo scenarios:
-1. **Normal agent** — completes successfully with 7 steps
-2. **Loop detection** — agent gets stuck, SteerPlane catches it
-3. **Cost limit** — agent overspends, SteerPlane terminates it
+Then open `http://localhost:3000/dashboard` to inspect the run timeline.
 
-## Step 6: View Results
+## 6. Optional: Use the Gateway
 
-Open `http://localhost:3000` and click **Dashboard** to see your agent runs, step timelines, and cost breakdowns.
+Point an OpenAI-compatible client at SteerPlane:
 
-## What's Next?
+```python
+import openai
 
-- Read the [SDK Usage Guide](sdk-usage.md) for the full API reference
-- Check out the [Example Agents](example-agents.md) for real-world integrations
-- Explore the [Architecture](architecture.md) to understand the system design
+client = openai.OpenAI(
+    base_url="http://localhost:8000/gateway/v1",
+    api_key="sk_sp_...",
+    default_headers={
+        "X-LLM-API-Key": "your-provider-key",
+        "X-SteerPlane-Session-ID": "support-ticket-1042",
+    },
+)
+```
+
+`X-SteerPlane-Session-ID` is optional but recommended if you want deterministic session-level budgeting.
+
+If you need a custom OpenAI-compatible upstream, add its base URL to
+`STEERPLANE_ALLOWED_PROVIDER_URLS` on the API before sending `X-Provider-URL`.

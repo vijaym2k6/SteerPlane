@@ -28,7 +28,7 @@
  * @packageDocumentation
  */
 
-export const VERSION = "0.3.0";
+export const VERSION = "0.4.0";
 
 // Main APIs
 export { guard, SteerPlane, getActiveRun } from "./guard.js";

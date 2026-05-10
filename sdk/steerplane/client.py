@@ -30,7 +30,7 @@ class SteerPlaneClient:
         self.session = requests.Session()
         self.session.headers.update({
             "Content-Type": "application/json",
-            "User-Agent": "SteerPlane-SDK/0.3.0",
+            "User-Agent": "SteerPlane-SDK/0.4.0",
         })
         if self.api_key:
             self.session.headers["Authorization"] = f"Bearer {self.api_key}"

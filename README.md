@@ -14,7 +14,7 @@
 
 <p align="center">
   <b>Runtime guardrails for autonomous AI agents.</b><br>
-  Cost limits · Loop detection · Dual enforcement (Kill/Alert) · Gateway proxy · Policy engine · Human-in-the-loop approvals · Real-time dashboard<br><br>
+  Cost limits · Loop detection · Dual enforcement (Kill/Alert) · Streaming gateway · Policy engine · Human-in-the-loop · CLI · Docker · 4 framework integrations<br><br>
   <code>pip install steerplane</code> · <code>npm install steerplane</code>
 </p>
 
@@ -81,47 +81,54 @@ def run_agent():
 | 🔄 | **Loop Detection** | O(W²) sliding-window algorithm catches single-action, alternating, and multi-step repeating patterns in sub-millisecond time — no LLM calls |
 | 💰 | **Hard Cost Ceiling** | Per-run USD limits with built-in pricing for 25+ models across OpenAI, Anthropic, Google, Meta, and Mistral |
 | 🔔 | **Dual Enforcement (Kill/Alert)** | Kill mode terminates instantly. Alert mode pauses, notifies humans (email/webhook), and waits for approve/deny/extend |
-| 🚫 | **Step Limit** | Cap maximum execution steps to prevent unbounded resource consumption |
-| ⏱️ | **Runtime Limit** | Maximum wall-clock time per run — either alerts or terminates based on enforcement mode |
-| 🛡️ | **Policy Engine** | Allow/deny lists with glob patterns (`fnmatch`), sliding-window rate limits, and human-in-the-loop approval gates |
+| 🌊 | **Streaming Gateway** | Real-time SSE chunk forwarding with mid-stream cost kill — if the budget is exceeded during a stream, SteerPlane injects a termination event and cuts the connection |
+| 🛡️ | **Policy Engine** | Allow/deny lists with glob patterns, sliding-window rate limits, and human-in-the-loop approval gates |
 | 🌐 | **Gateway Proxy** | OpenAI-compatible API proxy — change only `base_url` for zero-code enforcement. Real LLM keys never exposed to agents |
-| 📊 | **Deep Telemetry** | Every step's action name, tokens, cost, latency, and status — captured automatically |
-| 🖥️ | **Real-Time Dashboard** | Next.js dashboard with 3s auto-refresh, animated timelines, cost breakdowns, policy management, and approval workflows |
-| 🔗 | **LangChain Integration** | Drop-in callback handler for LangChain/LangGraph agents — zero refactoring |
-| 📧 | **Notifications** | Multi-channel dispatch — SMTP email and HTTP webhooks (Slack, Discord, PagerDuty, etc.) |
+| 🖥️ | **Real-Time Dashboard** | Next.js dashboard with auto-refresh, animated timelines, cost breakdowns, policy management, and approval workflows |
+| 🔧 | **CLI Tool** | `steerplane runs list`, `steerplane status`, `steerplane keys create` — manage everything from your terminal |
+| 📄 | **Config File** | `.steerplane.yml` auto-discovery — set defaults without hardcoding limits in source code |
+| 🔗 | **4 Framework Integrations** | LangChain, OpenAI Agents SDK, CrewAI, AutoGen — zero-config drop-in handlers |
+| 🐳 | **Docker Compose** | One command brings up API + Dashboard + PostgreSQL + Redis |
 | 🔌 | **Graceful Degradation** | If the API goes down, the SDK enforces all limits locally. Alert mode degrades to kill mode. Agents are never unprotected |
+| 📧 | **Notifications** | Multi-channel dispatch — SMTP email and HTTP webhooks (Slack, Discord, PagerDuty, etc.) |
+| 🧪 | **CI/CD** | GitHub Actions pipeline — lint, test, build Docker on every push |
 
 ---
 
 ## Quick Start
 
-### Install
+### Option A: Docker (Recommended)
 
 ```bash
-# Python
+git clone https://github.com/vijaym2k6/SteerPlane.git
+cd SteerPlane
+cp .env.example .env
+docker compose up -d
+```
+
+API at `localhost:8000` · Dashboard at `localhost:3000` · PostgreSQL + Redis auto-configured.
+
+### Option B: Manual Setup
+
+```bash
+# Install the SDK
 pip install steerplane
 
-# TypeScript / Node.js
-npm install steerplane
-```
-
-### Start the API
-
-```bash
-cd api
-pip install -r requirements.txt
+# Start the API
+cd api && pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
+
+# Start the Dashboard
+cd dashboard && npm install && npm run dev
 ```
 
-If you want a stable admin token for dashboard management screens, set
-`STEERPLANE_ADMIN_TOKEN` before starting the API. Otherwise SteerPlane
-generates a temporary token and prints it in the startup logs.
-
-### Start the Dashboard
+### Option C: CLI
 
 ```bash
-cd dashboard
-npm install && npm run dev
+pip install steerplane[cli]
+steerplane status          # Check API health
+steerplane runs list       # List recent runs
+steerplane keys create -n prod  # Generate API key
 ```
 
 ### Run the Demo Agent
@@ -131,8 +138,6 @@ python examples/simple_agent/agent_example.py
 ```
 
 Open **[localhost:3000](http://localhost:3000)** → See your agent run in real time.
-
-Use the dashboard's `Admin Token` button to unlock policy, API key, and approval management.
 
 ---
 
@@ -150,7 +155,6 @@ from steerplane import guard
     max_runtime_sec=300,
     enforcement="alert",
     alert_threshold=0.8,
-    alert_timeout_sec=1800,
     denied_actions=["delete_*", "sudo_*"],
     allowed_actions=["search_*", "read_*", "generate_*"],
     rate_limits=[{"pattern": "call_llm*", "max_count": 20, "window_seconds": 60}],
@@ -218,64 +222,171 @@ def run_agent():
 
 ---
 
-## Gateway Proxy (Zero-Code Mode)
+## Config File (.steerplane.yml)
 
-For agents you can't modify, SteerPlane provides an OpenAI-compatible gateway proxy. Change **two lines** — the agent gets full enforcement without touching its code:
+Set defaults in a `.steerplane.yml` at your project root instead of hardcoding limits:
 
-```python
-from openai import OpenAI
+```yaml
+api_url: http://localhost:8000
+agent_name: my_bot
 
-# Before: direct to OpenAI
-# client = OpenAI(api_key="sk-...")
+defaults:
+  max_cost_usd: 25.0
+  max_steps: 100
+  max_runtime_sec: 1800
+  enforcement: alert
+  loop_window_size: 10
 
-# After: route through SteerPlane gateway
-client = OpenAI(
-    base_url="http://localhost:8000/gateway/v1",
-    api_key="sp_your_steerplane_key",  # SteerPlane key — real LLM key stays server-side
-)
+policy:
+  denied_actions:
+    - "delete_*"
+    - "drop_*"
+  rate_limits:
+    - pattern: "search_*"
+      max_calls: 10
+      window_sec: 60
 
-# Everything else stays the same
-response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "Hello"}],
-)
+alerts:
+  email: ops@company.com
+  webhook_url: https://hooks.slack.com/...
+  threshold: 0.8
 ```
 
-**Security model:** The agent process never holds the real LLM API key. SteerPlane stores it server-side and injects it during request forwarding.
-
-**What the gateway enforces per request:**
-- Policy rules (deny/allow/rate limits)
-- Session cost vs. ceiling
-- SHA-256 prompt-hash loop detection
-- Per-key enforcement mode (kill or alert)
-- Monthly budget tracking
+**Merge order:** Explicit decorator params → `.steerplane.yml` → hardcoded defaults. The config file is auto-discovered by walking up from the current directory.
 
 ---
 
-## LangChain Integration
+## Framework Integrations
+
+### LangChain
 
 ```python
-from langchain_openai import ChatOpenAI
 from steerplane.integrations.langchain import SteerPlaneCallbackHandler
 
 handler = SteerPlaneCallbackHandler(
     agent_name="research_bot",
     max_cost_usd=5.0,
     max_steps=30,
-    denied_actions=["tool:delete_*"],
 )
 
-# Attach to LLM — every call is now monitored and limited
 llm = ChatOpenAI(model="gpt-4o", callbacks=[handler])
-
-# Or attach to agent/chain
 agent.run("Analyze this data", callbacks=[handler])
-
-# End the run when done
 handler.finish()
 ```
 
-Automatically captures LLM token usage, tool calls, cost, and latency. Works with LangChain, LangGraph, and any `Runnable`.
+### OpenAI Agents SDK
+
+```python
+from steerplane.integrations.openai_agents import SteerPlaneAgentHooks
+
+hooks = SteerPlaneAgentHooks(
+    agent_name="my_openai_agent",
+    max_cost_usd=10.0,
+    max_steps=100,
+)
+
+# Convenience wrapper
+result = await hooks.run(agent, "Hello!")
+
+# Or manual lifecycle
+hooks.start()
+result = await Runner.run(agent, "Hello!")
+hooks.finish()
+```
+
+### CrewAI
+
+```python
+from steerplane.integrations.crewai import SteerPlaneCrewMonitor
+
+monitor = SteerPlaneCrewMonitor(
+    agent_name="my_crew",
+    max_cost_usd=25.0,
+    max_steps=200,
+)
+
+crew = Crew(
+    agents=[researcher, writer],
+    tasks=[research_task, write_task],
+    step_callback=monitor.step_callback,
+)
+
+result = monitor.kickoff(crew)
+```
+
+### AutoGen
+
+```python
+from steerplane.integrations.autogen import SteerPlaneAutoGenMonitor
+
+monitor = SteerPlaneAutoGenMonitor(
+    agent_name="my_autogen_group",
+    max_cost_usd=15.0,
+    max_steps=150,
+)
+
+result = monitor.initiate_chat(user_proxy, assistant, message="Hello!")
+```
+
+Install only the integration you need:
+```bash
+pip install steerplane[langchain]   # LangChain
+pip install steerplane[cli]         # CLI tool
+pip install steerplane[yaml]        # Config file support
+pip install steerplane[all]         # Everything
+```
+
+---
+
+## Gateway Proxy (Zero-Code Mode)
+
+For agents you can't modify, SteerPlane provides an OpenAI-compatible gateway proxy with **real-time streaming** and **mid-stream cost enforcement**:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8000/gateway/v1",
+    api_key="sk_sp_your_steerplane_key",
+)
+
+# Streaming works — chunks forwarded in real-time
+for chunk in client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Hello"}],
+    stream=True,
+):
+    print(chunk.choices[0].delta.content, end="")
+```
+
+**What the gateway enforces per request:**
+- Policy rules (deny/allow/rate limits)
+- Session cost vs. ceiling (including mid-stream kill)
+- SHA-256 prompt-hash loop detection
+- Per-key enforcement mode (kill or alert)
+- Monthly budget tracking
+- Anthropic + OpenAI streaming support
+
+**Security model:** The agent process never holds the real LLM API key. SteerPlane stores it server-side and injects it during request forwarding.
+
+---
+
+## CLI Tool
+
+```bash
+pip install steerplane[cli]
+```
+
+| Command | Description |
+|---------|-------------|
+| `steerplane status` | Check API server health |
+| `steerplane runs list` | List recent runs (filter by `--status`) |
+| `steerplane runs inspect <id>` | Full run detail with step-by-step table |
+| `steerplane runs kill <id>` | Force-terminate a live run |
+| `steerplane keys list` | List all API keys |
+| `steerplane keys create --name prod` | Generate a new API key |
+| `steerplane keys revoke <id>` | Revoke a key |
+| `steerplane logs --tail` | Live polling of running agents |
 
 ---
 
@@ -287,26 +398,6 @@ The policy engine runs **before** any cost is incurred, enforcing rules in stric
 Deny List → Allow List → Rate Limits → Approval Workflow
 ```
 
-```python
-from steerplane import SteerPlane, RateLimitSpec
-
-sp = SteerPlane(agent_id="production_bot")
-
-with sp.run(
-    max_cost_usd=25.0,
-    denied_actions=["delete_*", "drop_*", "sudo_*"],
-    allowed_actions=["search_*", "read_*", "generate_*", "send_email"],
-    rate_limits=[
-        RateLimitSpec(pattern="send_email", max_count=5, window_seconds=60),
-        RateLimitSpec(pattern="search_*", max_count=30, window_seconds=60),
-    ],
-    require_approval=["send_email"],
-    approval_callback=lambda action, meta: input(f"Allow {action}? (y/n): ") == "y",
-) as run:
-    run.log_step("search_docs", tokens=200, cost=0.001, latency_ms=50)
-    run.log_step("generate_response", tokens=800, cost=0.005, latency_ms=200)
-```
-
 | Rule Type | How It Works |
 |-----------|-------------|
 | **Deny list** | Glob patterns (e.g. `delete_*`) — any match is blocked immediately |
@@ -314,33 +405,41 @@ with sp.run(
 | **Rate limits** | Sliding-window counters per pattern — blocks when count exceeds threshold |
 | **Approval workflow** | Matched actions trigger a callback for human-in-the-loop approval |
 
-Available in both Python and TypeScript SDKs, and manageable via the dashboard UI and REST API.
+Available in Python and TypeScript SDKs, the dashboard UI, REST API, and `.steerplane.yml` config file.
 
 ---
 
 ## Dual Enforcement (Kill / Alert)
-
-SteerPlane supports two enforcement modes for every limit:
 
 | Mode | Behavior |
 |------|----------|
 | **Kill** (default) | Immediately terminates the agent on any violation. Fast, deterministic. |
 | **Alert** | Pauses execution → dispatches notifications (email/webhook) → waits for human to approve, deny, or extend the limit → auto-terminates on timeout as safety net |
 
-```python
-@guard(
-    max_cost_usd=10.00,
-    enforcement="alert",      # "kill" or "alert"
-    alert_threshold=0.8,      # Pause at 80% of limit
-    alert_timeout_sec=1800,   # Auto-terminate after 30min if no response
-    alert_email="ops@company.com",
-    alert_webhook_url="https://hooks.slack.com/services/xxx",
-)
-def run_agent():
-    agent.run()
+> **Safety invariant:** Loop detection and policy violations **always** trigger immediate termination regardless of enforcement mode. These are non-overridable security constraints.
+
+---
+
+## Docker Deployment
+
+```bash
+cp .env.example .env    # Edit with your values
+docker compose up -d    # Starts all 4 services
 ```
 
-> **Safety invariant:** Loop detection and policy violations **always** trigger immediate termination regardless of enforcement mode. These are non-overridable security constraints.
+| Service | Image | Port | Purpose |
+|---------|-------|------|---------|
+| `postgres` | postgres:16-alpine | 5432 | Primary database |
+| `redis` | redis:7-alpine | 6379 | Pub/sub (future WebSocket) |
+| `api` | steerplane-api | 8000 | FastAPI backend |
+| `dashboard` | steerplane-dashboard | 3000 | Next.js UI |
+
+Database migrations via Alembic:
+```bash
+cd api
+alembic revision --autogenerate -m "initial"
+alembic upgrade head
+```
 
 ---
 
@@ -349,7 +448,7 @@ def run_agent():
 ```
 ┌──────────────────────────────────────────────────────┐
 │                  Agent Application                   │
-│         (OpenAI SDK, LangChain, CrewAI, etc.)        │
+│    (OpenAI SDK, LangChain, CrewAI, AutoGen, etc.)    │
 └──────────────┬────────────────────┬──────────────────┘
                │                    │
       SDK Mode │          Gateway Mode
@@ -360,10 +459,11 @@ def run_agent():
 │   (In-Process)       │  │   (Network Layer)        │
 │                      │  │                          │
 │   Guard Engine       │  │   Auth → Policy → Cost   │
-│   Policy Engine      │  │   → Loop → Forward       │
+│   Policy Engine      │  │   → Loop → Stream Fwd    │
 │   Cost Tracker       │  │                          │
-│   Loop Detector      │  │   Real LLM key stored    │
-│   Run Manager        │  │   server-side only       │
+│   Loop Detector      │  │   Mid-stream cost kill   │
+│   Run Manager        │  │   Real LLM key isolated  │
+│   Config File        │  │                          │
 └──────────┬───────────┘  └──────────┬───────────────┘
            │                         │
            ▼                         ▼
@@ -371,22 +471,23 @@ def run_agent():
 │              SteerPlane API Server                  │
 │      (FastAPI + SQLAlchemy + PostgreSQL/SQLite)     │
 │    Runs · Steps · Policies · Approvals · API Keys  │
-└───────────────┬──────────────┬─────────────────────┘
-                │              │
-        ┌───────▼──────┐  ┌───▼──────────────────┐
-        │   Next.js    │  │  Notifications       │
-        │   Dashboard  │  │  (Email / Webhook)   │
-        └──────────────┘  └──────────────────────┘
+└──────┬──────────┬──────────────┬──────────────────┘
+       │          │              │
+  ┌────▼───┐  ┌───▼──────┐  ┌───▼──────────────────┐
+  │ CLI    │  │ Next.js  │  │  Notifications       │
+  │ Tool   │  │ Dashboard│  │  (Email / Webhook)   │
+  └────────┘  └──────────┘  └──────────────────────┘
 ```
 
 | Layer | Stack | Purpose |
 |-------|-------|---------|
-| **SDK** | Python 3.10+ / Node.js 18+ | `@guard` decorator, cost tracking, loop detection, policy engine, dual enforcement |
-| **Gateway Proxy** | FastAPI + HTTPX | OpenAI-compatible proxy with policy enforcement, cost tracking, and key isolation |
-| **API** | FastAPI + SQLAlchemy + Pydantic | REST endpoints for runs, steps, policies, approvals, API keys, telemetry |
-| **Database** | PostgreSQL / SQLite | Persistent storage for runs, steps, policies, approvals, and API keys |
+| **SDK** | Python 3.10+ / Node.js 18+ | `@guard` decorator, cost tracking, loop detection, policy engine, config file, dual enforcement |
+| **Gateway Proxy** | FastAPI + HTTPX | OpenAI-compatible proxy with SSE streaming, mid-stream cost kill, and key isolation |
+| **API** | FastAPI + SQLAlchemy + Alembic | REST endpoints for runs, steps, policies, approvals, API keys, telemetry |
+| **Database** | PostgreSQL (prod) / SQLite (dev) | Persistent storage with versioned migrations |
 | **Dashboard** | Next.js + React + Framer Motion | Real-time monitoring, run timelines, policy management, approval workflows |
-| **Notifications** | smtplib + HTTPX | Multi-channel alert dispatch (email, Slack, Discord, PagerDuty) |
+| **CLI** | Click | Terminal-based management — runs, keys, status, live logs |
+| **CI/CD** | GitHub Actions | Lint → Test → Build Docker on every push |
 
 ---
 
@@ -394,62 +495,66 @@ def run_agent():
 
 ```
 SteerPlane/
-├── sdk/                     # Python SDK (pip install steerplane)
+├── sdk/                         # Python SDK (pip install steerplane)
 │   └── steerplane/
-│       ├── guard.py         # @guard decorator + SteerPlane class
-│       ├── run_manager.py   # Run lifecycle + dual enforcement (kill/alert)
-│       ├── cost_tracker.py  # Cost calculation + model pricing
-│       ├── loop_detector.py # O(W²) sliding-window loop detection
-│       ├── policy_engine.py # Allow/deny, rate limits, approval gates
-│       ├── client.py        # HTTP client with graceful degradation
-│       ├── runtime_context.py # Active run tracking for signal handling
-│       ├── telemetry.py     # Step event collection
-│       ├── exceptions.py    # 6 typed exception classes
+│       ├── guard.py             # @guard decorator + SteerPlane class
+│       ├── run_manager.py       # Run lifecycle + dual enforcement (kill/alert)
+│       ├── cost_tracker.py      # Cost calculation + model pricing
+│       ├── loop_detector.py     # O(W²) sliding-window loop detection
+│       ├── policy_engine.py     # Allow/deny, rate limits, approval gates
+│       ├── client.py            # HTTP client with graceful degradation
+│       ├── cli.py               # CLI tool (steerplane command)         ← NEW
+│       ├── config_file.py       # .steerplane.yml auto-discovery       ← NEW
+│       ├── runtime_context.py   # Active run tracking for signal handling
+│       ├── telemetry.py         # Step event collection
+│       ├── exceptions.py        # 6 typed exception classes
 │       └── integrations/
-│           └── langchain.py # LangChain/LangGraph callback handler
-├── sdk-ts/                  # TypeScript SDK (npm install steerplane)
+│           ├── langchain.py     # LangChain/LangGraph callback handler
+│           ├── openai_agents.py # OpenAI Agents SDK hooks              ← NEW
+│           ├── crewai.py        # CrewAI step/task callbacks            ← NEW
+│           └── autogen.py       # AutoGen reply hooks                   ← NEW
+├── sdk-ts/                      # TypeScript SDK (npm install steerplane)
 │   └── src/
-│       ├── guard.ts         # guard() HOF + SteerPlane class
-│       ├── run-manager.ts   # Run lifecycle + dual enforcement
-│       ├── cost-tracker.ts  # Cost tracking + limits
-│       ├── loop-detector.ts # Loop detection
-│       ├── policy-engine.ts # Policy engine + glob matching
-│       ├── client.ts        # HTTP client (native fetch)
-│       └── errors.ts        # 7 typed error classes
-├── api/                     # FastAPI backend
+│       ├── guard.ts             # guard() HOF + SteerPlane class
+│       ├── run-manager.ts       # Run lifecycle + dual enforcement
+│       ├── cost-tracker.ts      # Cost tracking + limits
+│       ├── loop-detector.ts     # Loop detection
+│       ├── policy-engine.ts     # Policy engine + glob matching
+│       ├── client.ts            # HTTP client (native fetch)
+│       └── errors.ts            # 7 typed error classes
+├── api/                         # FastAPI backend
+│   ├── Dockerfile               # Production container                  ← NEW
+│   ├── alembic.ini              # Migration config                      ← NEW
+│   ├── alembic/                 # Versioned database migrations         ← NEW
 │   └── app/
-│       ├── main.py          # App entry point + CORS + startup
-│       ├── security.py      # Admin token auth middleware
+│       ├── main.py              # App entry point + CORS + startup
+│       ├── security.py          # Admin token auth middleware
 │       ├── routes/
-│       │   ├── runs.py      # Run lifecycle endpoints
-│       │   ├── policies.py  # Policy CRUD + evaluation
-│       │   ├── approvals.py # Approval create/approve/deny/list
-│       │   ├── gateway.py   # OpenAI-compatible proxy endpoints
-│       │   ├── api_keys.py  # API key management with enforcement
-│       │   └── telemetry.py # Batch telemetry ingestion
-│       ├── models/          # Run, Step, Policy, ApprovalRequest, APIKeyEnforcement
-│       ├── schemas/         # Pydantic request/response schemas
+│       │   ├── runs.py          # Run lifecycle endpoints
+│       │   ├── policies.py      # Policy CRUD + evaluation
+│       │   ├── approvals.py     # Approval create/approve/deny/list
+│       │   ├── gateway.py       # Streaming proxy + mid-stream kill     ← UPDATED
+│       │   ├── api_keys.py      # API key management with enforcement
+│       │   └── telemetry.py     # Batch telemetry ingestion
+│       ├── models/              # Run, Step, Policy, APIKey, Approval
 │       └── services/
-│           ├── run_service.py       # Run business logic
-│           ├── policy_service.py    # Policy business logic
-│           ├── gateway_service.py   # Gateway proxy + 25 model pricing
-│           ├── approval_service.py  # Approval lifecycle management
-│           └── notification_service.py # Email (SMTP) + webhook dispatch
-├── dashboard/               # Next.js real-time dashboard
+│           ├── run_service.py
+│           ├── policy_service.py
+│           ├── gateway_service.py   # 25 model pricing
+│           ├── approval_service.py
+│           └── notification_service.py
+├── dashboard/                   # Next.js real-time dashboard
+│   ├── Dockerfile               # Multi-stage production build          ← NEW
 │   └── src/
-│       ├── app/
-│       │   ├── dashboard/   # Run list + run detail pages
-│       │   ├── policies/    # Policy management UI
-│       │   ├── approvals/   # Approve/deny/extend pending requests
-│       │   └── api-keys/    # API key management with enforcement config
-│       ├── components/      # RunTable, StepTimeline, StatusBadge, CostBadge, Navbar
-│       └── services/        # API client + admin auth
-├── examples/                # Example agent integrations
-│   ├── simple_agent/        # 3-scenario demo (normal, loop, cost)
-│   ├── simple_llm_agent/    # Minimal @guard decorator usage
-│   ├── openai_agent/        # OpenAI tool-use pattern
-│   └── langgraph_agent/     # LangGraph workflow pattern
-└── docs/                    # Documentation
+│       └── app/
+│           ├── dashboard/       # Run list + run detail pages
+│           ├── policies/        # Policy management UI
+│           ├── approvals/       # Approve/deny/extend pending requests
+│           └── api-keys/        # API key management
+├── docker-compose.yml           # 4-service orchestration               ← NEW
+├── .env.example                 # All env vars documented               ← NEW
+├── .github/workflows/ci.yml    # CI/CD pipeline                         ← NEW
+└── examples/                    # Example agent integrations
 ```
 
 ---
@@ -467,48 +572,18 @@ The FastAPI server exposes endpoints with auto-generated docs at `/docs`:
 | `GET` | `/runs/{run_id}` | Get run details with all steps |
 | `GET` | `/runs` | List runs (paginated) |
 
-**Policies**
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/policies` | Create a policy |
-| `GET` | `/policies` | List policies |
-| `GET` | `/policies/{policy_id}` | Get a policy |
-| `PUT` | `/policies/{policy_id}` | Update a policy |
-| `DELETE` | `/policies/{policy_id}` | Delete a policy |
-| `POST` | `/policies/{policy_id}/evaluate` | Evaluate an action against a policy |
-
-**Approvals (Human-in-the-Loop)**
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/approvals` | Create an approval request |
-| `GET` | `/approvals` | List pending/resolved approvals |
-| `POST` | `/approvals/{id}/approve` | Approve with optional limit extension |
-| `POST` | `/approvals/{id}/deny` | Deny and terminate the run |
-
 **Gateway Proxy**
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/gateway/v1/chat/completions` | OpenAI-compatible chat completions proxy |
+| `POST` | `/gateway/v1/chat/completions` | OpenAI-compatible proxy (streaming + non-streaming) |
 | `GET` | `/gateway/v1/models` | List available models |
 
-**API Keys**
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api-keys` | Create an API key with enforcement config |
-| `GET` | `/api-keys` | List API keys |
-| `DELETE` | `/api-keys/{key_id}` | Revoke an API key |
-
-**Other**
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/health` | Health check |
-| `POST` | `/telemetry` | Batch ingest telemetry events |
+**Policies · Approvals · API Keys · Telemetry · Health**  
+See full API docs at `http://localhost:8000/docs`
 
 ---
 
 ## Supported Models (25+)
-
-Built-in pricing for cost tracking across all major providers:
 
 | Provider | Models |
 |----------|--------|
@@ -518,21 +593,6 @@ Built-in pricing for cost tracking across all major providers:
 | **Meta** | Llama 3 70B, Llama 3 8B |
 | **Mistral** | Mistral Large, Mistral Small |
 
-Custom models can be added via the pricing table.
-
----
-
-## Documentation
-
-| Doc | Description |
-|-----|-------------|
-| [Getting Started](docs/getting-started.md) | 5-minute quickstart guide |
-| [Installation](docs/installation.md) | Full setup instructions |
-| [SDK Usage](docs/sdk-usage.md) | Python and TypeScript API reference |
-| [Example Agents](docs/example-agents.md) | Integration examples |
-| [Dashboard Guide](docs/dashboard-guide.md) | Dashboard usage guide |
-| [Architecture](docs/architecture.md) | System design deep dive |
-
 ---
 
 ## Roadmap
@@ -541,28 +601,36 @@ Custom models can be added via the pricing table.
 - [x] TypeScript SDK with `guard()` HOF and class API
 - [x] Cost tracking with built-in pricing for 25+ models (5 providers)
 - [x] O(W²) sliding-window infinite loop detection
-- [x] Step limit and runtime limit enforcement
 - [x] Policy engine — allow/deny lists, rate limits, approval workflows
-- [x] Real-time Next.js dashboard with auto-refresh
-- [x] Step-by-step execution timelines
-- [x] Dashboard policy management UI
-- [x] Full per-step telemetry capture
-- [x] Graceful offline degradation
-- [x] REST API with policy CRUD and evaluation
+- [x] Real-time Next.js dashboard
 - [x] Dual enforcement — kill mode + alert mode
-- [x] Human-in-the-loop approval workflow with approve/deny/extend
-- [x] Notification dispatch — SMTP email + HTTP webhooks
-- [x] OpenAI-compatible gateway proxy (zero-code enforcement)
+- [x] Human-in-the-loop approval workflow
+- [x] OpenAI-compatible gateway proxy
 - [x] LangChain/LangGraph callback handler integration
 - [x] API key management with per-key enforcement config
-- [x] Dashboard approval management page
-- [ ] Docker Compose for one-command deployment
-- [ ] SSE streaming support in gateway proxy
-- [ ] Multi-tenant RBAC authentication
-- [ ] Multi-agent fleet monitoring dashboard
-- [ ] SDK ↔ API policy sync (fetch stored policies into SDK)
-- [ ] CLI tool (`steerplane init`, `steerplane status`)
-- [ ] Cloud-hosted dashboard (SaaS)
+- [x] Notification dispatch — SMTP email + HTTP webhooks
+- [x] Graceful offline degradation
+- [x] **SSE streaming in gateway with mid-stream cost kill** ← v0.4.0
+- [x] **Docker Compose (API + Dashboard + PostgreSQL + Redis)** ← v0.4.0
+- [x] **PostgreSQL support + Alembic migrations** ← v0.4.0
+- [x] **GitHub Actions CI/CD pipeline** ← v0.4.0
+- [x] **CLI tool (`steerplane runs`, `steerplane keys`, `steerplane status`)** ← v0.4.0
+- [x] **Config file support (`.steerplane.yml`)** ← v0.4.0
+- [x] **OpenAI Agents SDK integration** ← v0.4.0
+- [x] **CrewAI integration** ← v0.4.0
+- [x] **AutoGen integration** ← v0.4.0
+- [ ] WebSocket real-time dashboard (replace polling)
+- [ ] Webhook event system
+- [ ] Recommendation engine (auto-suggest limits)
+- [ ] Agent replay (flight recorder)
+- [ ] Cost projection (live burn rate widget)
+- [ ] Anomaly detection (deterministic thresholds)
+- [ ] OpenTelemetry export
+- [ ] Fleet monitoring dashboard
+- [ ] Policy-as-code (GitOps YAML)
+- [ ] Slack app with interactive approval buttons
+- [ ] Multi-tenant RBAC
+- [ ] Cloud-hosted SaaS
 
 ---
 
@@ -571,21 +639,20 @@ Custom models can be added via the pricing table.
 We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ```bash
-# Clone the repo
 git clone https://github.com/vijaym2k6/SteerPlane.git
 cd SteerPlane
 
-# Set up the API
+# Option A: Docker
+cp .env.example .env && docker compose up -d
+
+# Option B: Manual
 cd api && pip install -r requirements.txt
-
-# Set up the dashboard
 cd dashboard && npm install
+cd sdk && pip install -e ".[dev,cli,yaml]"
 
-# Run SDK tests
-cd sdk && python -m pytest tests/
-
-# Run API tests
-cd api && python -m pytest tests/
+# Run tests
+cd sdk && pytest tests/
+cd api && pytest tests/
 ```
 
 ---
@@ -598,6 +665,6 @@ MIT — see [LICENSE](LICENSE) for details.
 
 <p align="center">
   <img src="assets/logo.jpg" alt="SteerPlane" width="48" /><br>
-  <b>SteerPlane</b><br>
+  <b>SteerPlane v0.4.0</b><br>
   <em>"Ship agents. Not incidents."</em>
 </p>

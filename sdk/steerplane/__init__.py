@@ -25,7 +25,7 @@ Usage:
     run.end()
 """
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 from .guard import guard, SteerPlane, get_active_run
 from .run_manager import RunManager
@@ -34,6 +34,7 @@ from .cost_tracker import CostTracker
 from .telemetry import TelemetryCollector, StepEvent
 from .policy_engine import PolicyEngine, PolicyDecision, RateLimitSpec
 from .config import configure, get_config
+from .config_file import load_config_file, get_with_fallback
 from .exceptions import (
     SteerPlaneError,
     LoopDetectedError,
@@ -63,6 +64,8 @@ __all__ = [
     "detect_loop",
     "configure",
     "get_config",
+    "load_config_file",
+    "get_with_fallback",
     # Exceptions
     "SteerPlaneError",
     "LoopDetectedError",

@@ -31,7 +31,7 @@ class Settings:
     """Application settings."""
 
     APP_NAME: str = "SteerPlane API"
-    APP_VERSION: str = "0.3.0"
+    APP_VERSION: str = "0.4.0"
     DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./steerplane.db")
     CORS_ORIGINS: list[str] = _parse_cors_origins()

@@ -49,3 +49,10 @@ SteerPlane_PRD*
 
 # SteerPlane demo examples (local only, includes cloned repos)
 For-SteerPlane-Examples/
+
+# Docker
+docker-compose.override.yml
+
+# Patent and invention documents (sensitive, local only)
+Patentability*
+*.docx
