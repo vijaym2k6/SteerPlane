@@ -27,7 +27,8 @@ Usage:
 
 __version__ = "0.4.0"
 
-from .guard import guard, SteerPlane, get_active_run
+from .guard import guard, SteerPlane
+from .runtime_context import get_active_run
 from .run_manager import RunManager
 from .loop_detector import LoopDetector, detect_loop
 from .cost_tracker import CostTracker
