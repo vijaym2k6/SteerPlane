@@ -99,16 +99,18 @@ const howSteps = [
 ];
 
 /* ─── Architecture ─── */
-const archNodes = ["AI Agent", "AI Gateway", "Policy Engine", "SteerPlane SDK", "Guard Engine", "REST API", "PostgreSQL", "Dashboard UI"];
+const archNodes = ["AI Agent", "AI Gateway (SSE)", "Policy Engine", "SteerPlane SDK", "Guard Engine", "REST API", "PostgreSQL", "Redis", "Dashboard UI"];
 
 /* ─── Tech Stack ─── */
 const techStack = [
-  { layer: "Python SDK", tech: "Python 3.10+", detail: "Decorator API, context managers, LangChain integration" },
+  { layer: "Python SDK", tech: "Python 3.10+", detail: "Decorator API, CLI tool, .steerplane.yml config, LangChain/CrewAI/AutoGen/OpenAI Agents SDK integrations" },
   { layer: "TypeScript SDK", tech: "TypeScript", detail: "guard() wrapper, async-ready, npm-ready" },
-  { layer: "Gateway", tech: "FastAPI + httpx", detail: "OpenAI-compatible proxy with 25+ model pricing" },
-  { layer: "API", tech: "FastAPI", detail: "Auto-generated OpenAPI docs, CORS, connection pooling" },
-  { layer: "Database", tech: "PostgreSQL 17", detail: "Persistent storage with SQLAlchemy ORM" },
-  { layer: "Dashboard", tech: "Next.js 16", detail: "React 19, Framer Motion, API key management" },
+  { layer: "Gateway", tech: "FastAPI + httpx", detail: "SSE streaming proxy with mid-stream cost kill, 25+ model pricing" },
+  { layer: "API", tech: "FastAPI", detail: "Auto-generated OpenAPI docs, Alembic migrations, CORS" },
+  { layer: "Database", tech: "PostgreSQL 17", detail: "Persistent storage with SQLAlchemy ORM + Alembic" },
+  { layer: "Infrastructure", tech: "Docker Compose", detail: "4-service stack: API, Dashboard, PostgreSQL, Redis" },
+  { layer: "CI/CD", tech: "GitHub Actions", detail: "Lint, test, Docker build pipeline" },
+  { layer: "Dashboard", tech: "Next.js 16", detail: "React 19, Framer Motion, standalone Docker output" },
 ];
 
 /* ─── Code ─── */
@@ -154,7 +156,7 @@ export default function Home() {
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
           <span className="hero-badge-dot" />
-          V0.3.0 · AI Gateway + Runtime Guardrails
+          V0.4.0 · SSE Streaming Gateway + CLI + Docker + 4 Framework Integrations
         </motion.div>
 
         <motion.div
@@ -255,7 +257,8 @@ export default function Home() {
           <h2 className="section-title">Eight layers of runtime protection</h2>
           <p className="section-desc">
             Every capability is production-ready. Use the AI Gateway proxy for zero-code integration,
-            the SDK decorator for deep control, or the LangChain callback handler for automatic instrumentation.
+            the SDK decorator for deep control, or native framework integrations for LangChain, CrewAI,
+            AutoGen, and OpenAI Agents SDK.
           </p>
         </motion.div>
 
@@ -448,7 +451,7 @@ export default function Home() {
 
       {/* ═══════ FOOTER ═══════ */}
       <footer className="landing-footer">
-        <p>SteerPlane v0.3.0 — Open-source runtime guardrails for AI agents.</p>
+        <p>SteerPlane v0.4.0 — Open-source runtime guardrails for AI agents.</p>
         <p className="landing-footer-tagline">&quot;Ship agents. Not incidents.&quot;</p>
       </footer>
     </div>

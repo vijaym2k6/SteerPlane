@@ -2,19 +2,22 @@
 
 ## Overview
 
-SteerPlane is a monorepo with four main layers:
+SteerPlane v0.4.0 is a monorepo with five main layers:
 
 1. `sdk/` and `sdk-ts/`
-The Python and TypeScript SDKs enforce local guardrails such as step limits, cost ceilings, loop detection, and policy checks. They also stream run telemetry to the API when it is available.
+The Python and TypeScript SDKs enforce local guardrails such as step limits, cost ceilings, loop detection, and policy checks. They also stream run telemetry to the API when it is available. The Python SDK includes a CLI tool (`steerplane`) and `.steerplane.yml` config file support.
 
 2. `api/`
-The FastAPI control plane stores runs, steps, policies, and gateway API keys. It also exposes the OpenAI-compatible gateway used for zero-code LLM interception.
+The FastAPI control plane stores runs, steps, policies, and gateway API keys. It also exposes the OpenAI-compatible gateway used for zero-code LLM interception with real-time SSE streaming and mid-stream cost enforcement.
 
 3. `dashboard/`
-The Next.js dashboard reads run telemetry from the API, auto-refreshes every 3 seconds on run pages, and lets admins manage policies and gateway keys.
+The Next.js dashboard reads run telemetry from the API, auto-refreshes every 3 seconds on run pages, and lets admins manage policies and gateway keys. Ships as a standalone Docker image.
 
-4. `examples/`
-Simulated agents that exercise the SDK and dashboard flow.
+4. `infrastructure/`
+Docker Compose orchestrates a 4-service stack: API, Dashboard, PostgreSQL, and Redis. GitHub Actions CI/CD runs lint, test, and Docker build on every push.
+
+5. `integrations/`
+Native integration modules for LangChain, OpenAI Agents SDK, CrewAI, and AutoGen. All use lazy imports so framework dependencies are only required when actually used.
 
 ## Request Flows
 
@@ -31,7 +34,7 @@ Agent code
 
 The SDK still enforces local limits if the API is unavailable. Dashboard visibility degrades, but agent protection does not.
 
-### Gateway Flow
+### Gateway Flow (Non-Streaming)
 
 ```text
 OpenAI-compatible client
@@ -41,6 +44,31 @@ OpenAI-compatible client
   -> proxy to upstream provider
   -> log run + step telemetry
   -> return provider response plus SteerPlane metadata
+```
+
+### Gateway Flow (SSE Streaming) — New in v0.4.0
+
+```text
+OpenAI-compatible client (stream=true)
+  -> POST /gateway/v1/chat/completions
+  -> SteerPlane API key validation
+  -> pre-request policy checks
+  -> SSE stream from upstream provider
+  -> per-chunk token accumulation + cost tracking
+  -> if cost > ceiling: inject steerplane_enforcement event + sever stream
+  -> forward chunks to client in real time
+  -> log final telemetry on stream completion
+```
+
+The gateway accumulates tokens per SSE chunk and can terminate a stream mid-response by injecting a protocol-conformant `steerplane_enforcement` event before severing the upstream connection.
+
+### CLI Flow — New in v0.4.0
+
+```text
+steerplane status   -> GET /health
+steerplane runs     -> GET /runs, GET /runs/{id}, POST /runs/end
+steerplane keys     -> GET /api-keys, POST /api-keys, DELETE /api-keys/{id}
+steerplane logs     -> GET /runs (polling with --tail)
 ```
 
 Important gateway headers:
@@ -110,8 +138,37 @@ Stores gateway API keys plus usage counters and budget configuration.
 - `/dashboard/runs/[runId]` shows step timelines and refreshes every 3 seconds.
 - `/policies` and `/api-keys` are admin-only views and require a valid admin token.
 
+## Infrastructure — New in v0.4.0
+
+### Docker Compose Stack
+
+```yaml
+services:
+  api        # Python 3.11, FastAPI, Alembic migrations
+  dashboard  # Node 20, Next.js standalone
+  postgres   # PostgreSQL 16-alpine
+  redis      # Redis 7-alpine (caching layer)
+```
+
+### CI/CD Pipeline
+
+```
+push to main → Lint (ruff) → Test SDK → Test API → Test TS → Build Docker Images
+```
+
+### Database Migrations
+
+Alembic manages PostgreSQL schema versioning:
+
+```bash
+cd api
+alembic revision --autogenerate -m "description"
+alembic upgrade head
+```
+
 ## Tradeoffs
 
 - SDK protections are intentionally local-first so agents stay protected even if the API is down.
 - Gateway monthly accounting is DB-backed and calendar-month scoped.
 - Automatic gateway sessions are convenient for local development, but explicit session ids are recommended for production-grade accounting.
+- SSE streaming enforcement adds per-chunk overhead but ensures sub-second response to budget violations.
