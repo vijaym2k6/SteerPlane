@@ -19,7 +19,7 @@ dependencies. Import only the integration you need:
 
 def __getattr__(name):
     """Lazy imports to avoid requiring all framework dependencies."""
-    if name == "SteerPlaneCallbackHandler":
+    if name in ("SteerPlaneCallbackHandler", "SteerPlaneLangChainHandler"):
         from .langchain import SteerPlaneCallbackHandler
 
         return SteerPlaneCallbackHandler

@@ -5,26 +5,50 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "steerplane"
 version = "0.4.0"
-description = "Agent Control Plane for Autonomous Systems"
+description = "Agent Control Plane for Autonomous Systems — Runtime guards, loop detection, cost limits, and telemetry for AI agents."
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.10"
 authors = [
     {name = "SteerPlane", email = "hello@steerplane.ai"}
+]
+keywords = ["ai", "agents", "guard", "safety", "monitoring", "telemetry", "llm", "steerplane"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
     "requests>=2.28.0",
 ]
 
+[project.urls]
+Homepage = "https://steerplane.ai"
+Documentation = "https://docs.steerplane.ai"
+Repository = "https://github.com/vijaym2k6/SteerPlane"
+Issues = "https://github.com/vijaym2k6/SteerPlane/issues"
+
 [project.optional-dependencies]
 cli = ["click>=8.1.0"]
 yaml = ["pyyaml>=6.0"]
 langchain = ["langchain-core>=0.1.0"]
+crewai = ["crewai>=0.30.0"]
+autogen = ["pyautogen>=0.2.0"]
 all = ["click>=8.1.0", "pyyaml>=6.0", "langchain-core>=0.1.0"]
 dev = ["pytest>=7.0", "pytest-cov", "ruff"]
 
 [project.scripts]
 steerplane = "steerplane.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["steerplane*"]
+exclude = ["tests*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
