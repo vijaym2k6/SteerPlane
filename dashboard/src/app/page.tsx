@@ -156,7 +156,7 @@ export default function Home() {
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
           <span className="hero-badge-dot" />
-          V0.4.0 · SSE Streaming Gateway + CLI + Docker + 4 Framework Integrations
+          V0.4.1 · SSE Streaming Gateway + CLI + Docker + 4 Framework Integrations
         </motion.div>
 
         <motion.div
@@ -451,7 +451,7 @@ export default function Home() {
 
       {/* ═══════ FOOTER ═══════ */}
       <footer className="landing-footer">
-        <p>SteerPlane v0.4.0 — Open-source runtime guardrails for AI agents.</p>
+        <p>SteerPlane v0.4.1 — Open-source runtime guardrails for AI agents.</p>
         <p className="landing-footer-tagline">&quot;Ship agents. Not incidents.&quot;</p>
       </footer>
     </div>

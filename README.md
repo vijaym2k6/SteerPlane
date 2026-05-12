@@ -665,6 +665,6 @@ MIT — see [LICENSE](LICENSE) for details.
 
 <p align="center">
   <img src="assets/logo.jpg" alt="SteerPlane" width="48" /><br>
-  <b>SteerPlane v0.4.0</b><br>
+  <b>SteerPlane v0.4.1</b><br>
   <em>"Ship agents. Not incidents."</em>
 </p>

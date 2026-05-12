@@ -24,7 +24,20 @@ from .exceptions import (
     PolicyViolationError,
 )
 
+import sys
+
 logger = logging.getLogger("steerplane")
+
+
+def _safe_print(*args, **kwargs):
+    """Print that handles Unicode encoding errors on Windows (cp1252)."""
+    try:
+        print(*args, **kwargs)
+    except UnicodeEncodeError:
+        text = " ".join(str(a) for a in args)
+        print(text.encode(sys.stdout.encoding or "utf-8", errors="replace").decode(
+            sys.stdout.encoding or "utf-8", errors="replace"
+        ), **kwargs)
 
 
 class RunManager:
@@ -99,16 +112,16 @@ class RunManager:
         self._context_token = set_active_run(self)
 
         if self.log_to_console:
-            print("\n🚀 SteerPlane | Run Started")
-            print(f"   Run ID:  {self.run_id}")
-            print(f"   Agent:   {self.agent_name}")
-            print(f"   Limits:  ${self.cost_tracker.max_cost_usd} cost / {self.max_steps} steps")
+            _safe_print("\n🚀 SteerPlane | Run Started")
+            _safe_print(f"   Run ID:  {self.run_id}")
+            _safe_print(f"   Agent:   {self.agent_name}")
+            _safe_print(f"   Limits:  ${self.cost_tracker.max_cost_usd} cost / {self.max_steps} steps")
             if self.enforcement == "alert":
-                print(
+                _safe_print(
                     f"   Mode:    alert @ {int(self.alert_threshold * 100)}% "
                     f"({self.alert_timeout_sec}s timeout)"
                 )
-            print(f"   {'─' * 45}")
+            _safe_print(f"   {'─' * 45}")
 
         # Report to API
         self.client.start_run(
@@ -276,7 +289,7 @@ class RunManager:
         # Console output
         if self.log_to_console:
             status_icon = "✅" if status == "completed" else "❌"
-            print(
+            _safe_print(
                 f"   {status_icon} Step {event.step_number}: {action} "
                 f"| {total_tokens} tokens | {format_cost(step_cost.cost_usd)} "
                 f"| {latency_ms or 0:.0f}ms"
@@ -366,19 +379,19 @@ class RunManager:
         duration = self.end_time - self.start_time
 
         if self.log_to_console:
-            print(f"   {'─' * 45}")
+            _safe_print(f"   {'─' * 45}")
             status_icon = {"completed": "✅", "failed": "❌", "terminated": "⛔"}.get(
                 self.status, "⬜"
             )
-            print(f"\n{status_icon} SteerPlane | Run {self.status.upper()}")
-            print(f"   Run ID:     {self.run_id}")
-            print(f"   Steps:      {self.telemetry.step_count}")
-            print(f"   Cost:       {format_cost(self.cost_tracker.total_cost)}")
-            print(f"   Tokens:     {self.cost_tracker.total_tokens:,}")
-            print(f"   Duration:   {format_duration(duration)}")
+            _safe_print(f"\n{status_icon} SteerPlane | Run {self.status.upper()}")
+            _safe_print(f"   Run ID:     {self.run_id}")
+            _safe_print(f"   Steps:      {self.telemetry.step_count}")
+            _safe_print(f"   Cost:       {format_cost(self.cost_tracker.total_cost)}")
+            _safe_print(f"   Tokens:     {self.cost_tracker.total_tokens:,}")
+            _safe_print(f"   Duration:   {format_duration(duration)}")
             if error:
-                print(f"   Error:      {error}")
-            print()
+                _safe_print(f"   Error:      {error}")
+            _safe_print()
 
         # Report to API
         self.client.end_run(
@@ -545,11 +558,11 @@ class RunManager:
         self.status = "awaiting_approval"
 
         if self.log_to_console:
-            print(
+            _safe_print(
                 f"   🔔 Approval requested for {approval_type.replace('_', ' ')} "
                 f"({current_value:.4f} {unit} / {limit_value:.4f} {unit})"
             )
-            print(f"      Waiting up to {self.alert_timeout_sec}s for continue/kill...")
+            _safe_print(f"      Waiting up to {self.alert_timeout_sec}s for continue/kill...")
 
         local_deadline = time.time() + self.alert_timeout_sec + self.alert_poll_interval_sec
         while time.time() <= local_deadline:
@@ -569,12 +582,12 @@ class RunManager:
                 if self.log_to_console:
                     new_limit = resolution.get("new_limit")
                     if new_limit is not None:
-                        print(
+                        _safe_print(
                             f"   ✅ Approval granted. New {approval_type.replace('_', ' ')} "
                             f"limit: {new_limit}"
                         )
                     else:
-                        print("   ✅ Approval granted. Run resumed.")
+                        _safe_print("   ✅ Approval granted. Run resumed.")
                 return
 
             error_type = "approval_denied" if latest_status == "denied" else "alert_timeout"
