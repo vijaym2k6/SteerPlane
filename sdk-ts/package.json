@@ -1,6 +1,6 @@
 {
   "name": "steerplane",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Runtime control plane for autonomous AI agents — guards, cost limits, loop detection, and telemetry.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
