@@ -35,9 +35,12 @@ def _safe_print(*args, **kwargs):
         print(*args, **kwargs)
     except UnicodeEncodeError:
         text = " ".join(str(a) for a in args)
-        print(text.encode(sys.stdout.encoding or "utf-8", errors="replace").decode(
-            sys.stdout.encoding or "utf-8", errors="replace"
-        ), **kwargs)
+        print(
+            text.encode(sys.stdout.encoding or "utf-8", errors="replace").decode(
+                sys.stdout.encoding or "utf-8", errors="replace"
+            ),
+            **kwargs,
+        )
 
 
 class RunManager:
@@ -115,7 +118,9 @@ class RunManager:
             _safe_print("\n🚀 SteerPlane | Run Started")
             _safe_print(f"   Run ID:  {self.run_id}")
             _safe_print(f"   Agent:   {self.agent_name}")
-            _safe_print(f"   Limits:  ${self.cost_tracker.max_cost_usd} cost / {self.max_steps} steps")
+            _safe_print(
+                f"   Limits:  ${self.cost_tracker.max_cost_usd} cost / {self.max_steps} steps"
+            )
             if self.enforcement == "alert":
                 _safe_print(
                     f"   Mode:    alert @ {int(self.alert_threshold * 100)}% "
