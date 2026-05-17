@@ -18,7 +18,7 @@ class LoopDetectedError(SteerPlaneError):
         self.pattern = pattern
         self.window_size = window_size
         super().__init__(
-            f"🔄 Loop detected! Repeating pattern {pattern} "
+            f"[LOOP] Loop detected! Repeating pattern {pattern} "
             f"found in last {window_size} actions. Run terminated."
         )
 
@@ -30,7 +30,7 @@ class CostLimitExceeded(SteerPlaneError):
         self.current_cost = current_cost
         self.max_cost = max_cost
         super().__init__(
-            f"💰 Cost limit exceeded! Current: ${current_cost:.4f}, "
+            f"[COST] Cost limit exceeded! Current: ${current_cost:.4f}, "
             f"Limit: ${max_cost:.2f}. Run terminated."
         )
 
@@ -42,7 +42,7 @@ class StepLimitExceeded(SteerPlaneError):
         self.current_steps = current_steps
         self.max_steps = max_steps
         super().__init__(
-            f"🚫 Step limit exceeded! Steps: {current_steps}, Limit: {max_steps}. Run terminated."
+            f"[STEP] Step limit exceeded! Steps: {current_steps}, Limit: {max_steps}. Run terminated."
         )
 
 
@@ -52,7 +52,7 @@ class RunTerminatedError(SteerPlaneError):
     def __init__(self, run_id: str, reason: str = "Manual termination"):
         self.run_id = run_id
         self.reason = reason
-        super().__init__(f"⛔ Run {run_id} terminated. Reason: {reason}")
+        super().__init__(f"[TERMINATED] Run {run_id} terminated. Reason: {reason}")
 
 
 class PolicyViolationError(SteerPlaneError):
@@ -62,7 +62,7 @@ class PolicyViolationError(SteerPlaneError):
         self.action = action
         self.rule = rule
         self.reason = reason
-        super().__init__(f"🛡️ Policy violation: {reason} [rule={rule}]")
+        super().__init__(f"[POLICY] Policy violation: {reason} [rule={rule}]")
 
 
 class APIConnectionError(SteerPlaneError):
@@ -71,4 +71,4 @@ class APIConnectionError(SteerPlaneError):
     def __init__(self, url: str, detail: str = ""):
         self.url = url
         self.detail = detail
-        super().__init__(f"🔌 Cannot connect to SteerPlane API at {url}. {detail}")
+        super().__init__(f"[API] Cannot connect to SteerPlane API at {url}. {detail}")

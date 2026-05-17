@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import { motion } from "framer-motion";
 import type { PolicyConfig, RateLimitSpec } from "@/services/api";
 import {
     fetchPolicies,
@@ -357,15 +358,18 @@ export default function PoliciesPage() {
 
     return (
         <main className="policies-page">
-            <div className="policies-header">
-                <div>
-                    <h1>🛡️ Policy Management</h1>
-                    <p className="policies-subtitle">
-                        Configure action allow/deny lists, rate limits, and
-                        approval requirements per agent.
-                    </p>
-                </div>
-            </div>
+            <motion.div
+                className="page-header"
+                initial={{ opacity: 0, y: -15, filter: "blur(8px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }}
+            >
+                <h1 className="page-title">Policy Management</h1>
+                <p className="page-subtitle">
+                    Configure action allow/deny lists, rate limits, and
+                    approval requirements per agent.
+                </p>
+            </motion.div>
 
             {error && <div className="policy-error">{error}</div>}
 

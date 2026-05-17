@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
 import { fetchApprovals, fetchRuns, RunListResponse, ApprovalRequest } from "@/services/api";
+import { ADMIN_TOKEN_EVENT } from "@/services/admin-auth";
 import RunTable from "@/components/RunTable";
 
 const stagger = {
@@ -28,7 +29,7 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const loadRuns = async () => {
+    const loadRuns = useCallback(async () => {
         try {
             const result = await fetchRuns();
             setData(result);
@@ -44,13 +45,17 @@ export default function DashboardPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         loadRuns();
         const interval = setInterval(loadRuns, 3000);
-        return () => clearInterval(interval);
-    }, []);
+        window.addEventListener(ADMIN_TOKEN_EVENT, loadRuns);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener(ADMIN_TOKEN_EVENT, loadRuns);
+        };
+    }, [loadRuns]);
 
     const runs = data?.runs || [];
     const totalRuns = data?.total || 0;

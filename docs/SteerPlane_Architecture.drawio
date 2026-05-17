@@ -1,0 +1,256 @@
+<mxfile host="app.diagrams.net" modified="2026-04-09" agent="SteerPlane" version="24.0.0" type="device">
+  <diagram id="steerplane-arch" name="SteerPlane Architecture">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ========== TITLE ========== -->
+        <mxCell id="title" value="&lt;b&gt;SteerPlane — Runtime Enforcement Architecture&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontFamily=Times New Roman;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="20" width="420" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- ========== AGENT APPLICATION (TOP) ========== -->
+        <mxCell id="agent_app" value="Agent Application&#xa;(Any Framework: OpenAI SDK, LangChain, CrewAI, AutoGen)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontFamily=Times New Roman;fontSize=12;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="360" y="70" width="580" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ========== SDK DECORATOR LAYER ========== -->
+        <mxCell id="sdk_container" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#000000;strokeWidth=2;fontFamily=Times New Roman;fontSize=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="160" y="160" width="980" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="sdk_label" value="&lt;b&gt;SteerPlane SDK — @guard Decorator (In-Process Enforcement)&lt;/b&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontFamily=Times New Roman;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="170" y="165" width="400" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- SDK Sub-components -->
+        <mxCell id="policy_engine" value="Policy Engine&#xa;(Deny → Allow →&#xa;Rate Limit → Approval)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontFamily=Times New Roman;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="180" y="195" width="170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="cost_tracker" value="Cost Tracker&#xa;(Per-Model Pricing,&#xa;Cumulative Ceiling)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontFamily=Times New Roman;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="380" y="195" width="170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="loop_detector" value="Loop Detector&#xa;(Sliding Window O(W²),&#xa;Sub-Millisecond)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontFamily=Times New Roman;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="580" y="195" width="170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="enforcement_mode" value="Enforcement Mode&#xa;(Kill | Alert)&#xa;Configurable Per Run" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontFamily=Times New Roman;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="780" y="195" width="170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="telemetry_sdk" value="Telemetry&#xa;Reporter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontFamily=Times New Roman;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="980" y="195" width="140" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrows between SDK components -->
+        <mxCell id="sdk_arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Times New Roman;" edge="1" source="policy_engine" target="cost_tracker" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="sdk_arrow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Times New Roman;" edge="1" source="cost_tracker" target="loop_detector" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="sdk_arrow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Times New Roman;" edge="1" source="loop_detector" target="enforcement_mode" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="sdk_arrow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Times New Roman;" edge="1" source="enforcement_mode" target="telemetry_sdk" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Agent to SDK arrow -->
+        <mxCell id="agent_to_sdk" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Times New Roman;" edge="1" source="agent_app" target="sdk_container" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="agent_to_sdk_label" value="log_step(action)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Times New Roman;fontSize=11;" vertex="1" connectable="0" parent="agent_to_sdk">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint x="50" as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- ========== DUAL ENFORCEMENT BRANCHING ========== -->
+        <!-- Decision Diamond -->
+        <mxCell id="limit_decision" value="Limit&#xa;Breached?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontFamily=Times New Roman;fontSize=12;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="580" y="340" width="120" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- SDK to decision -->
+        <mxCell id="sdk_to_decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Times New Roman;" edge="1" source="sdk_container" target="limit_decision" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- KILL MODE BOX -->
+        <mxCell id="kill_mode" value="KILL MODE&#xa;Immediate Termination&#xa;(Raise Exception)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontFamily=Times New Roman;fontSize=12;verticalAlign=middle;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="270" y="350" width="200" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- ALERT MODE BOX -->
+        <mxCell id="alert_mode" value="ALERT MODE&#xa;Pause → Notify → Wait&#xa;for Human Decision" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontFamily=Times New Roman;fontSize=12;verticalAlign=middle;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="810" y="350" width="200" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Decision to Kill -->
+        <mxCell id="decision_to_kill" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Times New Roman;" edge="1" source="limit_decision" target="kill_mode" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="kill_label" value="enforcement = kill" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Times New Roman;fontSize=11;" vertex="1" connectable="0" parent="decision_to_kill">
+          <mxGeometry x="-0.1" y="-1" relative="1" as="geometry"><mxPoint y="-10" as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- Decision to Alert -->
+        <mxCell id="decision_to_alert" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Times New Roman;" edge="1" source="limit_decision" target="alert_mode" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="alert_label" value="enforcement = alert" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Times New Roman;fontSize=11;" vertex="1" connectable="0" parent="decision_to_alert">
+          <mxGeometry x="-0.1" y="-1" relative="1" as="geometry"><mxPoint y="-10" as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- ========== APPROVAL WORKFLOW (from Alert Mode) ========== -->
+        <mxCell id="approval_request" value="Create Approval Request&#xa;(status: pending)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontFamily=Times New Roman;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="830" y="460" width="170" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="alert_to_approval" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;" edge="1" source="alert_mode" target="approval_request" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Notification Dispatch -->
+        <mxCell id="notify" value="Dispatch Notifications&#xa;(Email / Webhook / Slack)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontFamily=Times New Roman;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="460" width="170" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="approval_to_notify" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;" edge="1" source="approval_request" target="notify" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Approval Decision Diamond -->
+        <mxCell id="approval_decision" value="Human&#xa;Decision" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontFamily=Times New Roman;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="860" y="550" width="110" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="approval_to_decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;" edge="1" source="approval_request" target="approval_decision" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Approve -->
+        <mxCell id="approve_box" value="Approved&#xa;(Extend Limit,&#xa;Resume Run)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontFamily=Times New Roman;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="560" width="150" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="decision_to_approve" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;" edge="1" source="approval_decision" target="approve_box" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="approve_label" value="Approve" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Times New Roman;fontSize=11;" vertex="1" connectable="0" parent="decision_to_approve">
+          <mxGeometry x="-0.2" y="-1" relative="1" as="geometry"><mxPoint y="-10" as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- Deny / Timeout -->
+        <mxCell id="deny_box" value="Denied / Timeout&#xa;(Terminate Run)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontFamily=Times New Roman;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="690" y="560" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="decision_to_deny" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;" edge="1" source="approval_decision" target="deny_box" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="deny_label" value="Deny / Timeout" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Times New Roman;fontSize=11;" vertex="1" connectable="0" parent="decision_to_deny">
+          <mxGeometry x="-0.2" y="-1" relative="1" as="geometry"><mxPoint y="-10" as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- ========== LOOP/POLICY ALWAYS KILL NOTE ========== -->
+        <mxCell id="invariant_note" value="Loop Detection &amp; Policy Violations&#xa;→ ALWAYS Hard Kill (Non-Overridable)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontFamily=Times New Roman;fontSize=11;verticalAlign=middle;align=center;fontStyle=1;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="220" y="440" width="280" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="kill_to_invariant" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1;endArrow=classic;endFill=1;dashed=1;" edge="1" source="kill_mode" target="invariant_note" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ========== MIDDLE LAYER: API SERVER + GATEWAY ========== -->
+        <!-- API Server -->
+        <mxCell id="api_server" value="SteerPlane API Server&#xa;(FastAPI + SQLAlchemy)&#xa;Runs | Steps | Approvals | Policies" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontFamily=Times New Roman;fontSize=12;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="160" y="680" width="280" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Gateway Proxy -->
+        <mxCell id="gateway_proxy" value="SteerPlane Gateway Proxy&#xa;(OpenAI-Compatible Endpoint)&#xa;Auth → Policy → Cost → Loop → Forward" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontFamily=Times New Roman;fontSize=12;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="510" y="680" width="300" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Database -->
+        <mxCell id="database" value="Database&#xa;(SQLite / PostgreSQL)&#xa;runs, steps, api_keys,&#xa;approval_requests, policies" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontFamily=Times New Roman;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="160" y="810" width="280" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- LLM Provider -->
+        <mxCell id="llm_provider" value="LLM Provider&#xa;(OpenAI / Anthropic / Google)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontFamily=Times New Roman;fontSize=12;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="510" y="820" width="300" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Dashboard -->
+        <mxCell id="dashboard" value="SteerPlane Dashboard&#xa;(Next.js)&#xa;Runs | Approvals | API Keys | Policies" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontFamily=Times New Roman;fontSize=12;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="890" y="680" width="280" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Notification Channels -->
+        <mxCell id="notification_channels" value="Notification Channels&#xa;Email (SMTP) | Webhook / Slack" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontFamily=Times New Roman;fontSize=12;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="890" y="810" width="280" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ========== CONNECTING ARROWS (LOWER) ========== -->
+        <!-- SDK telemetry to API -->
+        <mxCell id="sdk_to_api" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;" edge="1" source="telemetry_sdk" target="api_server" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1050" y="640"/>
+              <mxPoint x="300" y="640"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sdk_to_api_label" value="Telemetry + Approval Requests" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Times New Roman;fontSize=10;" vertex="1" connectable="0" parent="sdk_to_api">
+          <mxGeometry x="-0.3" relative="1" as="geometry"><mxPoint y="-10" as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- API to Database -->
+        <mxCell id="api_to_db" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;" edge="1" source="api_server" target="database" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Gateway to LLM -->
+        <mxCell id="gateway_to_llm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;" edge="1" source="gateway_proxy" target="llm_provider" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="gateway_to_llm_label" value="Forwards with&#xa;real API key" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Times New Roman;fontSize=10;" vertex="1" connectable="0" parent="gateway_to_llm">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint x="60" as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- API to Dashboard -->
+        <mxCell id="api_to_dashboard" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;startArrow=classic;startFill=1;" edge="1" source="gateway_proxy" target="dashboard" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Dashboard to Notifications -->
+        <mxCell id="dashboard_to_notif" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;" edge="1" source="dashboard" target="notification_channels" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- API to Gateway -->
+        <mxCell id="api_to_gateway" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;startArrow=classic;startFill=1;" edge="1" source="api_server" target="gateway_proxy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ========== AGENT TO GATEWAY (alternate path) ========== -->
+        <mxCell id="agent_to_gateway" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;strokeColor=#000000;strokeWidth=1.5;endArrow=classic;endFill=1;dashed=1;dashPattern=8 4;" edge="1" source="agent_app" target="gateway_proxy" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="100" y="95"/>
+              <mxPoint x="100" y="715"/>
+              <mxPoint x="510" y="715"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="agent_gateway_label" value="Gateway Mode&#xa;(change base_url only)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Times New Roman;fontSize=10;" vertex="1" connectable="0" parent="agent_to_gateway">
+          <mxGeometry x="-0.5" relative="1" as="geometry"><mxPoint x="-30" as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- ========== KEY SECURITY NOTE ========== -->
+        <mxCell id="security_note" value="Security: In Gateway Mode, the agent&#xa;NEVER holds the LLM API key.&#xa;Real key is used only server-side." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontFamily=Times New Roman;fontSize=10;verticalAlign=middle;align=center;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="510" y="890" width="300" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ========== GRACEFUL DEGRADATION NOTE ========== -->
+        <mxCell id="degradation_note" value="Graceful Degradation: SDK enforces all&#xa;limits locally when API is unreachable.&#xa;Alert mode degrades to Kill mode." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontFamily=Times New Roman;fontSize=10;verticalAlign=middle;align=center;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="160" y="910" width="280" height="50" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

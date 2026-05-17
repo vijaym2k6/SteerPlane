@@ -17,7 +17,7 @@ export class LoopDetectedError extends SteerPlaneError {
 
   constructor(pattern: string[], windowSize: number) {
     super(
-      `🔄 Loop detected! Repeating pattern [${pattern.join(", ")}] ` +
+      `[LOOP] Loop detected! Repeating pattern [${pattern.join(", ")}] ` +
         `found in last ${windowSize} actions. Run terminated.`
     );
     this.name = "LoopDetectedError";
@@ -32,7 +32,7 @@ export class CostLimitExceeded extends SteerPlaneError {
 
   constructor(currentCost: number, maxCost: number) {
     super(
-      `💰 Cost limit exceeded! Current: $${currentCost.toFixed(4)}, ` +
+      `[COST] Cost limit exceeded! Current: $${currentCost.toFixed(4)}, ` +
         `Limit: $${maxCost.toFixed(2)}. Run terminated.`
     );
     this.name = "CostLimitExceeded";
@@ -47,7 +47,7 @@ export class StepLimitExceeded extends SteerPlaneError {
 
   constructor(currentSteps: number, maxSteps: number) {
     super(
-      `🚫 Step limit exceeded! Steps: ${currentSteps}, ` +
+      `[STEP] Step limit exceeded! Steps: ${currentSteps}, ` +
         `Limit: ${maxSteps}. Run terminated.`
     );
     this.name = "StepLimitExceeded";
@@ -61,7 +61,7 @@ export class RunTerminatedError extends SteerPlaneError {
   public readonly reason: string;
 
   constructor(runId: string, reason: string = "Manual termination") {
-    super(`⛔ Run ${runId} terminated. Reason: ${reason}`);
+    super(`[TERMINATED] Run ${runId} terminated. Reason: ${reason}`);
     this.name = "RunTerminatedError";
     this.runId = runId;
     this.reason = reason;
@@ -73,7 +73,7 @@ export class APIConnectionError extends SteerPlaneError {
   public readonly detail: string;
 
   constructor(url: string, detail: string = "") {
-    super(`🔌 Cannot connect to SteerPlane API at ${url}. ${detail}`);
+    super(`[API] Cannot connect to SteerPlane API at ${url}. ${detail}`);
     this.name = "APIConnectionError";
     this.url = url;
     this.detail = detail;
@@ -86,7 +86,7 @@ export class PolicyViolationError extends SteerPlaneError {
   public readonly reason: string;
 
   constructor(action: string, rule: string, reason: string) {
-    super(`🛡️ Policy violation: ${reason}`);
+    super(`[POLICY] Policy violation: ${reason}`);
     this.name = "PolicyViolationError";
     this.action = action;
     this.rule = rule;

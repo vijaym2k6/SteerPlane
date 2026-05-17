@@ -50,12 +50,12 @@ class SteerPlaneClient:
         except requests.ConnectionError:
             self._api_available = False
             logger.warning(
-                f"⚠️  SteerPlane API not reachable at {self.api_url}. "
+                f"[WARN] SteerPlane API not reachable at {self.api_url}. "
                 f"Running in offline mode (guards still active, no dashboard data)."
             )
             return None
         except requests.RequestException as e:
-            logger.warning(f"⚠️  API request failed: {e}")
+            logger.warning(f"[WARN] API request failed: {e}")
             return None
 
     def start_run(

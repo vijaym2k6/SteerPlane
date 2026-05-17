@@ -115,7 +115,7 @@ class RunManager:
         self._context_token = set_active_run(self)
 
         if self.log_to_console:
-            _safe_print("\n🚀 SteerPlane | Run Started")
+            _safe_print("\n>> SteerPlane | Run Started")
             _safe_print(f"   Run ID:  {self.run_id}")
             _safe_print(f"   Agent:   {self.agent_name}")
             _safe_print(
@@ -126,7 +126,7 @@ class RunManager:
                     f"   Mode:    alert @ {int(self.alert_threshold * 100)}% "
                     f"({self.alert_timeout_sec}s timeout)"
                 )
-            _safe_print(f"   {'─' * 45}")
+            _safe_print(f"   {'-' * 45}")
 
         # Report to API
         self.client.start_run(
@@ -293,7 +293,7 @@ class RunManager:
 
         # Console output
         if self.log_to_console:
-            status_icon = "✅" if status == "completed" else "❌"
+            status_icon = "[OK]" if status == "completed" else "[ERR]"
             _safe_print(
                 f"   {status_icon} Step {event.step_number}: {action} "
                 f"| {total_tokens} tokens | {format_cost(step_cost.cost_usd)} "
@@ -384,9 +384,9 @@ class RunManager:
         duration = self.end_time - self.start_time
 
         if self.log_to_console:
-            _safe_print(f"   {'─' * 45}")
-            status_icon = {"completed": "✅", "failed": "❌", "terminated": "⛔"}.get(
-                self.status, "⬜"
+            _safe_print(f"   {'-' * 45}")
+            status_icon = {"completed": "[OK]", "failed": "[ERR]", "terminated": "[STOP]"}.get(
+                self.status, "[--]"
             )
             _safe_print(f"\n{status_icon} SteerPlane | Run {self.status.upper()}")
             _safe_print(f"   Run ID:     {self.run_id}")
@@ -564,7 +564,7 @@ class RunManager:
 
         if self.log_to_console:
             _safe_print(
-                f"   🔔 Approval requested for {approval_type.replace('_', ' ')} "
+                f"   [ALERT] Approval requested for {approval_type.replace('_', ' ')} "
                 f"({current_value:.4f} {unit} / {limit_value:.4f} {unit})"
             )
             _safe_print(f"      Waiting up to {self.alert_timeout_sec}s for continue/kill...")
@@ -588,11 +588,11 @@ class RunManager:
                     new_limit = resolution.get("new_limit")
                     if new_limit is not None:
                         _safe_print(
-                            f"   ✅ Approval granted. New {approval_type.replace('_', ' ')} "
+                            f"   [OK] Approval granted. New {approval_type.replace('_', ' ')} "
                             f"limit: {new_limit}"
                         )
                     else:
-                        _safe_print("   ✅ Approval granted. Run resumed.")
+                        _safe_print("   [OK] Approval granted. Run resumed.")
                 return
 
             error_type = "approval_denied" if latest_status == "denied" else "alert_timeout"
