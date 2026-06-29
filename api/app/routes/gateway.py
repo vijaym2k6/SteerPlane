@@ -376,55 +376,62 @@ async def _handle_streaming(
                 if not line.strip():
                     continue
 
-                # --- OpenAI SSE format ---
-                if line.startswith("data: "):
-                    data = line[6:]
-                    if data.strip() == "[DONE]":
-                        yield "data: [DONE]\n\n"
-                        break
-
-                    try:
-                        chunk = _json.loads(data)
-
-                        # Extract usage from final chunk (stream_options)
-                        if "usage" in chunk and chunk["usage"]:
-                            stream_state["input_tokens"] = chunk["usage"].get(
-                                "prompt_tokens", stream_state["input_tokens"]
-                            )
-                            stream_state["output_tokens"] = chunk["usage"].get(
-                                "completion_tokens", stream_state["output_tokens"]
-                            )
-
-                        # Estimate output tokens from delta content length
-                        choices = chunk.get("choices", [])
-                        if choices:
-                            delta = choices[0].get("delta", {})
-                            content = delta.get("content", "")
-                            if content:
-                                # Rough estimate: ~4 chars per token
-                                stream_state["output_tokens"] += max(1, len(content) // 4)
-
-                    except (ValueError, KeyError):
-                        pass
-
-                # --- Anthropic SSE format ---
-                elif line.startswith("event: ") or (
-                    provider == "anthropic" and line.startswith("data: ")
-                ):
+                # --- Parse usage, branching on provider FIRST ---
+                # Both OpenAI and Anthropic emit `data: ` lines, so the provider
+                # check must come before the `data:` check — otherwise Anthropic
+                # chunks fall into the OpenAI parser, usage is never extracted,
+                # and the mid-stream cost kill (below) can never fire for Claude.
+                if provider == "anthropic":
                     if line.startswith("data: "):
-                        data = line[6:]
                         try:
-                            chunk = _json.loads(data)
+                            chunk = _json.loads(line[6:])
                             msg_type = chunk.get("type", "")
-
                             if msg_type == "message_start":
                                 usage = chunk.get("message", {}).get("usage", {})
-                                stream_state["input_tokens"] = usage.get("input_tokens", 0)
+                                stream_state["input_tokens"] = usage.get(
+                                    "input_tokens", stream_state["input_tokens"]
+                                )
+                                stream_state["output_tokens"] = usage.get(
+                                    "output_tokens", stream_state["output_tokens"]
+                                )
                             elif msg_type == "message_delta":
+                                # Anthropic reports cumulative output_tokens here.
                                 usage = chunk.get("usage", {})
                                 stream_state["output_tokens"] = usage.get(
                                     "output_tokens", stream_state["output_tokens"]
                                 )
+                        except (ValueError, KeyError):
+                            pass
+                    # `event:` lines carry no usable usage payload; forward as-is.
+                else:
+                    # --- OpenAI SSE format ---
+                    if line.startswith("data: "):
+                        data = line[6:]
+                        if data.strip() == "[DONE]":
+                            yield "data: [DONE]\n\n"
+                            break
+
+                        try:
+                            chunk = _json.loads(data)
+
+                            # Authoritative usage from the final chunk (stream_options)
+                            if "usage" in chunk and chunk["usage"]:
+                                stream_state["input_tokens"] = chunk["usage"].get(
+                                    "prompt_tokens", stream_state["input_tokens"]
+                                )
+                                stream_state["output_tokens"] = chunk["usage"].get(
+                                    "completion_tokens", stream_state["output_tokens"]
+                                )
+
+                            # Estimate output tokens from delta content length
+                            choices = chunk.get("choices", [])
+                            if choices:
+                                delta = choices[0].get("delta", {})
+                                content = delta.get("content", "")
+                                if content:
+                                    # Rough estimate: ~4 chars per token
+                                    stream_state["output_tokens"] += max(1, len(content) // 4)
+
                         except (ValueError, KeyError):
                             pass
 
