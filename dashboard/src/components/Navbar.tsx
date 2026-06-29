@@ -12,6 +12,7 @@ import {
     getAdminToken,
     setAdminToken,
 } from "@/services/admin-auth";
+import { DEMO_MODE } from "@/services/demo-data";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -38,6 +39,12 @@ export default function Navbar() {
     };
 
     useEffect(() => {
+        // Demo mode has no live backend — skip the health probe (which would
+        // always read "offline") and show a static "Demo Mode" indicator.
+        if (DEMO_MODE) {
+            setApiStatus("connected");
+            return;
+        }
         const syncAdminToken = () => {
             const token = getAdminToken();
             setHasAdminToken(Boolean(token));
@@ -122,18 +129,27 @@ export default function Navbar() {
                 </div>
 
                 <div className="navbar-right">
-                    <button
-                        type="button"
-                        className={`btn btn-sm navbar-admin-button ${hasAdminToken ? "btn-success" : "btn-secondary"}`}
-                        onClick={() => setShowTokenModal(true)}
-                    >
-                        {hasAdminToken ? "Admin Ready" : "Admin Token"}
-                    </button>
+                    {DEMO_MODE ? (
+                        <div className="navbar-status">
+                            <div className="status-dot"></div>
+                            <span>Demo Mode</span>
+                        </div>
+                    ) : (
+                        <>
+                            <button
+                                type="button"
+                                className={`btn btn-sm navbar-admin-button ${hasAdminToken ? "btn-success" : "btn-secondary"}`}
+                                onClick={() => setShowTokenModal(true)}
+                            >
+                                {hasAdminToken ? "Admin Ready" : "Admin Token"}
+                            </button>
 
-                    <div className={`navbar-status ${apiStatus === "offline" ? "offline" : ""}`}>
-                        <div className={`status-dot ${apiStatus === "offline" ? "status-dot-offline" : ""}`}></div>
-                        <span>{apiLabel}</span>
-                    </div>
+                            <div className={`navbar-status ${apiStatus === "offline" ? "offline" : ""}`}>
+                                <div className={`status-dot ${apiStatus === "offline" ? "status-dot-offline" : ""}`}></div>
+                                <span>{apiLabel}</span>
+                            </div>
+                        </>
+                    )}
                 </div>
             </nav>
 

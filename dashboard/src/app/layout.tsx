@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import DemoBanner from '@/components/DemoBanner';
+import DemoNotice from '@/components/DemoNotice';
 
 export const metadata: Metadata = {
   title: 'SteerPlane — Agent Control Plane',
@@ -28,9 +30,11 @@ export default function RootLayout({
         <div className="bg-orb-3" />
 
         <div className="app-container">
+          <DemoBanner />
           <Navbar />
 
           <main className="main-content">
+            <DemoNotice />
             {children}
           </main>
         </div>

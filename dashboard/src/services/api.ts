@@ -1,4 +1,5 @@
 import { getAdminToken } from "./admin-auth";
+import { DEMO_MODE, demo } from "./demo-data";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const ADMIN_TOKEN_HEADER = "X-SteerPlane-Admin-Token";
@@ -104,6 +105,7 @@ export interface RunListResponse {
 // ─── Runs API ────────────────────────────────────────
 
 export async function fetchRuns(limit = 50, offset = 0): Promise<RunListResponse> {
+    if (DEMO_MODE) return demo.fetchRuns(limit, offset);
     const res = await fetch(`${API_BASE}/runs?limit=${limit}&offset=${offset}`, {
         cache: "no-store",
     });
@@ -112,6 +114,7 @@ export async function fetchRuns(limit = 50, offset = 0): Promise<RunListResponse
 }
 
 export async function fetchRun(runId: string): Promise<RunDetail> {
+    if (DEMO_MODE) return demo.fetchRun(runId);
     const res = await fetch(`${API_BASE}/runs/${runId}`, {
         cache: "no-store",
     });
@@ -148,6 +151,7 @@ export interface PolicyListResponse {
 }
 
 export async function fetchPolicies(): Promise<PolicyConfig[]> {
+    if (DEMO_MODE) return demo.fetchPolicies();
     const res = await fetch(`${API_BASE}/policies`, {
         cache: "no-store",
         headers: withAdminHeaders(),
@@ -158,6 +162,7 @@ export async function fetchPolicies(): Promise<PolicyConfig[]> {
 }
 
 export async function fetchPolicy(policyId: string): Promise<PolicyConfig> {
+    if (DEMO_MODE) return demo.fetchPolicy(policyId);
     const res = await fetch(`${API_BASE}/policies/${policyId}`, {
         cache: "no-store",
         headers: withAdminHeaders(),
@@ -167,6 +172,7 @@ export async function fetchPolicy(policyId: string): Promise<PolicyConfig> {
 }
 
 export async function createPolicy(policy: PolicyConfig): Promise<PolicyConfig> {
+    if (DEMO_MODE) return demo.createPolicy(policy);
     const res = await fetch(`${API_BASE}/policies`, {
         method: "POST",
         headers: withAdminHeaders({ "Content-Type": "application/json" }),
@@ -180,6 +186,7 @@ export async function updatePolicy(
     policyId: string,
     policy: Partial<PolicyConfig>
 ): Promise<PolicyConfig> {
+    if (DEMO_MODE) return demo.updatePolicy(policyId, policy);
     const res = await fetch(`${API_BASE}/policies/${policyId}`, {
         method: "PUT",
         headers: withAdminHeaders({ "Content-Type": "application/json" }),
@@ -190,6 +197,7 @@ export async function updatePolicy(
 }
 
 export async function deletePolicy(policyId: string): Promise<void> {
+    if (DEMO_MODE) return demo.deletePolicy(policyId);
     const res = await fetch(`${API_BASE}/policies/${policyId}`, {
         method: "DELETE",
         headers: withAdminHeaders(),
@@ -244,6 +252,7 @@ export interface CreateKeyRequest {
 }
 
 export async function fetchAPIKeys(): Promise<APIKeyConfig[]> {
+    if (DEMO_MODE) return demo.fetchAPIKeys();
     const res = await fetch(`${API_BASE}/api-keys`, {
         cache: "no-store",
         headers: withAdminHeaders(),
@@ -254,6 +263,7 @@ export async function fetchAPIKeys(): Promise<APIKeyConfig[]> {
 }
 
 export async function createAPIKey(req: CreateKeyRequest): Promise<APIKeyConfig> {
+    if (DEMO_MODE) return demo.createAPIKey(req);
     const res = await fetch(`${API_BASE}/api-keys`, {
         method: "POST",
         headers: withAdminHeaders({ "Content-Type": "application/json" }),
@@ -267,6 +277,7 @@ export async function updateAPIKey(
     keyId: string,
     updates: Partial<CreateKeyRequest & { is_active: boolean }>
 ): Promise<APIKeyConfig> {
+    if (DEMO_MODE) return demo.updateAPIKey(keyId, updates);
     const res = await fetch(`${API_BASE}/api-keys/${keyId}`, {
         method: "PUT",
         headers: withAdminHeaders({ "Content-Type": "application/json" }),
@@ -277,6 +288,7 @@ export async function updateAPIKey(
 }
 
 export async function deleteAPIKey(keyId: string): Promise<void> {
+    if (DEMO_MODE) return demo.deleteAPIKey(keyId);
     const res = await fetch(`${API_BASE}/api-keys/${keyId}`, {
         method: "DELETE",
         headers: withAdminHeaders(),
@@ -332,6 +344,7 @@ export async function fetchApprovals(status?: string, limit = 100): Promise<Appr
         params.set("status", status);
     }
 
+    if (DEMO_MODE) return demo.fetchApprovals(status, limit);
     const res = await fetch(`${API_BASE}/approvals?${params.toString()}`, {
         cache: "no-store",
         headers: withAdminHeaders(),
@@ -345,6 +358,7 @@ export async function approveRequest(
     approvalId: string,
     body: { note?: string; extension_value?: number } = {}
 ): Promise<ApprovalRequest> {
+    if (DEMO_MODE) return demo.approveRequest(approvalId, body);
     const res = await fetch(`${API_BASE}/approvals/${approvalId}/approve`, {
         method: "POST",
         headers: withAdminHeaders({ "Content-Type": "application/json" }),
@@ -358,6 +372,7 @@ export async function denyRequest(
     approvalId: string,
     body: { note?: string } = {}
 ): Promise<ApprovalRequest> {
+    if (DEMO_MODE) return demo.denyRequest(approvalId, body);
     const res = await fetch(`${API_BASE}/approvals/${approvalId}/deny`, {
         method: "POST",
         headers: withAdminHeaders({ "Content-Type": "application/json" }),
