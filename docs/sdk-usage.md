@@ -28,7 +28,7 @@ def run_agent():
 ```python
 @guard(
     agent_name="support_bot",      # Name shown in dashboard
-    max_cost_usd=10.00,            # Hard cost ceiling (USD)
+    max_cost_usd=10.00,            # Cost ceiling, USD (checked after each step)
     max_steps=50,                  # Maximum execution steps
     detect_loops=True,             # Enable loop detection
     loop_window_size=6,            # Sliding window size for patterns
