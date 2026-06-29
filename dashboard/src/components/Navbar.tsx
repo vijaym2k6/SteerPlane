@@ -17,7 +17,9 @@ import { DEMO_MODE } from "@/services/demo-data";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const navLinks = [
-    { href: "/", label: "Home" },
+    // "Home" (the marketing landing) is hidden on the hosted demo, where "/"
+    // redirects to /dashboard. Self-hosted installs still show it.
+    ...(DEMO_MODE ? [] : [{ href: "/", label: "Home" }]),
     { href: "/dashboard", label: "Dashboard" },
     { href: "/approvals", label: "Approvals" },
     { href: "/policies", label: "Policies" },
