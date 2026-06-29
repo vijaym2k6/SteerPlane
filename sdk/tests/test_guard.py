@@ -1,5 +1,7 @@
 """Tests for the guard decorator."""
 
+import asyncio
+
 import pytest
 from steerplane import guard, SteerPlane
 from steerplane.exceptions import (
@@ -8,6 +10,7 @@ from steerplane.exceptions import (
     StepLimitExceeded,
     RunTerminatedError,
 )
+from steerplane.runtime_context import get_active_run
 
 
 class TestGuardDecorator:
@@ -30,6 +33,40 @@ class TestGuardDecorator:
 
         assert hasattr(my_agent, "_steerplane_guarded")
         assert my_agent._steerplane_guarded is True
+
+    def test_async_guarded_function_awaits_body_and_captures_steps(self):
+        """An async agent must be awaited *inside* the run, not no-op'd.
+
+        Regression: the old sync wrapper returned the un-awaited coroutine and
+        ended the run before the body ran, so telemetry was empty and the result
+        was lost. The run must still be active while the coroutine executes.
+        """
+        observed = {}
+
+        @guard(max_cost_usd=10, max_steps=50, log_to_console=False)
+        async def my_async_agent():
+            run = get_active_run()
+            observed["status_during"] = run.status
+            run.log_step("async_step", tokens=100, cost=0.001)
+            await asyncio.sleep(0)
+            return "async-done"
+
+        result = asyncio.run(my_async_agent())
+
+        assert result == "async-done"
+        assert observed["status_during"] == "running"
+        assert asyncio.iscoroutinefunction(my_async_agent)
+        assert my_async_agent._steerplane_guarded is True
+
+    def test_async_guarded_function_propagates_exceptions(self):
+        """Exceptions from an async agent should surface and fail the run."""
+
+        @guard(max_cost_usd=10, log_to_console=False)
+        async def failing_async_agent():
+            raise ValueError("boom")
+
+        with pytest.raises(ValueError, match="boom"):
+            asyncio.run(failing_async_agent())
 
 
 class TestSteerPlaneClient:
