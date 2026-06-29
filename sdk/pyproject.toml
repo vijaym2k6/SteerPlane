@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    {name = "SteerPlane", email = "hello@steerplane.ai"}
+    {name = "SteerPlane", email = "hello@steerplane.com"}
 ]
 keywords = ["ai", "agents", "guard", "safety", "monitoring", "telemetry", "llm", "steerplane"]
 classifiers = [
@@ -29,8 +29,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://steerplane.ai"
-Documentation = "https://docs.steerplane.ai"
+Homepage = "https://steerplane.com"
+Documentation = "https://docs.steerplane.com"
 Repository = "https://github.com/vijaym2k6/SteerPlane"
 Issues = "https://github.com/vijaym2k6/SteerPlane/issues"
 

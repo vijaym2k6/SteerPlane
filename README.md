@@ -9,13 +9,15 @@
   <img src="https://img.shields.io/badge/Python-3.10+-blue?style=flat-square&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Node.js-18+-green?style=flat-square&logo=node.js&logoColor=white" alt="Node">
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome"></a>
-  <a href="PATENTS.md"><img src="https://img.shields.io/badge/Patent-Pending-orange?style=flat-square" alt="Patent Pending"></a>
+  <a href="PATENTS.md"><img src="https://img.shields.io/badge/Patent%20Pending-IN%20202641071111%20A1-orange?style=flat-square" alt="Patent Pending — IN 202641071111 A1"></a>
+  <a href="https://steerplane.com"><img src="https://img.shields.io/badge/Website-steerplane.com-3B82F6?style=flat-square" alt="steerplane.com"></a>
 </p>
 
 <p align="center">
   <b>Runtime guardrails for autonomous AI agents.</b><br>
   Cost limits · Loop detection · Dual enforcement (Kill/Alert) · Streaming gateway · Policy engine · Human-in-the-loop · CLI · Docker · 4 framework integrations<br><br>
-  <code>pip install steerplane</code> · <code>npm install steerplane</code>
+  <code>pip install steerplane</code> · <code>npm install steerplane</code><br><br>
+  🌐 <a href="https://steerplane.com"><b>steerplane.com</b></a>
 </p>
 
 ---
@@ -666,5 +668,6 @@ MIT — see [LICENSE](LICENSE) for details.
 <p align="center">
   <img src="assets/logo.jpg" alt="SteerPlane" width="48" /><br>
   <b>SteerPlane v0.4.1</b><br>
+  <a href="https://steerplane.com">steerplane.com</a> · <a href="PATENTS.md">Patent Pending — IN 202641071111 A1</a><br>
   <em>"Ship agents. Not incidents."</em>
 </p>

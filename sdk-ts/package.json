@@ -42,7 +42,7 @@
     "type": "git",
     "url": "https://github.com/vijaym2k6/SteerPlane"
   },
-  "homepage": "https://github.com/vijaym2k6/SteerPlane",
+  "homepage": "https://steerplane.com",
   "engines": {
     "node": ">=18.0.0"
   },

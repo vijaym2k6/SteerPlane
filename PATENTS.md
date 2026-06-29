@@ -1,10 +1,25 @@
 # Patent Notice
 
-SteerPlane includes technology covered by pending patent applications.
+SteerPlane's core technology is the subject of a **published Indian patent application**.
+
+## Published Patent Application
+
+| Field | Value |
+|---|---|
+| **Publication No.** | IN 202641071111 A1 |
+| **Application No.** | 202641071111 |
+| **Title** | System and Method for Runtime Monitoring and Controlled Execution of Autonomous AI Agents |
+| **Status** | **Published / Patent Pending** — laid open 19 June 2026 (Journal No. 25/2026); examination pending, **not yet granted** |
+| **Filed** | 08 June 2026 |
+| **Applicant** | PES University, Bengaluru, Karnataka, India |
+| **Inventors** | Vijay M; Sriraksha |
+| **IPC** | G06N 20/00, G06N 5/04, G06N 5/02, G06F 21/55, G06N 3/04 |
+
+> SteerPlane is **Patent Pending**. Please describe it as "patent pending" or "published patent application" — never "patented" or "granted" until a grant is issued.
 
 ## Patent-Pending Inventions
 
-The following systems and methods are the subject of pending patent applications:
+The published application covers the following systems and methods:
 
 1. **System and Method for Runtime Loop Detection in Autonomous AI Agents**
    - Sliding-window pattern matching algorithm for detecting multi-pattern
