@@ -47,7 +47,11 @@ class SteerPlaneClient:
             response = self.session.request(method, url, timeout=5, **kwargs)
             response.raise_for_status()
             return response.json()
-        except requests.ConnectionError:
+        except (requests.ConnectionError, requests.Timeout):
+            # A hung or unreachable API degrades the client *once* — otherwise
+            # every subsequent step would pay the full timeout again and stall
+            # the agent. Guards keep running locally; alert mode (which checks
+            # is_connected) fails closed and terminates.
             self._api_available = False
             logger.warning(
                 f"[WARN] SteerPlane API not reachable at {self.api_url}. "
