@@ -198,30 +198,32 @@ function KeyModal({
                                 <option value="alert">Alert Mode</option>
                             </select>
                         </div>
-                        <div className="form-group">
-                            <label>Alert Threshold</label>
-                            <input
-                                type="number"
-                                step="0.05"
-                                min="0.1"
-                                max="1"
-                                value={values.alertThreshold}
-                                onChange={(e) => setValues((prev) => ({ ...prev, alertThreshold: Number(e.target.value) }))}
-                                className="form-input"
-                                disabled={!isAlertMode}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Alert Timeout (sec)</label>
-                            <input
-                                type="number"
-                                min="30"
-                                value={values.alertTimeout}
-                                onChange={(e) => setValues((prev) => ({ ...prev, alertTimeout: Number(e.target.value) }))}
-                                className="form-input"
-                                disabled={!isAlertMode}
-                            />
-                        </div>
+                        {isAlertMode && (
+                            <>
+                                <div className="form-group">
+                                    <label>Alert Threshold</label>
+                                    <input
+                                        type="number"
+                                        step="0.05"
+                                        min="0.1"
+                                        max="1"
+                                        value={values.alertThreshold}
+                                        onChange={(e) => setValues((prev) => ({ ...prev, alertThreshold: Number(e.target.value) }))}
+                                        className="form-input"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Alert Timeout (sec)</label>
+                                    <input
+                                        type="number"
+                                        min="30"
+                                        value={values.alertTimeout}
+                                        onChange={(e) => setValues((prev) => ({ ...prev, alertTimeout: Number(e.target.value) }))}
+                                        className="form-input"
+                                    />
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <div className={`enforcement-panel ${isAlertMode ? "alert" : "kill"}`}>
@@ -233,63 +235,63 @@ function KeyModal({
                                 ? "When the key reaches its threshold, SteerPlane pauses the run, sends notifications, and waits for human approval before continuing."
                                 : "When the key reaches a limit, SteerPlane blocks or terminates immediately with no human intervention."}
                         </p>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Alert Email</label>
-                                <input
-                                    type="email"
-                                    value={values.alertEmail}
-                                    onChange={(e) => setValues((prev) => ({ ...prev, alertEmail: e.target.value }))}
-                                    className="form-input"
-                                    placeholder="ops@example.com"
-                                    disabled={!isAlertMode}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Webhook URL</label>
-                                <input
-                                    type="url"
-                                    value={values.alertWebhookUrl}
-                                    onChange={(e) => setValues((prev) => ({ ...prev, alertWebhookUrl: e.target.value }))}
-                                    className="form-input"
-                                    placeholder="https://hooks.slack.com/..."
-                                    disabled={!isAlertMode}
-                                />
-                            </div>
-                        </div>
-                        <div className="form-group">
-                            <label>Alert Channels</label>
-                            <div className="toggle-row" style={{ gap: 18 }}>
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        checked={values.alertChannels.includes("email")}
-                                        onChange={(e) =>
-                                            setValues((prev) => ({
-                                                ...prev,
-                                                alertChannels: toggleChannel(prev.alertChannels, "email", e.target.checked),
-                                            }))
-                                        }
-                                        disabled={!isAlertMode}
-                                    />{" "}
-                                    Email
-                                </label>
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        checked={values.alertChannels.includes("webhook")}
-                                        onChange={(e) =>
-                                            setValues((prev) => ({
-                                                ...prev,
-                                                alertChannels: toggleChannel(prev.alertChannels, "webhook", e.target.checked),
-                                            }))
-                                        }
-                                        disabled={!isAlertMode}
-                                    />{" "}
-                                    Webhook / Slack
-                                </label>
-                            </div>
-                        </div>
+                        {isAlertMode && (
+                            <>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>Alert Email</label>
+                                        <input
+                                            type="email"
+                                            value={values.alertEmail}
+                                            onChange={(e) => setValues((prev) => ({ ...prev, alertEmail: e.target.value }))}
+                                            className="form-input"
+                                            placeholder="ops@example.com"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Webhook URL</label>
+                                        <input
+                                            type="url"
+                                            value={values.alertWebhookUrl}
+                                            onChange={(e) => setValues((prev) => ({ ...prev, alertWebhookUrl: e.target.value }))}
+                                            className="form-input"
+                                            placeholder="https://hooks.slack.com/..."
+                                        />
+                                    </div>
+                                </div>
+                                <div className="form-group">
+                                    <label>Alert Channels</label>
+                                    <div className="toggle-row" style={{ gap: 18 }}>
+                                        <label>
+                                            <input
+                                                type="checkbox"
+                                                checked={values.alertChannels.includes("email")}
+                                                onChange={(e) =>
+                                                    setValues((prev) => ({
+                                                        ...prev,
+                                                        alertChannels: toggleChannel(prev.alertChannels, "email", e.target.checked),
+                                                    }))
+                                                }
+                                            />{" "}
+                                            Email
+                                        </label>
+                                        <label>
+                                            <input
+                                                type="checkbox"
+                                                checked={values.alertChannels.includes("webhook")}
+                                                onChange={(e) =>
+                                                    setValues((prev) => ({
+                                                        ...prev,
+                                                        alertChannels: toggleChannel(prev.alertChannels, "webhook", e.target.checked),
+                                                    }))
+                                                }
+                                            />{" "}
+                                            Webhook / Slack
+                                        </label>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <div className="form-row">
