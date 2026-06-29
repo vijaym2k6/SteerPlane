@@ -24,9 +24,11 @@ async def lifespan(app: FastAPI):
     """Application lifespan: initialize the database on startup."""
     init_db()
     print(f"\n[STARTED] {settings.APP_NAME} v{settings.APP_VERSION}")
-    print(f"   Database: {settings.DATABASE_URL}")
-    print("   Gateway: http://localhost:8000/gateway/v1")
-    print("   Docs: http://localhost:8000/docs\n")
+    print(f"   Database:  {settings.DATABASE_URL}")
+    print("   Gateway:   http://localhost:8000/gateway/v1")
+    print("   Docs:      http://localhost:8000/docs")
+    print(f"   Dashboard: {settings.DASHBOARD_URL}   <- open this to view your runs")
+    print("\n   This is your local instance with live data (demo mode is off).\n")
     if settings.ADMIN_TOKEN_SOURCE == "generated":
         print("   Admin auth: enabled with a generated token for this process only")
         print(f"   {settings.ADMIN_TOKEN_HEADER}: {settings.ADMIN_TOKEN}\n")
