@@ -59,7 +59,7 @@ jobs:
 
       - name: Run SDK tests
         working-directory: sdk
-        run: pytest tests/ -v --tb=short --co -q 2>/dev/null; pytest tests/ -v --tb=short
+        run: pytest tests/ -v --tb=short
 
   # ─── API Server Tests ──────────────────────────────────────────────────
   test-api:
@@ -98,7 +98,7 @@ jobs:
 
       - name: Run API tests
         working-directory: api
-        run: pytest tests/ -v --tb=short 2>/dev/null || echo "No API tests found yet"
+        run: pytest tests/ -v --tb=short
 
   # ─── TypeScript SDK Tests ──────────────────────────────────────────────
   test-ts:
@@ -116,9 +116,9 @@ jobs:
         working-directory: sdk-ts
         run: npm ci 2>/dev/null || npm install
 
-      - name: Build
+      - name: Typecheck
         working-directory: sdk-ts
-        run: npx tsc --noEmit 2>/dev/null || echo "TypeScript check complete"
+        run: npx tsc --noEmit
 
   # ─── Docker Build ──────────────────────────────────────────────────────
   docker:

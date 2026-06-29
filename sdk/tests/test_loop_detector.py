@@ -66,6 +66,26 @@ class TestDetectLoop:
         result = detect_loop(history, window_size=6)
         assert result.loop_detected is True
 
+    def test_phase_shifted_loop_detected(self):
+        """A loop that starts partway through the window is still detected.
+
+        ['X', 'A', 'B', 'A', 'B', 'A', 'B', 'A'] — the A/B cycle is offset by the
+        leading 'X', so anchoring at the window start would miss it.
+        """
+        history = ["X", "A", "B", "A", "B", "A", "B", "A"]
+        result = detect_loop(history, window_size=8)
+        assert result.loop_detected is True
+        assert result.repetitions >= 2
+
+    def test_no_loop_with_trailing_noise(self):
+        """A repeating prefix followed by fresh distinct actions is NOT a loop.
+
+        The agent has moved on, so the tail is not repeating.
+        """
+        history = ["A", "B", "A", "B", "A", "B", "C", "D"]
+        result = detect_loop(history, window_size=8)
+        assert result.loop_detected is False
+
 
 class TestLoopDetector:
     """Tests for the LoopDetector class."""

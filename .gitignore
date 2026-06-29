@@ -56,3 +56,10 @@ docker-compose.override.yml
 # Patent and invention documents (sensitive, local only)
 Patentability*
 *.docx
+
+# AI assistant context (local-only guide, not for the public repo)
+CLAUDE.md
+
+# Local credential / reference files (must never be committed)
+pypi*.txt
+*Recovery-Codes*

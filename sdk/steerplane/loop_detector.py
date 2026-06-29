@@ -69,17 +69,23 @@ def detect_loop(
     """
     Detect repeating action sequences using a sliding window.
 
+    The check is anchored at the *end* of the window — i.e. it answers
+    "are the agent's most recent actions stuck repeating?" This catches loops
+    even when they start partway through the window (a phase-shifted loop):
+
     Algorithm:
-    1. Take the last `window_size` actions
-    2. For each possible pattern length (1 to window/2):
-       - Extract the candidate pattern
-       - Count how many times it repeats consecutively
-       - If repetitions >= min_repetitions, it's a loop
+    1. Take the last `window_size` actions.
+    2. For each candidate pattern length (1 .. window // min_repetitions):
+       - Take the trailing `pattern_len` actions as the candidate pattern.
+       - Walk backwards counting how many times that pattern repeats
+         consecutively from the end.
+       - If repetitions >= min_repetitions, it's a loop (smallest unit wins).
 
     Examples:
-        ['search', 'search', 'search', 'search']  → Loop (pattern: ['search'])
-        ['A', 'B', 'A', 'B', 'A', 'B']            → Loop (pattern: ['A', 'B'])
-        ['A', 'B', 'C', 'D', 'E', 'F']            → No loop
+        ['search', 'search', 'search', 'search']     → Loop (pattern: ['search'])
+        ['A', 'B', 'A', 'B', 'A', 'B']               → Loop (pattern: ['A', 'B'])
+        ['X', 'A', 'B', 'A', 'B', 'A', 'B', 'A']     → Loop (pattern: ['B', 'A'])  # offset
+        ['A', 'B', 'C', 'D', 'E', 'F']               → No loop
 
     Args:
         history: List of action names.
@@ -93,19 +99,20 @@ def detect_loop(
         return LoopDetectionResult(loop_detected=False)
 
     window = history[-window_size:]
-    half = len(window) // 2
+    n = len(window)
 
-    for pattern_len in range(1, half + 1):
-        pattern = window[:pattern_len]
+    # A pattern must fit at least `min_repetitions` times within the window.
+    max_pattern_len = max(1, n // min_repetitions)
 
-        # Count consecutive repetitions of the pattern
+    for pattern_len in range(1, max_pattern_len + 1):
+        pattern = window[n - pattern_len : n]
+
+        # Count consecutive repetitions of `pattern`, walking back from the end.
         reps = 0
-        for i in range(0, len(window), pattern_len):
-            chunk = window[i : i + pattern_len]
-            if chunk == pattern:
-                reps += 1
-            else:
-                break
+        idx = n
+        while idx - pattern_len >= 0 and window[idx - pattern_len : idx] == pattern:
+            reps += 1
+            idx -= pattern_len
 
         if reps >= min_repetitions:
             return LoopDetectionResult(
