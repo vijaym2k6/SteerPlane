@@ -94,7 +94,7 @@ jobs:
         working-directory: api
         run: |
           pip install -r requirements.txt
-          pip install pytest httpx
+          pip install pytest httpx fakeredis
 
       - name: Run API tests
         working-directory: api

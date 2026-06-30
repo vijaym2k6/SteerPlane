@@ -8,7 +8,6 @@ import hashlib
 import json
 import secrets
 import time
-from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -22,6 +21,7 @@ from ..models.run import Run
 from ..models.step import Step
 from . import crypto
 from .approval_service import ApprovalService
+from .state_store import StateStore, build_state_store
 
 
 # Canonical per-1M USD pricing, loaded from model_pricing.json. This file is kept
@@ -90,20 +90,15 @@ def month_bounds(now: datetime | None = None) -> tuple[datetime, datetime]:
 
 
 class GatewayLoopDetector:
-    """Detect repeated prompt patterns for a specific session."""
+    """Detect repeated prompt patterns for a specific session (store-backed)."""
 
-    def __init__(self):
-        self._histories: dict[str, list[str]] = defaultdict(list)
-        self._window_size = 10
-        self._min_repetitions = 3
+    def __init__(self, store: StateStore, window_size: int = 10, min_repetitions: int = 3):
+        self._store = store
+        self._window_size = window_size
+        self._min_repetitions = min_repetitions
 
     def record_and_check(self, storage_key: str, prompt_hash: str) -> tuple[bool, str]:
-        history = self._histories[storage_key]
-        history.append(prompt_hash)
-
-        if len(history) > self._window_size * 2:
-            self._histories[storage_key] = history[-self._window_size * 2 :]
-            history = self._histories[storage_key]
+        history = self._store.append_loop(storage_key, prompt_hash, self._window_size * 2)
 
         if len(history) < self._min_repetitions:
             return False, ""
@@ -127,7 +122,7 @@ class GatewayLoopDetector:
         return False, ""
 
     def clear(self, storage_key: str):
-        self._histories.pop(storage_key, None)
+        self._store.clear_loop(storage_key)
 
 
 @dataclass
@@ -141,6 +136,26 @@ class GatewaySession:
     last_seen_at: float
 
 
+def _session_to_dict(session: GatewaySession) -> dict:
+    return {
+        "key_hash": session.key_hash,
+        "session_id": session.session_id,
+        "run_id": session.run_id,
+        "explicit": session.explicit,
+        "last_seen_at": session.last_seen_at,
+    }
+
+
+def _session_from_dict(data: dict) -> GatewaySession:
+    return GatewaySession(
+        key_hash=data["key_hash"],
+        session_id=data["session_id"],
+        run_id=data["run_id"],
+        explicit=bool(data["explicit"]),
+        last_seen_at=float(data["last_seen_at"]),
+    )
+
+
 @dataclass
 class GatewayPreflightResult:
     """Gateway decision before a proxied request is sent upstream."""
@@ -152,12 +167,11 @@ class GatewayPreflightResult:
 
 
 class SessionTracker:
-    """Track in-memory default sessions and active explicit sessions."""
+    """Track default and explicit gateway sessions via a pluggable StateStore."""
 
-    def __init__(self, idle_timeout_sec: int = 1800):
+    def __init__(self, store: StateStore, idle_timeout_sec: int = 1800):
+        self._store = store
         self._idle_timeout_sec = idle_timeout_sec
-        self._sessions: dict[str, dict[str, GatewaySession]] = defaultdict(dict)
-        self._default_session_ids: dict[str, str] = {}
 
     def resolve_session(
         self,
@@ -169,8 +183,8 @@ class SessionTracker:
         normalized = normalize_session_id(requested_session_id)
 
         if normalized:
-            session = self._sessions[key_hash].get(normalized)
-            if session is None:
+            data = self._store.get_session(key_hash, normalized)
+            if data is None:
                 session = GatewaySession(
                     key_hash=key_hash,
                     session_id=normalized,
@@ -178,32 +192,32 @@ class SessionTracker:
                     explicit=True,
                     last_seen_at=now_ts,
                 )
-                self._sessions[key_hash][normalized] = session
+            else:
+                session = _session_from_dict(data)
             session.last_seen_at = now_ts
+            self._store.put_session(key_hash, normalized, _session_to_dict(session))
             return session, expired
 
-        default_session_id = self._default_session_ids.get(key_hash)
+        default_session_id = self._store.get_default_session_id(key_hash)
         session = None
         if default_session_id:
-            session = self._sessions[key_hash].get(default_session_id)
+            data = self._store.get_session(key_hash, default_session_id)
+            if data:
+                session = _session_from_dict(data)
 
         if session is None:
             generated_session_id = f"auto_{secrets.token_urlsafe(9)}"
             session = GatewaySession(
                 key_hash=key_hash,
                 session_id=generated_session_id,
-                run_id=build_gateway_run_id(
-                    key_hash,
-                    generated_session_id,
-                    explicit=False,
-                ),
+                run_id=build_gateway_run_id(key_hash, generated_session_id, explicit=False),
                 explicit=False,
                 last_seen_at=now_ts,
             )
-            self._sessions[key_hash][generated_session_id] = session
-            self._default_session_ids[key_hash] = generated_session_id
+            self._store.set_default_session_id(key_hash, generated_session_id)
 
         session.last_seen_at = now_ts
+        self._store.put_session(key_hash, session.session_id, _session_to_dict(session))
         return session, expired
 
     def _cleanup_expired(
@@ -212,20 +226,25 @@ class SessionTracker:
         now_ts: float,
     ) -> list[GatewaySession]:
         expired: list[GatewaySession] = []
-        sessions = self._sessions.get(key_hash, {})
-        for session_id, session in list(sessions.items()):
-            if session.explicit:
+        for session_id, data in self._store.all_sessions(key_hash).items():
+            if data.get("explicit"):
                 continue
-            if now_ts - session.last_seen_at > self._idle_timeout_sec:
-                expired.append(session)
-                del sessions[session_id]
-                if self._default_session_ids.get(key_hash) == session_id:
-                    del self._default_session_ids[key_hash]
+            if now_ts - float(data.get("last_seen_at", 0.0)) > self._idle_timeout_sec:
+                expired.append(_session_from_dict(data))
+                self._store.delete_session(key_hash, session_id)
+                if self._store.get_default_session_id(key_hash) == session_id:
+                    self._store.delete_default_session_id(key_hash)
         return expired
 
 
-_loop_detector = GatewayLoopDetector()
-_session_tracker = SessionTracker(settings.GATEWAY_SESSION_IDLE_SEC)
+_state_store = build_state_store()
+_loop_detector = GatewayLoopDetector(_state_store)
+_session_tracker = SessionTracker(_state_store, settings.GATEWAY_SESSION_IDLE_SEC)
+
+
+def reset_gateway_state() -> None:
+    """Clear all gateway session + loop state (used by tests)."""
+    _state_store.reset()
 
 
 class GatewayService:

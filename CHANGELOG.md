@@ -14,6 +14,11 @@ All notable changes to SteerPlane are documented here. The project follows
   only. Runs are stamped with the owning API key (`runs.api_key_id`, new migration). While
   off, unauthenticated calls are warn-logged so the existing keyless SDK/self-host flow is
   unchanged.
+- **Pluggable gateway state backend** (`StateStore`). Gateway session and prompt-hash
+  loop state now go through an interface with an in-memory default and a Redis
+  implementation enabled by `REDIS_URL`, making the gateway multi-worker- and
+  restart-safe while preserving idle-timeout and loop-detection semantics (fakeredis
+  parity tests). Unreachable Redis degrades gracefully to in-memory.
 - **Server-side provider-key vaulting** (optional, `STEERPLANE_SECRET_KEY`). Store a
   provider key with `POST /api-keys/{id}/provider-key` (admin only); it is encrypted at
   rest with PBKDF2-HMAC-SHA256 → Fernet (AES) and injected automatically by the gateway, so

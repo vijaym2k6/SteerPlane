@@ -22,8 +22,7 @@ from api.app.models.step import Step
 from api.app.routes.gateway import _handle_streaming
 from api.app.services.gateway_service import (
     GatewayService,
-    _loop_detector,
-    _session_tracker,
+    reset_gateway_state,
 )
 
 
@@ -47,9 +46,7 @@ def _make_api_key(max_cost_usd: float = 5.0) -> APIKey:
 
 
 def setup_function():
-    _session_tracker._sessions.clear()
-    _session_tracker._default_session_ids.clear()
-    _loop_detector._histories.clear()
+    reset_gateway_state()
 
 
 def _drive_stream(svc, api_key, session, model, provider, sse_text):

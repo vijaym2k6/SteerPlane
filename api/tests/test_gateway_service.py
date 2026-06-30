@@ -11,8 +11,9 @@ from api.app.models.run import Run
 from api.app.services.approval_service import ApprovalService
 from api.app.services.gateway_service import (
     GatewayService,
-    _loop_detector,
     _session_tracker,
+    _state_store,
+    reset_gateway_state,
 )
 
 
@@ -36,9 +37,7 @@ def _make_api_key() -> APIKey:
 
 
 def setup_function():
-    _session_tracker._sessions.clear()
-    _session_tracker._default_session_ids.clear()
-    _loop_detector._histories.clear()
+    reset_gateway_state()
 
 
 def test_explicit_session_reuses_same_run_id_and_cost():
@@ -90,8 +89,9 @@ def test_auto_session_rotation_closes_expired_run():
     first_session = svc.resolve_session(api_key)
     svc.log_request(api_key, first_session, "gpt-4o", 10, 5, 0.01, 50.0)
 
-    tracked_session = _session_tracker._sessions[api_key.key_hash][first_session.session_id]
-    tracked_session.last_seen_at -= _session_tracker._idle_timeout_sec + 1
+    data = _state_store.get_session(api_key.key_hash, first_session.session_id)
+    data["last_seen_at"] -= _session_tracker._idle_timeout_sec + 1
+    _state_store.put_session(api_key.key_hash, first_session.session_id, data)
 
     second_session = svc.resolve_session(api_key)
     expired_run = db.query(Run).filter(Run.id == first_session.run_id).first()

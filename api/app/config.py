@@ -42,6 +42,9 @@ class Settings:
     # calls are warn-logged. Set to "true" to enforce (admin token = superuser).
     REQUIRE_RUN_AUTH: bool = os.getenv("STEERPLANE_REQUIRE_RUN_AUTH", "false").lower() == "true"
     GATEWAY_SESSION_IDLE_SEC: int = int(os.getenv("STEERPLANE_GATEWAY_SESSION_IDLE_SEC", "1800"))
+    # Optional Redis backend for gateway session + loop state (multi-worker /
+    # restart-safe). Unset = in-process memory (single-worker default).
+    REDIS_URL: str = os.getenv("REDIS_URL", "").strip()
     ALLOWED_PROVIDER_URLS: list[str] = _parse_allowed_provider_urls()
     DASHBOARD_URL: str = os.getenv("STEERPLANE_DASHBOARD_URL", "http://localhost:3000").rstrip("/")
     SMTP_HOST: str = os.getenv("STEERPLANE_SMTP_HOST", "").strip()
