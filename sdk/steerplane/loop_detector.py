@@ -79,10 +79,16 @@ def detect_loop(
        - Take the trailing `pattern_len` actions as the candidate pattern.
        - Walk backwards counting how many times that pattern repeats
          consecutively from the end.
-       - If repetitions >= min_repetitions, it's a loop (smallest unit wins).
+       - If repetitions >= the required count, it's a loop (smallest unit wins).
+
+    Single-action loops (pattern length 1) require at least 3 consecutive
+    repetitions, not `min_repetitions`. Repeating the same action twice in a row
+    (e.g. a retry or a poll) is common and benign; demanding a third repeat
+    avoids terminating those. Multi-step patterns still use `min_repetitions`.
 
     Examples:
-        ['search', 'search', 'search', 'search']     → Loop (pattern: ['search'])
+        ['search', 'search', 'search']               → Loop (pattern: ['search'])
+        ['search', 'search']                         → No loop (only 2 single-action reps)
         ['A', 'B', 'A', 'B', 'A', 'B']               → Loop (pattern: ['A', 'B'])
         ['X', 'A', 'B', 'A', 'B', 'A', 'B', 'A']     → Loop (pattern: ['B', 'A'])  # offset
         ['A', 'B', 'C', 'D', 'E', 'F']               → No loop
@@ -114,7 +120,10 @@ def detect_loop(
             reps += 1
             idx -= pattern_len
 
-        if reps >= min_repetitions:
+        # Single-action loops need a higher floor (>=3) to avoid flagging a
+        # benign double-call; multi-step patterns use min_repetitions.
+        required = min_repetitions if pattern_len > 1 else max(min_repetitions, 3)
+        if reps >= required:
             return LoopDetectionResult(
                 loop_detected=True,
                 pattern=pattern,

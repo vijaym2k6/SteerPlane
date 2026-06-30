@@ -22,6 +22,10 @@ All notable changes to SteerPlane are documented here. The project follows
   auto-generated; rotating it requires re-entering vaulted keys.
 
 ### Fixed
+- **Loop detector** is less false-positive prone: single-action loops now require **≥3**
+  consecutive repetitions (a benign double-call no longer terminates a run); multi-step
+  patterns are unchanged. The TypeScript detector was also brought to parity with the
+  end-anchored Python algorithm (it was still start-anchored, missing phase-shifted loops).
 - Gateway now accumulates usage and enforces the mid-stream cost kill for **Anthropic**
   streams (previously dead code: Claude streams logged $0 and never tripped the ceiling).
 - `@guard` now supports **async** agent functions instead of silently no-op'ing them.
