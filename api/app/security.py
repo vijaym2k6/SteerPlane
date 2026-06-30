@@ -72,12 +72,16 @@ class RunAuthContext:
         return self.api_key.id if self.api_key else None
 
     def can_write_run(self, run) -> bool:
-        """Whether this identity may write to / read an existing run."""
+        """Whether this identity may read/write an existing run.
+
+        Admin is a superuser. A non-admin key may only touch runs it owns —
+        NULL-owned (legacy/keyless) runs are visible to admin only, so one key
+        can never see or write another tenant's (or unowned) runs.
+        """
         if self.is_admin:
             return True
         owner = getattr(run, "api_key_id", None)
-        # NULL-owned (legacy/keyless) runs stay open; otherwise must match.
-        return owner is None or owner == self.api_key_id
+        return owner is not None and owner == self.api_key_id
 
 
 def resolve_run_auth(

@@ -11,12 +11,23 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
+from ..config import settings
 from ..db.database import get_db
+from ..models.run import Run
 from ..security import RunAuthContext, require_admin, resolve_run_auth
 from ..services.approval_service import ApprovalService
 
 
 router = APIRouter(tags=["approvals"])
+
+
+def _authorize_run(db: Session, run_id: str, auth: RunAuthContext) -> None:
+    """403 if the caller may not act on this run's approvals (enforced mode only)."""
+    if not settings.REQUIRE_RUN_AUTH:
+        return
+    run = db.query(Run).filter(Run.id == run_id).first()
+    if run is not None and not auth.can_write_run(run):
+        raise HTTPException(status_code=403, detail="Not authorized for this run")
 
 
 class CreateApprovalRequestBody(BaseModel):
@@ -90,6 +101,7 @@ def create_approval(
     db: Session = Depends(get_db),
     auth: RunAuthContext = Depends(resolve_run_auth),
 ):
+    _authorize_run(db, req.run_id, auth)
     service = ApprovalService(db)
     approval = service.create_approval(
         run_id=req.run_id,
@@ -121,6 +133,7 @@ def get_approval(
     approval = service.get_approval(approval_id)
     if not approval:
         raise HTTPException(status_code=404, detail="Approval request not found")
+    _authorize_run(db, approval.run_id, auth)
     return approval
 
 

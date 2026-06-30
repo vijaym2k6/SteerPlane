@@ -107,12 +107,15 @@ def test_enforced_admin_is_superuser(client):
     assert _start(client, "run-admin", headers=headers).status_code == 200
 
 
-def test_enforced_key_scoping_and_null_visibility(client, db_session):
+def test_enforced_strict_ownership_and_null_admin_only(client, db_session):
+    """H3: non-admin keys see strictly their own runs; NULL-owned (legacy) runs
+    are visible to admin only."""
     settings.REQUIRE_RUN_AUTH = True
     raw_a, _ = _make_key(db_session, "key-a")
     raw_b, _ = _make_key(db_session, "key-b")
     auth_a = {"Authorization": f"Bearer {raw_a}"}
     auth_b = {"Authorization": f"Bearer {raw_b}"}
+    admin = {settings.ADMIN_TOKEN_HEADER: settings.ADMIN_TOKEN}
 
     # A NULL-owned legacy run exists (created while auth was off).
     settings.REQUIRE_RUN_AUTH = False
@@ -120,19 +123,69 @@ def test_enforced_key_scoping_and_null_visibility(client, db_session):
     settings.REQUIRE_RUN_AUTH = True
 
     assert _start(client, "run-a", headers=auth_a).status_code == 200
+    assert _start(client, "run-b", headers=auth_b).status_code == 200
 
-    # B cannot read A's run; A can; legacy NULL run is visible to B.
-    assert client.get("/runs/run-a", headers=auth_b).status_code == 403
+    # Reads: own=200, other=403, legacy NULL=403 for non-admin.
     assert client.get("/runs/run-a", headers=auth_a).status_code == 200
-    assert client.get("/runs/run-legacy", headers=auth_b).status_code == 200
+    assert client.get("/runs/run-a", headers=auth_b).status_code == 403
+    assert client.get("/runs/run-legacy", headers=auth_b).status_code == 403
 
-    # B's list shows only NULL-owned runs, not A's.
-    listed = client.get("/runs", headers=auth_b).json()
-    ids = {r["id"] for r in listed["runs"]}
-    assert "run-legacy" in ids
-    assert "run-a" not in ids
+    # B's list shows strictly its own run — no A, no legacy.
+    b_ids = {r["id"] for r in client.get("/runs", headers=auth_b).json()["runs"]}
+    assert b_ids == {"run-b"}
 
-    # Admin sees everything.
-    admin = {settings.ADMIN_TOKEN_HEADER: settings.ADMIN_TOKEN}
+    # Admin sees everything, including the legacy NULL-owned run.
     admin_ids = {r["id"] for r in client.get("/runs", headers=admin).json()["runs"]}
-    assert {"run-a", "run-legacy"} <= admin_ids
+    assert {"run-a", "run-b", "run-legacy"} <= admin_ids
+
+
+def test_enforced_write_ownership_step_and_end(client, db_session):
+    """H2: writes are authorized by ownership — own=200, other=403, admin=200."""
+    settings.REQUIRE_RUN_AUTH = True
+    raw_a, _ = _make_key(db_session, "key-a")
+    raw_b, _ = _make_key(db_session, "key-b")
+    auth_a = {"Authorization": f"Bearer {raw_a}"}
+    auth_b = {"Authorization": f"Bearer {raw_b}"}
+    admin = {settings.ADMIN_TOKEN_HEADER: settings.ADMIN_TOKEN}
+
+    _start(client, "run-a", headers=auth_a)
+
+    step = {"run_id": "run-a", "step_number": 1, "action": "search"}
+    assert client.post("/runs/step", json=step, headers=auth_a).status_code == 200
+    assert client.post("/runs/step", json=step, headers=auth_b).status_code == 403
+    assert client.post("/runs/step", json=step, headers=admin).status_code == 200
+
+    end = {"run_id": "run-a", "status": "completed"}
+    assert client.post("/runs/end", json=end, headers=auth_b).status_code == 403
+    assert client.post("/runs/end", json=end, headers=auth_a).status_code == 200
+
+
+def test_enforced_approval_ownership(client, db_session):
+    """H2: approval create/read are authorized by the run's ownership."""
+    settings.REQUIRE_RUN_AUTH = True
+    raw_a, _ = _make_key(db_session, "key-a")
+    raw_b, _ = _make_key(db_session, "key-b")
+    auth_a = {"Authorization": f"Bearer {raw_a}"}
+    auth_b = {"Authorization": f"Bearer {raw_b}"}
+
+    _start(client, "run-a", headers=auth_a)
+    body = {
+        "run_id": "run-a",
+        "agent_name": "bot",
+        "approval_type": "cost_limit",
+        "current_value": 5.0,
+        "limit_value": 4.0,
+        "unit": "usd",
+        "message": "need approval",
+    }
+
+    # B cannot create an approval against A's run.
+    assert client.post("/approvals/request", json=body, headers=auth_b).status_code == 403
+
+    resp = client.post("/approvals/request", json=body, headers=auth_a)
+    assert resp.status_code == 200
+    approval_id = resp.json()["id"]
+
+    # B cannot read A's approval; A can.
+    assert client.get(f"/approvals/{approval_id}", headers=auth_b).status_code == 403
+    assert client.get(f"/approvals/{approval_id}", headers=auth_a).status_code == 200

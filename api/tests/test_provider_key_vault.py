@@ -62,8 +62,20 @@ def test_crypto_wrong_secret_raises(monkeypatch):
     monkeypatch.setenv("STEERPLANE_SECRET_KEY", SECRET)
     token = crypto.encrypt("sk-provider-123")
     monkeypatch.setenv("STEERPLANE_SECRET_KEY", "a-different-secret")
+    crypto._build_fernet.cache_clear()
     with pytest.raises(crypto.VaultError):
         crypto.decrypt(token)
+
+
+def test_derivation_is_stable_across_restart(monkeypatch):
+    """The PBKDF2 derivation is deterministic, so a fresh process (cleared
+    derivation cache) decrypts tokens written by a previous one."""
+    monkeypatch.setenv("STEERPLANE_SECRET_KEY", SECRET)
+    token = crypto.encrypt("sk-stable")
+
+    # Simulate a restart: drop the cached Fernet and re-derive from the secret.
+    crypto._build_fernet.cache_clear()
+    assert crypto.decrypt(token) == "sk-stable"
 
 
 def test_vault_disabled_without_secret(monkeypatch):

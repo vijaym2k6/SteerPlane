@@ -123,13 +123,14 @@ class RunService:
         """List runs with pagination.
 
         When ``restricted`` is set (enforced mode, non-admin caller), results are
-        scoped to runs owned by ``owner_key_id`` plus NULL-owned (legacy/keyless)
-        runs, which stay visible to everyone.
+        scoped strictly to runs owned by ``owner_key_id``. NULL-owned
+        (legacy/keyless) runs are visible to admin only, preventing cross-tenant
+        leakage.
         """
         query = self.db.query(Run)
         count_query = self.db.query(func.count(Run.id))
         if restricted:
-            visibility = (Run.api_key_id.is_(None)) | (Run.api_key_id == owner_key_id)
+            visibility = Run.api_key_id == owner_key_id
             query = query.filter(visibility)
             count_query = count_query.filter(visibility)
 

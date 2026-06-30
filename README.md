@@ -373,7 +373,7 @@ for chunk in client.chat.completions.create(
 
 **Security model:** The agent points its OpenAI client at the gateway and passes the real provider key in the `X-LLM-API-Key` header. The gateway authenticates the SteerPlane key, runs every request through enforcement (policy → cost → loop), and only then forwards it upstream with that provider key — so the agent can't reach the provider directly or bypass the guardrails.
 
-**Optional server-side key vaulting:** set `STEERPLANE_SECRET_KEY` and store a provider key with `POST /api-keys/{id}/provider-key` (admin only). It is encrypted at rest (Fernet / AES) and injected automatically on each forwarded request, so the agent no longer needs to send `X-LLM-API-Key` at all. The vaulted key is **never** returned by any read endpoint or logged. The header path remains as a fallback when no key is vaulted.
+**Optional server-side key vaulting:** set `STEERPLANE_SECRET_KEY` (a stable, high-entropy secret — never auto-generated) and store a provider key with `POST /api-keys/{id}/provider-key` (admin only). It is encrypted at rest with PBKDF2-HMAC-SHA256 → Fernet (AES) and injected automatically on each forwarded request, so the agent no longer needs to send `X-LLM-API-Key` at all. The vaulted key is **never** returned by any read endpoint or logged. The header path remains as a fallback when no key is vaulted. Rotating the secret makes existing vaulted keys unrecoverable — re-enter them after a rotation.
 
 ---
 

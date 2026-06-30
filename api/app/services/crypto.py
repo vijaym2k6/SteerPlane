@@ -1,18 +1,33 @@
 """Symmetric encryption for server-side provider-key vaulting.
 
 Provider keys are encrypted at rest with Fernet (AES-128-CBC + HMAC-SHA256). The
-Fernet key is derived from ``STEERPLANE_SECRET_KEY`` so the operator can supply
-any sufficiently-random secret string rather than a base64 Fernet key. Plaintext
-keys are never stored or logged.
+Fernet key is derived from ``STEERPLANE_SECRET_KEY`` with PBKDF2-HMAC-SHA256 so
+the operator can supply any sufficiently-random secret string rather than a
+base64 Fernet key.
+
+The derivation is deterministic (fixed app salt) so the same secret always
+yields the same key — that is what lets the server decrypt across restarts. The
+flip side: rotating ``STEERPLANE_SECRET_KEY`` makes every previously-vaulted key
+unrecoverable, so operators must re-enter provider keys after a rotation. The
+secret is never auto-generated: if it is unset, vaulting is simply disabled.
+Plaintext provider keys are never stored or logged.
 """
 
 from __future__ import annotations
 
 import base64
-import hashlib
 import os
+from functools import lru_cache
 
 from cryptography.fernet import Fernet, InvalidToken
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+# Fixed, app-specific salt: derivation must be deterministic so restarts can
+# decrypt. (A random per-record salt would need to be stored alongside the
+# ciphertext; a fixed salt keeps the at-rest format a single opaque token.)
+_KDF_SALT = b"steerplane:provider-key-vault:v1"
+_KDF_ITERATIONS = 600_000
 
 
 class VaultError(Exception):
@@ -28,13 +43,24 @@ def vault_enabled() -> bool:
     return bool(_secret())
 
 
+@lru_cache(maxsize=8)
+def _build_fernet(secret: str) -> Fernet:
+    """Derive (once per process, per secret) a Fernet from the operator secret."""
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=_KDF_SALT,
+        iterations=_KDF_ITERATIONS,
+    )
+    derived = base64.urlsafe_b64encode(kdf.derive(secret.encode()))
+    return Fernet(derived)
+
+
 def _fernet() -> Fernet:
     secret = _secret()
     if not secret:
         raise VaultError("STEERPLANE_SECRET_KEY is not set; provider-key vaulting is disabled")
-    # Derive a stable 32-byte Fernet key from an arbitrary secret string.
-    digest = hashlib.sha256(secret.encode()).digest()
-    return Fernet(base64.urlsafe_b64encode(digest))
+    return _build_fernet(secret)
 
 
 def encrypt(plaintext: str) -> str:

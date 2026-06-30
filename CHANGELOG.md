@@ -7,16 +7,19 @@ All notable changes to SteerPlane are documented here. The project follows
 
 ### Added
 - **Optional data-plane authentication** (`STEERPLANE_REQUIRE_RUN_AUTH`, default off).
-  When enabled, `/runs/*`, `/telemetry`, and `/approvals/request` require a SteerPlane
-  API key (`Authorization: Bearer sk_sp_...`) or the admin token (superuser); non-admin
-  keys are scoped to their own runs plus legacy NULL-owned runs. Runs are now stamped
-  with the owning API key (`runs.api_key_id`, new migration). While off, unauthenticated
-  calls are warn-logged so the existing keyless SDK/self-host flow is unchanged.
+  When enabled, `/runs/*`, `/telemetry`, and `/approvals/*` require a SteerPlane API key
+  (`Authorization: Bearer sk_sp_...`) or the admin token (superuser). Reads **and writes**
+  are authorized by run ownership: a non-admin key may only read/write/step/end runs it
+  owns and create/read approvals for them; legacy NULL-owned runs are visible to admin
+  only. Runs are stamped with the owning API key (`runs.api_key_id`, new migration). While
+  off, unauthenticated calls are warn-logged so the existing keyless SDK/self-host flow is
+  unchanged.
 - **Server-side provider-key vaulting** (optional, `STEERPLANE_SECRET_KEY`). Store a
   provider key with `POST /api-keys/{id}/provider-key` (admin only); it is encrypted at
-  rest with Fernet/AES and injected automatically by the gateway, so agents no longer need
-  to send `X-LLM-API-Key`. The header path remains as a fallback. The vaulted key is never
-  returned by any read endpoint or logged.
+  rest with PBKDF2-HMAC-SHA256 → Fernet (AES) and injected automatically by the gateway, so
+  agents no longer need to send `X-LLM-API-Key`. The header path remains as a fallback. The
+  vaulted key is never returned by any read endpoint or logged. The secret is never
+  auto-generated; rotating it requires re-entering vaulted keys.
 
 ### Fixed
 - Gateway now accumulates usage and enforces the mid-stream cost kill for **Anthropic**
