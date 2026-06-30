@@ -3,6 +3,27 @@
 All notable changes to SteerPlane are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Optional data-plane authentication** (`STEERPLANE_REQUIRE_RUN_AUTH`, default off).
+  When enabled, `/runs/*`, `/telemetry`, and `/approvals/request` require a SteerPlane
+  API key (`Authorization: Bearer sk_sp_...`) or the admin token (superuser); non-admin
+  keys are scoped to their own runs plus legacy NULL-owned runs. Runs are now stamped
+  with the owning API key (`runs.api_key_id`, new migration). While off, unauthenticated
+  calls are warn-logged so the existing keyless SDK/self-host flow is unchanged.
+
+### Fixed
+- Gateway now accumulates usage and enforces the mid-stream cost kill for **Anthropic**
+  streams (previously dead code: Claude streams logged $0 and never tripped the ceiling).
+- `@guard` now supports **async** agent functions instead of silently no-op'ing them.
+- Client degrades once on an API **timeout** instead of stalling every step.
+- Baseline **Alembic** migration added; `entrypoint.sh` fails loudly on migration errors.
+
+### Changed
+- Dashboard `middleware.ts` migrated to the Next.js 16 `proxy.ts` convention.
+- Docs: corrected the gateway key-isolation and cost-ceiling descriptions to match behavior.
+
 ## [0.4.1]
 
 Patch release: stability, deployment correctness, and a hosted live demo. No

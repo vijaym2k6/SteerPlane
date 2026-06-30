@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from ..db.database import get_db
-from ..security import require_admin
+from ..security import RunAuthContext, require_admin, resolve_run_auth
 from ..services.approval_service import ApprovalService
 
 
@@ -85,7 +85,11 @@ class ApprovalListResponse(BaseModel):
 
 
 @router.post("/approvals/request", response_model=ApprovalResponse)
-def create_approval(req: CreateApprovalRequestBody, db: Session = Depends(get_db)):
+def create_approval(
+    req: CreateApprovalRequestBody,
+    db: Session = Depends(get_db),
+    auth: RunAuthContext = Depends(resolve_run_auth),
+):
     service = ApprovalService(db)
     approval = service.create_approval(
         run_id=req.run_id,
@@ -108,7 +112,11 @@ def create_approval(req: CreateApprovalRequestBody, db: Session = Depends(get_db
 
 
 @router.get("/approvals/{approval_id}", response_model=ApprovalResponse)
-def get_approval(approval_id: str, db: Session = Depends(get_db)):
+def get_approval(
+    approval_id: str,
+    db: Session = Depends(get_db),
+    auth: RunAuthContext = Depends(resolve_run_auth),
+):
     service = ApprovalService(db)
     approval = service.get_approval(approval_id)
     if not approval:

@@ -106,8 +106,11 @@ export interface RunListResponse {
 
 export async function fetchRuns(limit = 50, offset = 0): Promise<RunListResponse> {
     if (DEMO_MODE) return demo.fetchRuns(limit, offset);
+    // Admin header is sent when configured so reads still work if the operator
+    // turns on STEERPLANE_REQUIRE_RUN_AUTH; it is ignored when auth is off.
     const res = await fetch(`${API_BASE}/runs?limit=${limit}&offset=${offset}`, {
         cache: "no-store",
+        headers: withAdminHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch runs");
     return res.json();
@@ -117,6 +120,7 @@ export async function fetchRun(runId: string): Promise<RunDetail> {
     if (DEMO_MODE) return demo.fetchRun(runId);
     const res = await fetch(`${API_BASE}/runs/${runId}`, {
         cache: "no-store",
+        headers: withAdminHeaders(),
     });
     if (!res.ok) throw new Error(`Failed to fetch run ${runId}`);
     return res.json();
