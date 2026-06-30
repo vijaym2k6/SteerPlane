@@ -11,6 +11,7 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -23,32 +24,11 @@ from . import crypto
 from .approval_service import ApprovalService
 
 
-MODEL_PRICING = {
-    "gpt-4o": {"input": 2.50, "output": 10.00},
-    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
-    "gpt-4-turbo": {"input": 10.00, "output": 30.00},
-    "gpt-4": {"input": 30.00, "output": 60.00},
-    "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
-    "o1": {"input": 15.00, "output": 60.00},
-    "o1-mini": {"input": 3.00, "output": 12.00},
-    "o3-mini": {"input": 1.10, "output": 4.40},
-    "claude-3-opus": {"input": 15.00, "output": 75.00},
-    "claude-3-sonnet": {"input": 3.00, "output": 15.00},
-    "claude-3-haiku": {"input": 0.25, "output": 1.25},
-    "claude-3.5-sonnet": {"input": 3.00, "output": 15.00},
-    "claude-3.5-haiku": {"input": 0.80, "output": 4.00},
-    "claude-4-sonnet": {"input": 3.00, "output": 15.00},
-    "claude-4-opus": {"input": 15.00, "output": 75.00},
-    "gemini-pro": {"input": 0.25, "output": 0.50},
-    "gemini-1.5-pro": {"input": 1.25, "output": 5.00},
-    "gemini-1.5-flash": {"input": 0.075, "output": 0.30},
-    "gemini-2.0-flash": {"input": 0.10, "output": 0.40},
-    "llama-3-70b": {"input": 0.59, "output": 0.79},
-    "llama-3-8b": {"input": 0.05, "output": 0.08},
-    "mistral-large": {"input": 2.00, "output": 6.00},
-    "mistral-small": {"input": 0.20, "output": 0.60},
-    "default": {"input": 2.00, "output": 2.00},
-}
+# Canonical per-1M USD pricing, loaded from model_pricing.json. This file is kept
+# byte-identical to the SDK's copy (sdk/steerplane/model_pricing.json) and the TS
+# mirror; api/tests/test_pricing_consistency.py fails if they drift.
+_PRICING_PATH = Path(__file__).with_name("model_pricing.json")
+MODEL_PRICING: dict[str, dict[str, float]] = json.loads(_PRICING_PATH.read_text("utf-8"))
 
 _SESSION_ID_ALLOWED = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_:.")
 

@@ -31,6 +31,10 @@ All notable changes to SteerPlane are documented here. The project follows
 ### Changed
 - Dashboard `middleware.ts` migrated to the Next.js 16 `proxy.ts` convention.
 - Docs: corrected the gateway key-isolation and cost-ceiling descriptions to match behavior.
+- **Single source of truth for model pricing.** `model_pricing.json` (USD per 1M tokens) is now
+  canonical; the Python SDK, API gateway, and TypeScript SDK all derive their pricing from it, and
+  a cross-language consistency test fails if the copies drift or resolve different costs. The
+  Python SDK now prices all 24 models instead of falling back to a default for 16 of them.
 
 ## [0.4.1]
 
