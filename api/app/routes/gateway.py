@@ -116,11 +116,14 @@ async def chat_completions(request: Request, db: Session = Depends(get_db)):
             },
         )
 
-    llm_api_key = request.headers.get("X-LLM-API-Key", "")
+    llm_api_key = svc.resolve_provider_key(api_key, request.headers.get("X-LLM-API-Key", ""))
     if not llm_api_key:
         raise HTTPException(
             status_code=400,
-            detail="Missing X-LLM-API-Key header with your LLM provider API key",
+            detail=(
+                "No provider key available: send the X-LLM-API-Key header or vault a key "
+                "server-side via POST /api-keys/{id}/provider-key"
+            ),
         )
 
     custom_url = request.headers.get("X-Provider-URL", "")

@@ -19,6 +19,7 @@ from ..config import settings
 from ..models.api_key import APIKey, hash_api_key
 from ..models.run import Run
 from ..models.step import Step
+from . import crypto
 from .approval_service import ApprovalService
 
 
@@ -252,6 +253,20 @@ class GatewayService:
 
     def __init__(self, db: Session):
         self.db = db
+
+    def resolve_provider_key(self, api_key: APIKey, header_value: str | None) -> str:
+        """Pick the upstream provider key: vaulted key first, header as fallback.
+
+        If a key is vaulted and decrypts, it is used (the agent need not transmit
+        the provider key at all). Otherwise the X-LLM-API-Key header is used, so
+        existing header-based callers keep working.
+        """
+        if api_key.provider_key_encrypted and crypto.vault_enabled():
+            try:
+                return crypto.decrypt(api_key.provider_key_encrypted)
+            except crypto.VaultError:
+                pass  # fall back to the header rather than hard-failing
+        return (header_value or "").strip()
 
     def validate_api_key(self, raw_key: str) -> APIKey | None:
         key_hashed = hash_api_key(raw_key)

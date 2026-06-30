@@ -12,6 +12,11 @@ All notable changes to SteerPlane are documented here. The project follows
   keys are scoped to their own runs plus legacy NULL-owned runs. Runs are now stamped
   with the owning API key (`runs.api_key_id`, new migration). While off, unauthenticated
   calls are warn-logged so the existing keyless SDK/self-host flow is unchanged.
+- **Server-side provider-key vaulting** (optional, `STEERPLANE_SECRET_KEY`). Store a
+  provider key with `POST /api-keys/{id}/provider-key` (admin only); it is encrypted at
+  rest with Fernet/AES and injected automatically by the gateway, so agents no longer need
+  to send `X-LLM-API-Key`. The header path remains as a fallback. The vaulted key is never
+  returned by any read endpoint or logged.
 
 ### Fixed
 - Gateway now accumulates usage and enforces the mid-stream cost kill for **Anthropic**

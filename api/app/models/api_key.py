@@ -47,10 +47,18 @@ class APIKey(Base):
     allowed_models = Column(Text, nullable=True)  # Comma-separated, e.g. "gpt-4o,claude-3-sonnet"
     denied_models = Column(Text, nullable=True)
 
+    # Vaulted provider key (Fernet ciphertext). Never returned in API reads.
+    provider_key_encrypted = Column(Text, nullable=True)
+
     # Status
     is_active = Column(Boolean, nullable=False, default=True)
     last_used_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    @property
+    def has_provider_key(self) -> bool:
+        """Whether a provider key is vaulted (the value itself is never exposed)."""
+        return bool(self.provider_key_encrypted)
 
     def __repr__(self):
         return f"<APIKey(id={self.id}, name={self.name}, prefix={self.key_prefix})>"

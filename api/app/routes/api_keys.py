@@ -13,6 +13,7 @@ from sqlalchemy import func
 from ..db.database import get_db
 from ..models.api_key import APIKey, generate_api_key, hash_api_key
 from ..security import require_admin
+from ..services import crypto
 from ..services.approval_service import (
     ApprovalService,
     DEFAULT_ALERT_THRESHOLD,
@@ -72,6 +73,7 @@ class KeyResponse(BaseModel):
     total_requests: int
     total_cost: float
     total_tokens: int
+    has_provider_key: bool = False
     last_used_at: Optional[str] = None
     created_at: str
 
@@ -159,6 +161,7 @@ def create_key(req: CreateKeyRequest, db: Session = Depends(get_db)):
         total_requests=api_key.total_requests,
         total_cost=api_key.total_cost,
         total_tokens=api_key.total_tokens,
+        has_provider_key=api_key.has_provider_key,
         last_used_at=api_key.last_used_at.isoformat() if api_key.last_used_at else None,
         created_at=api_key.created_at.isoformat(),
     )
@@ -254,9 +257,55 @@ def _build_key_response(api_key: APIKey, enforcement) -> KeyResponse:
         total_requests=api_key.total_requests,
         total_cost=api_key.total_cost,
         total_tokens=api_key.total_tokens,
+        has_provider_key=api_key.has_provider_key,
         last_used_at=api_key.last_used_at.isoformat() if api_key.last_used_at else None,
         created_at=api_key.created_at.isoformat(),
     )
+
+
+class SetProviderKeyRequest(BaseModel):
+    provider_key: str = Field(..., min_length=1, description="Upstream LLM provider API key")
+
+
+@router.post("/{key_id}/provider-key", response_model=KeyResponse)
+def set_provider_key(key_id: str, req: SetProviderKeyRequest, db: Session = Depends(get_db)):
+    """Vault a provider key for this API key (admin only).
+
+    The key is encrypted at rest with STEERPLANE_SECRET_KEY and is never returned
+    by any read endpoint. Once set, the gateway uses it automatically so the agent
+    no longer needs to send X-LLM-API-Key.
+    """
+    if not crypto.vault_enabled():
+        raise HTTPException(
+            status_code=400,
+            detail="Provider-key vaulting is disabled. Set STEERPLANE_SECRET_KEY to enable it.",
+        )
+
+    api_key = db.query(APIKey).filter(APIKey.id == key_id).first()
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+
+    api_key.provider_key_encrypted = crypto.encrypt(req.provider_key)
+    db.commit()
+    db.refresh(api_key)
+
+    approval_service = ApprovalService(db)
+    return _build_key_response(api_key, approval_service.get_api_key_enforcement(api_key.id))
+
+
+@router.delete("/{key_id}/provider-key", response_model=KeyResponse)
+def clear_provider_key(key_id: str, db: Session = Depends(get_db)):
+    """Remove a vaulted provider key (admin only)."""
+    api_key = db.query(APIKey).filter(APIKey.id == key_id).first()
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+
+    api_key.provider_key_encrypted = None
+    db.commit()
+    db.refresh(api_key)
+
+    approval_service = ApprovalService(db)
+    return _build_key_response(api_key, approval_service.get_api_key_enforcement(api_key.id))
 
 
 @router.delete("/{key_id}")
