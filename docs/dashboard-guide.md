@@ -25,7 +25,7 @@ Open `http://localhost:3000` in your browser.
 
 ### Landing Page (`/`)
 
-The home page introduces SteerPlane v0.4.0 with:
+The home page introduces SteerPlane v0.4.1 with:
 - Feature overview (8 core capabilities)
 - System architecture diagram
 - Code examples (Gateway mode + Decorator mode)

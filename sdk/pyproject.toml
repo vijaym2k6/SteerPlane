@@ -50,6 +50,9 @@ steerplane = "steerplane.cli:main"
 include = ["steerplane*"]
 exclude = ["tests*"]
 
+[tool.setuptools.package-data]
+steerplane = ["model_pricing.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

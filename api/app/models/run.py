@@ -30,6 +30,9 @@ class Run(Base):
     error_details = Column(
         Text, nullable=True
     )  # JSON: {error_type, blocked_action, rule_matched, ...}
+    # Owning API key for data-plane scoping. NULL = legacy/unauthenticated run,
+    # visible to everyone (so existing runs stay visible after the column lands).
+    api_key_id = Column(String(50), nullable=True, index=True)
 
     # Relationship to steps
     steps = relationship(

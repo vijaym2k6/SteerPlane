@@ -16,6 +16,7 @@ Usage:
 """
 
 import functools
+import inspect
 import logging
 from typing import Callable, Any
 
@@ -96,8 +97,7 @@ def guard(
     """
 
     def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs) -> Any:
+        def _build_run() -> RunManager:
             # Merge: explicit params > .steerplane.yml > hardcoded defaults
             _cost = get_with_fallback(max_cost_usd, "max_cost_usd", 50.0)
             _steps = get_with_fallback(max_steps, "max_steps", 200)
@@ -127,8 +127,7 @@ def guard(
                     approval_callback=approval_callback,
                 )
 
-            # Create run manager with guard configuration
-            run = RunManager(
+            return RunManager(
                 agent_name=name,
                 max_cost_usd=_cost,
                 max_steps=_steps,
@@ -147,6 +146,28 @@ def guard(
                 alert_webhook_url=_webhook,
             )
 
+        if inspect.iscoroutinefunction(func):
+            # Async agents: await the coroutine *inside* the run so the run only
+            # ends once the agent actually finishes. A sync wrapper would mark the
+            # run completed the instant func() returns the (un-awaited) coroutine.
+            @functools.wraps(func)
+            async def async_wrapper(*args, **kwargs) -> Any:
+                run = _build_run()
+                try:
+                    run.start()
+                    result = await func(*args, **kwargs)
+                    run.end(status="completed")
+                    return result
+                except Exception as e:
+                    run.end(status="failed", error=str(e))
+                    raise
+
+            async_wrapper._steerplane_guarded = True
+            return async_wrapper
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            run = _build_run()
             try:
                 run.start()
                 result = func(*args, **kwargs)

@@ -37,7 +37,14 @@ class Settings:
     CORS_ORIGINS: list[str] = _parse_cors_origins()
     ADMIN_TOKEN_HEADER: str = "X-SteerPlane-Admin-Token"
     ADMIN_TOKEN, ADMIN_TOKEN_SOURCE = _resolve_admin_token()
+    # Data-plane auth on /runs, /telemetry, /approvals/request. Default off so
+    # existing keyless SDK/self-host flows keep working; when off, unauthenticated
+    # calls are warn-logged. Set to "true" to enforce (admin token = superuser).
+    REQUIRE_RUN_AUTH: bool = os.getenv("STEERPLANE_REQUIRE_RUN_AUTH", "false").lower() == "true"
     GATEWAY_SESSION_IDLE_SEC: int = int(os.getenv("STEERPLANE_GATEWAY_SESSION_IDLE_SEC", "1800"))
+    # Optional Redis backend for gateway session + loop state (multi-worker /
+    # restart-safe). Unset = in-process memory (single-worker default).
+    REDIS_URL: str = os.getenv("REDIS_URL", "").strip()
     ALLOWED_PROVIDER_URLS: list[str] = _parse_allowed_provider_urls()
     DASHBOARD_URL: str = os.getenv("STEERPLANE_DASHBOARD_URL", "http://localhost:3000").rstrip("/")
     SMTP_HOST: str = os.getenv("STEERPLANE_SMTP_HOST", "").strip()

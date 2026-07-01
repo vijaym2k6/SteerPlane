@@ -86,6 +86,27 @@ class TestDetectLoop:
         result = detect_loop(history, window_size=8)
         assert result.loop_detected is False
 
+    def test_single_action_two_reps_not_a_loop(self):
+        """Two identical actions in a row (a benign double-call) is NOT a loop."""
+        history = ["a", "b", "c", "d", "e", "f", "g", "g"]
+        result = detect_loop(history, window_size=8)
+        assert result.loop_detected is False
+
+    def test_single_action_three_reps_is_a_loop(self):
+        """Three identical actions in a row crosses the single-action floor."""
+        history = ["a", "b", "c", "d", "e", "g", "g", "g"]
+        result = detect_loop(history, window_size=8)
+        assert result.loop_detected is True
+        assert result.pattern == ["g"]
+        assert result.repetitions == 3
+
+    def test_multi_step_two_reps_still_triggers(self):
+        """The >=3 floor is single-action only; a 2-step cycle still trips at 2."""
+        history = ["x", "y", "z", "w", "A", "B", "A", "B"]
+        result = detect_loop(history, window_size=8)
+        assert result.loop_detected is True
+        assert result.pattern == ["A", "B"]
+
 
 class TestLoopDetector:
     """Tests for the LoopDetector class."""

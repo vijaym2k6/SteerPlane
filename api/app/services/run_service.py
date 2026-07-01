@@ -25,8 +25,9 @@ class RunService:
         agent_name: str = "default_agent",
         max_cost_usd: float = 50.0,
         max_steps: int = 200,
+        api_key_id: Optional[str] = None,
     ) -> Run:
-        """Create a new run."""
+        """Create a new run, optionally owned by an API key for data-plane scoping."""
         run = Run(
             id=run_id,
             agent_name=agent_name,
@@ -34,6 +35,7 @@ class RunService:
             start_time=datetime.now(timezone.utc),
             max_cost_usd=max_cost_usd,
             max_steps_limit=max_steps,
+            api_key_id=api_key_id,
         )
         self.db.add(run)
         self.db.commit()
@@ -111,8 +113,27 @@ class RunService:
         """Get a run by ID with all steps."""
         return self.db.query(Run).filter(Run.id == run_id).first()
 
-    def list_runs(self, limit: int = 50, offset: int = 0) -> tuple[list[Run], int]:
-        """List runs with pagination."""
-        total = self.db.query(func.count(Run.id)).scalar()
-        runs = self.db.query(Run).order_by(Run.start_time.desc()).offset(offset).limit(limit).all()
+    def list_runs(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        owner_key_id: Optional[str] = None,
+        restricted: bool = False,
+    ) -> tuple[list[Run], int]:
+        """List runs with pagination.
+
+        When ``restricted`` is set (enforced mode, non-admin caller), results are
+        scoped strictly to runs owned by ``owner_key_id``. NULL-owned
+        (legacy/keyless) runs are visible to admin only, preventing cross-tenant
+        leakage.
+        """
+        query = self.db.query(Run)
+        count_query = self.db.query(func.count(Run.id))
+        if restricted:
+            visibility = Run.api_key_id == owner_key_id
+            query = query.filter(visibility)
+            count_query = count_query.filter(visibility)
+
+        total = count_query.scalar()
+        runs = query.order_by(Run.start_time.desc()).offset(offset).limit(limit).all()
         return runs, total

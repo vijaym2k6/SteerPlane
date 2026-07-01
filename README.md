@@ -81,11 +81,11 @@ def run_agent():
 | | Feature | What It Does |
 |---|---------|-------------|
 | 🔄 | **Loop Detection** | O(W²) sliding-window algorithm catches single-action, alternating, and multi-step repeating patterns in sub-millisecond time — no LLM calls |
-| 💰 | **Hard Cost Ceiling** | Per-run USD limits with built-in pricing for 25+ models across OpenAI, Anthropic, Google, Meta, and Mistral |
+| 💰 | **Cost Ceiling** | Per-run (SDK) / per-session (gateway) USD limits, checked after each step so overshoot is bounded to a single step. Built-in pricing for 25+ models across OpenAI, Anthropic, Google, Meta, and Mistral |
 | 🔔 | **Dual Enforcement (Kill/Alert)** | Kill mode terminates instantly. Alert mode pauses, notifies humans (email/webhook), and waits for approve/deny/extend |
 | 🌊 | **Streaming Gateway** | Real-time SSE chunk forwarding with mid-stream cost kill — if the budget is exceeded during a stream, SteerPlane injects a termination event and cuts the connection |
 | 🛡️ | **Policy Engine** | Allow/deny lists with glob patterns, sliding-window rate limits, and human-in-the-loop approval gates |
-| 🌐 | **Gateway Proxy** | OpenAI-compatible API proxy — change only `base_url` for zero-code enforcement. Real LLM keys never exposed to agents |
+| 🌐 | **Gateway Proxy** | OpenAI-compatible API proxy — change only `base_url` for zero-code enforcement. The agent passes its provider key through the gateway, which forces all traffic through enforcement before forwarding upstream |
 | 🖥️ | **Real-Time Dashboard** | Next.js dashboard with auto-refresh, animated timelines, cost breakdowns, policy management, and approval workflows |
 | 🔧 | **CLI Tool** | `steerplane runs list`, `steerplane status`, `steerplane keys create` — manage everything from your terminal |
 | 📄 | **Config File** | `.steerplane.yml` auto-discovery — set defaults without hardcoding limits in source code |
@@ -350,6 +350,8 @@ from openai import OpenAI
 client = OpenAI(
     base_url="http://localhost:8000/gateway/v1",
     api_key="sk_sp_your_steerplane_key",
+    # The real provider key is sent to the gateway, which forwards it upstream.
+    default_headers={"X-LLM-API-Key": "sk-your-real-provider-key"},
 )
 
 # Streaming works — chunks forwarded in real-time
@@ -369,7 +371,9 @@ for chunk in client.chat.completions.create(
 - Monthly budget tracking
 - Anthropic + OpenAI streaming support
 
-**Security model:** The agent process never holds the real LLM API key. SteerPlane stores it server-side and injects it during request forwarding.
+**Security model:** The agent points its OpenAI client at the gateway and passes the real provider key in the `X-LLM-API-Key` header. The gateway authenticates the SteerPlane key, runs every request through enforcement (policy → cost → loop), and only then forwards it upstream with that provider key — so the agent can't reach the provider directly or bypass the guardrails.
+
+**Optional server-side key vaulting:** set `STEERPLANE_SECRET_KEY` (a stable, high-entropy secret — never auto-generated) and store a provider key with `POST /api-keys/{id}/provider-key` (admin only). It is encrypted at rest with PBKDF2-HMAC-SHA256 → Fernet (AES) and injected automatically on each forwarded request, so the agent no longer needs to send `X-LLM-API-Key` at all. The vaulted key is **never** returned by any read endpoint or logged. The header path remains as a fallback when no key is vaulted. Rotating the secret makes existing vaulted keys unrecoverable — re-enter them after a rotation.
 
 ---
 
@@ -464,7 +468,7 @@ alembic upgrade head
 │   Policy Engine      │  │   → Loop → Stream Fwd    │
 │   Cost Tracker       │  │                          │
 │   Loop Detector      │  │   Mid-stream cost kill   │
-│   Run Manager        │  │   Real LLM key isolated  │
+│   Run Manager        │  │   Provider key proxied   │
 │   Config File        │  │                          │
 └──────────┬───────────┘  └──────────┬───────────────┘
            │                         │
@@ -484,7 +488,7 @@ alembic upgrade head
 | Layer | Stack | Purpose |
 |-------|-------|---------|
 | **SDK** | Python 3.10+ / Node.js 18+ | `@guard` decorator, cost tracking, loop detection, policy engine, config file, dual enforcement |
-| **Gateway Proxy** | FastAPI + HTTPX | OpenAI-compatible proxy with SSE streaming, mid-stream cost kill, and key isolation |
+| **Gateway Proxy** | FastAPI + HTTPX | OpenAI-compatible proxy with SSE streaming, mid-stream cost kill, and forced enforcement on every forwarded request |
 | **API** | FastAPI + SQLAlchemy + Alembic | REST endpoints for runs, steps, policies, approvals, API keys, telemetry |
 | **Database** | PostgreSQL (prod) / SQLite (dev) | Persistent storage with versioned migrations |
 | **Dashboard** | Next.js + React + Framer Motion | Real-time monitoring, run timelines, policy management, approval workflows |

@@ -7,8 +7,11 @@ import type { NextRequest } from "next/server";
  * site, so the app subdomain shouldn't show a second marketing landing.
  *
  * Self-hosted installs (demo off) keep the landing page at "/".
+ *
+ * Next.js 16 renamed the "middleware" file convention to "proxy"; the behavior
+ * is unchanged.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     if (process.env.NEXT_PUBLIC_STEERPLANE_DEMO === "true") {
         return NextResponse.redirect(new URL("/dashboard", request.url));
     }

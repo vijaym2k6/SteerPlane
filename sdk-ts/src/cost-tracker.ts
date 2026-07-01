@@ -6,22 +6,22 @@
  */
 
 import { CostLimitExceeded } from "./errors.js";
+import { MODEL_PRICING } from "./model-pricing.js";
 
-/** Default pricing per token (can be overridden per model). */
+/**
+ * Per-token pricing, derived from the canonical per-1M table in
+ * `model-pricing.ts` so the TS SDK can never drift from the Python SDK and the
+ * API gateway.
+ */
 export const DEFAULT_PRICING: Record<
   string,
   { input: number; output: number }
-> = {
-  "gpt-4o": { input: 0.0000025, output: 0.00001 },
-  "gpt-4o-mini": { input: 0.00000015, output: 0.0000006 },
-  "gpt-4": { input: 0.00003, output: 0.00006 },
-  "gpt-3.5-turbo": { input: 0.0000005, output: 0.0000015 },
-  "claude-3-opus": { input: 0.000015, output: 0.000075 },
-  "claude-3-sonnet": { input: 0.000003, output: 0.000015 },
-  "claude-3-haiku": { input: 0.00000025, output: 0.00000125 },
-  "gemini-pro": { input: 0.00000025, output: 0.0000005 },
-  default: { input: 0.000002, output: 0.000002 },
-};
+> = Object.fromEntries(
+  Object.entries(MODEL_PRICING).map(([model, rates]) => [
+    model,
+    { input: rates.input / 1_000_000, output: rates.output / 1_000_000 },
+  ]),
+);
 
 /** Cost breakdown for a single step. */
 export interface StepCost {

@@ -8,9 +8,9 @@ import hashlib
 import json
 import secrets
 import time
-from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -19,35 +19,16 @@ from ..config import settings
 from ..models.api_key import APIKey, hash_api_key
 from ..models.run import Run
 from ..models.step import Step
+from . import crypto
 from .approval_service import ApprovalService
+from .state_store import StateStore, build_state_store
 
 
-MODEL_PRICING = {
-    "gpt-4o": {"input": 2.50, "output": 10.00},
-    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
-    "gpt-4-turbo": {"input": 10.00, "output": 30.00},
-    "gpt-4": {"input": 30.00, "output": 60.00},
-    "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
-    "o1": {"input": 15.00, "output": 60.00},
-    "o1-mini": {"input": 3.00, "output": 12.00},
-    "o3-mini": {"input": 1.10, "output": 4.40},
-    "claude-3-opus": {"input": 15.00, "output": 75.00},
-    "claude-3-sonnet": {"input": 3.00, "output": 15.00},
-    "claude-3-haiku": {"input": 0.25, "output": 1.25},
-    "claude-3.5-sonnet": {"input": 3.00, "output": 15.00},
-    "claude-3.5-haiku": {"input": 0.80, "output": 4.00},
-    "claude-4-sonnet": {"input": 3.00, "output": 15.00},
-    "claude-4-opus": {"input": 15.00, "output": 75.00},
-    "gemini-pro": {"input": 0.25, "output": 0.50},
-    "gemini-1.5-pro": {"input": 1.25, "output": 5.00},
-    "gemini-1.5-flash": {"input": 0.075, "output": 0.30},
-    "gemini-2.0-flash": {"input": 0.10, "output": 0.40},
-    "llama-3-70b": {"input": 0.59, "output": 0.79},
-    "llama-3-8b": {"input": 0.05, "output": 0.08},
-    "mistral-large": {"input": 2.00, "output": 6.00},
-    "mistral-small": {"input": 0.20, "output": 0.60},
-    "default": {"input": 2.00, "output": 2.00},
-}
+# Canonical per-1M USD pricing, loaded from model_pricing.json. This file is kept
+# byte-identical to the SDK's copy (sdk/steerplane/model_pricing.json) and the TS
+# mirror; api/tests/test_pricing_consistency.py fails if they drift.
+_PRICING_PATH = Path(__file__).with_name("model_pricing.json")
+MODEL_PRICING: dict[str, dict[str, float]] = json.loads(_PRICING_PATH.read_text("utf-8"))
 
 _SESSION_ID_ALLOWED = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_:.")
 
@@ -109,20 +90,15 @@ def month_bounds(now: datetime | None = None) -> tuple[datetime, datetime]:
 
 
 class GatewayLoopDetector:
-    """Detect repeated prompt patterns for a specific session."""
+    """Detect repeated prompt patterns for a specific session (store-backed)."""
 
-    def __init__(self):
-        self._histories: dict[str, list[str]] = defaultdict(list)
-        self._window_size = 10
-        self._min_repetitions = 3
+    def __init__(self, store: StateStore, window_size: int = 10, min_repetitions: int = 3):
+        self._store = store
+        self._window_size = window_size
+        self._min_repetitions = min_repetitions
 
     def record_and_check(self, storage_key: str, prompt_hash: str) -> tuple[bool, str]:
-        history = self._histories[storage_key]
-        history.append(prompt_hash)
-
-        if len(history) > self._window_size * 2:
-            self._histories[storage_key] = history[-self._window_size * 2 :]
-            history = self._histories[storage_key]
+        history = self._store.append_loop(storage_key, prompt_hash, self._window_size * 2)
 
         if len(history) < self._min_repetitions:
             return False, ""
@@ -146,7 +122,7 @@ class GatewayLoopDetector:
         return False, ""
 
     def clear(self, storage_key: str):
-        self._histories.pop(storage_key, None)
+        self._store.clear_loop(storage_key)
 
 
 @dataclass
@@ -160,6 +136,26 @@ class GatewaySession:
     last_seen_at: float
 
 
+def _session_to_dict(session: GatewaySession) -> dict:
+    return {
+        "key_hash": session.key_hash,
+        "session_id": session.session_id,
+        "run_id": session.run_id,
+        "explicit": session.explicit,
+        "last_seen_at": session.last_seen_at,
+    }
+
+
+def _session_from_dict(data: dict) -> GatewaySession:
+    return GatewaySession(
+        key_hash=data["key_hash"],
+        session_id=data["session_id"],
+        run_id=data["run_id"],
+        explicit=bool(data["explicit"]),
+        last_seen_at=float(data["last_seen_at"]),
+    )
+
+
 @dataclass
 class GatewayPreflightResult:
     """Gateway decision before a proxied request is sent upstream."""
@@ -171,12 +167,11 @@ class GatewayPreflightResult:
 
 
 class SessionTracker:
-    """Track in-memory default sessions and active explicit sessions."""
+    """Track default and explicit gateway sessions via a pluggable StateStore."""
 
-    def __init__(self, idle_timeout_sec: int = 1800):
+    def __init__(self, store: StateStore, idle_timeout_sec: int = 1800):
+        self._store = store
         self._idle_timeout_sec = idle_timeout_sec
-        self._sessions: dict[str, dict[str, GatewaySession]] = defaultdict(dict)
-        self._default_session_ids: dict[str, str] = {}
 
     def resolve_session(
         self,
@@ -188,8 +183,8 @@ class SessionTracker:
         normalized = normalize_session_id(requested_session_id)
 
         if normalized:
-            session = self._sessions[key_hash].get(normalized)
-            if session is None:
+            data = self._store.get_session(key_hash, normalized)
+            if data is None:
                 session = GatewaySession(
                     key_hash=key_hash,
                     session_id=normalized,
@@ -197,32 +192,32 @@ class SessionTracker:
                     explicit=True,
                     last_seen_at=now_ts,
                 )
-                self._sessions[key_hash][normalized] = session
+            else:
+                session = _session_from_dict(data)
             session.last_seen_at = now_ts
+            self._store.put_session(key_hash, normalized, _session_to_dict(session))
             return session, expired
 
-        default_session_id = self._default_session_ids.get(key_hash)
+        default_session_id = self._store.get_default_session_id(key_hash)
         session = None
         if default_session_id:
-            session = self._sessions[key_hash].get(default_session_id)
+            data = self._store.get_session(key_hash, default_session_id)
+            if data:
+                session = _session_from_dict(data)
 
         if session is None:
             generated_session_id = f"auto_{secrets.token_urlsafe(9)}"
             session = GatewaySession(
                 key_hash=key_hash,
                 session_id=generated_session_id,
-                run_id=build_gateway_run_id(
-                    key_hash,
-                    generated_session_id,
-                    explicit=False,
-                ),
+                run_id=build_gateway_run_id(key_hash, generated_session_id, explicit=False),
                 explicit=False,
                 last_seen_at=now_ts,
             )
-            self._sessions[key_hash][generated_session_id] = session
-            self._default_session_ids[key_hash] = generated_session_id
+            self._store.set_default_session_id(key_hash, generated_session_id)
 
         session.last_seen_at = now_ts
+        self._store.put_session(key_hash, session.session_id, _session_to_dict(session))
         return session, expired
 
     def _cleanup_expired(
@@ -231,20 +226,25 @@ class SessionTracker:
         now_ts: float,
     ) -> list[GatewaySession]:
         expired: list[GatewaySession] = []
-        sessions = self._sessions.get(key_hash, {})
-        for session_id, session in list(sessions.items()):
-            if session.explicit:
+        for session_id, data in self._store.all_sessions(key_hash).items():
+            if data.get("explicit"):
                 continue
-            if now_ts - session.last_seen_at > self._idle_timeout_sec:
-                expired.append(session)
-                del sessions[session_id]
-                if self._default_session_ids.get(key_hash) == session_id:
-                    del self._default_session_ids[key_hash]
+            if now_ts - float(data.get("last_seen_at", 0.0)) > self._idle_timeout_sec:
+                expired.append(_session_from_dict(data))
+                self._store.delete_session(key_hash, session_id)
+                if self._store.get_default_session_id(key_hash) == session_id:
+                    self._store.delete_default_session_id(key_hash)
         return expired
 
 
-_loop_detector = GatewayLoopDetector()
-_session_tracker = SessionTracker(settings.GATEWAY_SESSION_IDLE_SEC)
+_state_store = build_state_store()
+_loop_detector = GatewayLoopDetector(_state_store)
+_session_tracker = SessionTracker(_state_store, settings.GATEWAY_SESSION_IDLE_SEC)
+
+
+def reset_gateway_state() -> None:
+    """Clear all gateway session + loop state (used by tests)."""
+    _state_store.reset()
 
 
 class GatewayService:
@@ -252,6 +252,20 @@ class GatewayService:
 
     def __init__(self, db: Session):
         self.db = db
+
+    def resolve_provider_key(self, api_key: APIKey, header_value: str | None) -> str:
+        """Pick the upstream provider key: vaulted key first, header as fallback.
+
+        If a key is vaulted and decrypts, it is used (the agent need not transmit
+        the provider key at all). Otherwise the X-LLM-API-Key header is used, so
+        existing header-based callers keep working.
+        """
+        if api_key.provider_key_encrypted and crypto.vault_enabled():
+            try:
+                return crypto.decrypt(api_key.provider_key_encrypted)
+            except crypto.VaultError:
+                pass  # fall back to the header rather than hard-failing
+        return (header_value or "").strip()
 
     def validate_api_key(self, raw_key: str) -> APIKey | None:
         key_hashed = hash_api_key(raw_key)

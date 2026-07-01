@@ -7,19 +7,14 @@ Enforces cost limits and projects final cost.
 
 from dataclasses import dataclass, field
 from .exceptions import CostLimitExceeded
+from .pricing import MODEL_PRICING, _PER_MILLION
 
 
-# Default pricing per token (can be overridden per model)
+# Per-token pricing, derived from the canonical per-1M table in pricing.py so the
+# SDK and the API gateway can never disagree on a model's cost.
 DEFAULT_PRICING = {
-    "gpt-4o": {"input": 0.0000025, "output": 0.000010},
-    "gpt-4o-mini": {"input": 0.00000015, "output": 0.0000006},
-    "gpt-4": {"input": 0.00003, "output": 0.00006},
-    "gpt-3.5-turbo": {"input": 0.0000005, "output": 0.0000015},
-    "claude-3-opus": {"input": 0.000015, "output": 0.000075},
-    "claude-3-sonnet": {"input": 0.000003, "output": 0.000015},
-    "claude-3-haiku": {"input": 0.00000025, "output": 0.00000125},
-    "gemini-pro": {"input": 0.00000025, "output": 0.0000005},
-    "default": {"input": 0.000002, "output": 0.000002},
+    model: {"input": rates["input"] / _PER_MILLION, "output": rates["output"] / _PER_MILLION}
+    for model, rates in MODEL_PRICING.items()
 }
 
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-SteerPlane v0.4.0 is a monorepo with five main layers:
+SteerPlane v0.4.1 is a monorepo with five main layers:
 
 1. `sdk/` and `sdk-ts/`
 The Python and TypeScript SDKs enforce local guardrails such as step limits, cost ceilings, loop detection, and policy checks. They also stream run telemetry to the API when it is available. The Python SDK includes a CLI tool (`steerplane`) and `.steerplane.yml` config file support.
