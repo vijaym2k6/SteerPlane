@@ -245,8 +245,8 @@ policy:
     - "drop_*"
   rate_limits:
     - pattern: "search_*"
-      max_calls: 10
-      window_sec: 60
+      max_count: 10
+      window_seconds: 60
 
 alerts:
   email: ops@company.com
