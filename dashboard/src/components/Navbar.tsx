@@ -98,7 +98,7 @@ export default function Navbar() {
                 <div className="navbar-brand">
                     <Link href="/" className="navbar-logo">
                         <Image
-                            src="/SteerPlane_Logo.jpg"
+                            src="/SteerPlane_Logo.png"
                             alt="SteerPlane"
                             className="navbar-logo-img"
                             width={40}
