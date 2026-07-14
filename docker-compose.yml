@@ -14,7 +14,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-steerplane}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-steerplane}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your .env file — see .env.example}
       POSTGRES_DB: ${POSTGRES_DB:-steerplane}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -35,7 +35,7 @@ services:
     ports:
       - "${API_PORT:-8000}:8000"
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-steerplane}:${POSTGRES_PASSWORD:-steerplane}@postgres:5432/${POSTGRES_DB:-steerplane}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-steerplane}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your .env file — see .env.example}@postgres:5432/${POSTGRES_DB:-steerplane}
       CORS_ORIGINS: http://localhost:3000,http://dashboard:3000
       STEERPLANE_ADMIN_TOKEN: ${STEERPLANE_ADMIN_TOKEN:-}
       STEERPLANE_DASHBOARD_URL: http://localhost:3000

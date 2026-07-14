@@ -17,7 +17,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # Database URL — defaults to SQLite, easily swappable to PostgreSQL
-# PostgreSQL: postgresql://steerplane:steerplane@localhost:5432/steerplane
+# PostgreSQL: postgresql://steerplane:<your-password>@localhost:5432/steerplane
 # SQLite:     sqlite:///./steerplane.db
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./steerplane.db")
 

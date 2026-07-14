@@ -3,6 +3,7 @@ Script to set up the PostgreSQL database for SteerPlane.
 Run once after installing PostgreSQL.
 
 Usage:
+    set POSTGRES_PASSWORD=your-password   (or export on macOS/Linux)
     python setup_postgres.py
 """
 
@@ -13,9 +14,14 @@ import os
 PSQL = r"C:\Program Files\PostgreSQL\17\bin\psql.exe"
 CREATEDB = r"C:\Program Files\PostgreSQL\17\bin\createdb.exe"
 
-DB_NAME = "steerplane"
-DB_USER = "steerplane"
-DB_PASS = "steerplane"
+DB_NAME = os.getenv("POSTGRES_DB", "steerplane")
+DB_USER = os.getenv("POSTGRES_USER", "steerplane")
+DB_PASS = os.getenv("POSTGRES_PASSWORD")
+
+if not DB_PASS:
+    print("[ERROR] Set POSTGRES_PASSWORD before running this script, e.g.:")
+    print("  set POSTGRES_PASSWORD=your-password")
+    sys.exit(1)
 
 
 def run_psql(sql, user="postgres", db="postgres"):
