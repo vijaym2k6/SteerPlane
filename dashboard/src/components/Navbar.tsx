@@ -21,7 +21,6 @@ const navLinks = [
     // redirects to /dashboard. Self-hosted installs still show it.
     ...(DEMO_MODE ? [] : [{ href: "/", label: "Home" }]),
     { href: "/dashboard", label: "Dashboard" },
-    { href: "/approvals", label: "Approvals" },
     { href: "/policies", label: "Policies" },
     { href: "/api-keys", label: "API Keys" },
 ];

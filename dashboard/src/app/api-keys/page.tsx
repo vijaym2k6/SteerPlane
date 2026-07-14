@@ -5,12 +5,10 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import {
     APIKeyConfig,
-    ApprovalRequest,
     CreateKeyRequest,
     createAPIKey,
     deleteAPIKey,
     fetchAPIKeys,
-    fetchApprovals,
     updateAPIKey,
 } from "../../services/api";
 import { ADMIN_TOKEN_EVENT } from "@/services/admin-auth";
@@ -22,12 +20,6 @@ type KeyFormValues = {
     rateLimit: number;
     allowedModels: string;
     deniedModels: string;
-    enforcementMode: "kill" | "alert";
-    alertThreshold: number;
-    alertTimeout: number;
-    alertChannels: string[];
-    alertEmail: string;
-    alertWebhookUrl: string;
 };
 
 function toFormValues(key?: APIKeyConfig | null): KeyFormValues {
@@ -38,12 +30,6 @@ function toFormValues(key?: APIKeyConfig | null): KeyFormValues {
         rateLimit: key?.max_requests_per_min ?? 60,
         allowedModels: key?.allowed_models ?? "",
         deniedModels: key?.denied_models ?? "",
-        enforcementMode: (key?.enforcement_mode === "alert" ? "alert" : "kill"),
-        alertThreshold: key?.alert_threshold ?? 0.8,
-        alertTimeout: key?.alert_timeout_sec ?? 1800,
-        alertChannels: key?.alert_channels ?? [],
-        alertEmail: key?.alert_email ?? "",
-        alertWebhookUrl: key?.alert_webhook_url ?? "",
     };
 }
 
@@ -55,20 +41,7 @@ function toKeyRequest(values: KeyFormValues): CreateKeyRequest {
         max_requests_per_min: values.rateLimit,
         allowed_models: values.allowedModels.trim() || null,
         denied_models: values.deniedModels.trim() || null,
-        enforcement_mode: values.enforcementMode,
-        alert_threshold: values.alertThreshold,
-        alert_timeout_sec: values.alertTimeout,
-        alert_channels: values.alertChannels,
-        alert_email: values.alertEmail.trim() || null,
-        alert_webhook_url: values.alertWebhookUrl.trim() || null,
     };
-}
-
-function toggleChannel(channels: string[], channel: string, enabled: boolean) {
-    if (enabled) {
-        return [...new Set([...channels, channel])];
-    }
-    return channels.filter((value) => value !== channel);
 }
 
 function KeyModal({
@@ -91,7 +64,6 @@ function KeyModal({
         setValues(toFormValues(keyConfig));
     }, [keyConfig]);
 
-    const isAlertMode = values.enforcementMode === "alert";
     const title = mode === "create" ? "Create Gateway API Key" : "Edit Gateway API Key";
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -126,8 +98,8 @@ function KeyModal({
                         <h2 className="modal-title">{title}</h2>
                         <p className="modal-helper-text">
                             {mode === "create"
-                                ? "Choose whether this key hard-kills immediately or pauses for human intervention."
-                                : "Update cost limits, alert routing, and gateway behavior without rotating the key."}
+                                ? "Set cost and rate limits for this gateway key. Limits are enforced deterministically — kill mode terminates immediately on breach."
+                                : "Update cost limits and gateway behavior without rotating the key."}
                         </p>
                     </div>
                     {keyConfig && <code className="key-prefix">{keyConfig.key_prefix}</code>}
@@ -179,119 +151,6 @@ function KeyModal({
                                 className="form-input"
                             />
                         </div>
-                    </div>
-
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label>Enforcement Mode</label>
-                            <select
-                                value={values.enforcementMode}
-                                onChange={(e) =>
-                                    setValues((prev) => ({
-                                        ...prev,
-                                        enforcementMode: (e.target.value as "kill" | "alert"),
-                                    }))
-                                }
-                                className="form-input"
-                            >
-                                <option value="kill">Kill Mode</option>
-                                <option value="alert">Alert Mode</option>
-                            </select>
-                        </div>
-                        {isAlertMode && (
-                            <>
-                                <div className="form-group">
-                                    <label>Alert Threshold</label>
-                                    <input
-                                        type="number"
-                                        step="0.05"
-                                        min="0.1"
-                                        max="1"
-                                        value={values.alertThreshold}
-                                        onChange={(e) => setValues((prev) => ({ ...prev, alertThreshold: Number(e.target.value) }))}
-                                        className="form-input"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Alert Timeout (sec)</label>
-                                    <input
-                                        type="number"
-                                        min="30"
-                                        value={values.alertTimeout}
-                                        onChange={(e) => setValues((prev) => ({ ...prev, alertTimeout: Number(e.target.value) }))}
-                                        className="form-input"
-                                    />
-                                </div>
-                            </>
-                        )}
-                    </div>
-
-                    <div className={`enforcement-panel ${isAlertMode ? "alert" : "kill"}`}>
-                        <div className="enforcement-panel-title">
-                            {isAlertMode ? "Alert Mode" : "Kill Mode"}
-                        </div>
-                        <p className="enforcement-panel-text">
-                            {isAlertMode
-                                ? "When the key reaches its threshold, SteerPlane pauses the run, sends notifications, and waits for human approval before continuing."
-                                : "When the key reaches a limit, SteerPlane blocks or terminates immediately with no human intervention."}
-                        </p>
-                        {isAlertMode && (
-                            <>
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>Alert Email</label>
-                                        <input
-                                            type="email"
-                                            value={values.alertEmail}
-                                            onChange={(e) => setValues((prev) => ({ ...prev, alertEmail: e.target.value }))}
-                                            className="form-input"
-                                            placeholder="ops@example.com"
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Webhook URL</label>
-                                        <input
-                                            type="url"
-                                            value={values.alertWebhookUrl}
-                                            onChange={(e) => setValues((prev) => ({ ...prev, alertWebhookUrl: e.target.value }))}
-                                            className="form-input"
-                                            placeholder="https://hooks.slack.com/..."
-                                        />
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label>Alert Channels</label>
-                                    <div className="toggle-row" style={{ gap: 18 }}>
-                                        <label>
-                                            <input
-                                                type="checkbox"
-                                                checked={values.alertChannels.includes("email")}
-                                                onChange={(e) =>
-                                                    setValues((prev) => ({
-                                                        ...prev,
-                                                        alertChannels: toggleChannel(prev.alertChannels, "email", e.target.checked),
-                                                    }))
-                                                }
-                                            />{" "}
-                                            Email
-                                        </label>
-                                        <label>
-                                            <input
-                                                type="checkbox"
-                                                checked={values.alertChannels.includes("webhook")}
-                                                onChange={(e) =>
-                                                    setValues((prev) => ({
-                                                        ...prev,
-                                                        alertChannels: toggleChannel(prev.alertChannels, "webhook", e.target.checked),
-                                                    }))
-                                                }
-                                            />{" "}
-                                            Webhook / Slack
-                                        </label>
-                                    </div>
-                                </div>
-                            </>
-                        )}
                     </div>
 
                     <div className="form-row">
@@ -373,22 +232,15 @@ function RawKeyDisplay({
 
 function KeyCard({
     apiKey,
-    pendingApprovals,
     onEdit,
     onToggle,
     onDelete,
 }: {
     apiKey: APIKeyConfig;
-    pendingApprovals: number;
     onEdit: (key: APIKeyConfig) => void;
     onToggle: (id: string, active: boolean) => void;
     onDelete: (id: string) => void;
 }) {
-    const contacts = [
-        apiKey.alert_email ? `email: ${apiKey.alert_email}` : null,
-        apiKey.alert_webhook_url ? "webhook configured" : null,
-    ].filter(Boolean);
-
     return (
         <motion.div
             className={`key-card ${!apiKey.is_active ? "key-card-inactive" : ""}`}
@@ -406,12 +258,6 @@ function KeyCard({
                     <span className={`badge ${apiKey.is_active ? "badge-active" : "badge-inactive"}`}>
                         {apiKey.is_active ? "Active" : "Inactive"}
                     </span>
-                    <span className={`badge ${apiKey.enforcement_mode === "alert" ? "badge-warning" : "badge-active"}`}>
-                        {apiKey.enforcement_mode === "alert" ? "Alert Mode" : "Kill Mode"}
-                    </span>
-                    {pendingApprovals > 0 && (
-                        <span className="badge badge-warning">{pendingApprovals} pending</span>
-                    )}
                 </div>
             </div>
 
@@ -436,31 +282,9 @@ function KeyCard({
                     <span className="key-stat-value">{apiKey.max_requests_per_min}/min</span>
                     <span className="key-stat-label">Rate Limit</span>
                 </div>
-                <div className="key-stat">
-                    <span className="key-stat-value">{Math.round(apiKey.alert_threshold * 100)}%</span>
-                    <span className="key-stat-label">Alert Threshold</span>
-                </div>
             </div>
 
             <div className="key-config-grid">
-                <div className="key-config-item">
-                    <span className="key-config-label">Alert Timeout</span>
-                    <span className="key-config-value">
-                        {apiKey.enforcement_mode === "alert" ? `${apiKey.alert_timeout_sec}s` : "Not used"}
-                    </span>
-                </div>
-                <div className="key-config-item">
-                    <span className="key-config-label">Channels</span>
-                    <span className="key-config-value">
-                        {apiKey.enforcement_mode === "alert"
-                            ? (apiKey.alert_channels.length ? apiKey.alert_channels.join(", ") : "dashboard only")
-                            : "none"}
-                    </span>
-                </div>
-                <div className="key-config-item">
-                    <span className="key-config-label">Contacts</span>
-                    <span className="key-config-value">{contacts.length ? contacts.join(" · ") : "none"}</span>
-                </div>
                 <div className="key-config-item">
                     <span className="key-config-label">Models</span>
                     <span className="key-config-value">
@@ -472,16 +296,6 @@ function KeyCard({
                     </span>
                 </div>
             </div>
-
-            {apiKey.enforcement_mode === "alert" && (
-                <div className="gateway-info-card compact">
-                    <h3>Human Intervention</h3>
-                    <p>
-                        Cost overruns pause this gateway session for approval. Loop detections and policy/security
-                        blocks still terminate immediately.
-                    </p>
-                </div>
-            )}
 
             <div className="key-card-footer">
                 <span className="key-last-used">
@@ -515,23 +329,11 @@ export default function APIKeysPage() {
     const [editingKey, setEditingKey] = useState<APIKeyConfig | null>(null);
     const [rawKey, setRawKey] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [pendingApprovals, setPendingApprovals] = useState<ApprovalRequest[]>([]);
 
     const loadPageData = useCallback(async () => {
         try {
-            const [keysResult, approvalsResult] = await Promise.allSettled([
-                fetchAPIKeys(),
-                fetchApprovals("pending", 100),
-            ]);
-
-            if (keysResult.status === "rejected") {
-                throw keysResult.reason;
-            }
-
-            setKeys(keysResult.value);
-            setPendingApprovals(
-                approvalsResult.status === "fulfilled" ? approvalsResult.value : []
-            );
+            const result = await fetchAPIKeys();
+            setKeys(result);
             setError(null);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to load API keys");
@@ -546,26 +348,13 @@ export default function APIKeysPage() {
         return () => window.removeEventListener(ADMIN_TOKEN_EVENT, loadPageData);
     }, [loadPageData]);
 
-    const pendingCounts = useMemo(() => {
-        const counts: Record<string, number> = {};
-        for (const approval of pendingApprovals) {
-            if (approval.api_key_id) {
-                counts[approval.api_key_id] = (counts[approval.api_key_id] ?? 0) + 1;
-            }
-        }
-        return counts;
-    }, [pendingApprovals]);
-
     const summary = useMemo(() => {
         const active = keys.filter((key) => key.is_active).length;
-        const alertMode = keys.filter((key) => key.enforcement_mode === "alert").length;
         return [
             { label: "Total Keys", value: keys.length },
             { label: "Active", value: active },
-            { label: "Alert Mode", value: alertMode },
-            { label: "Pending Approvals", value: pendingApprovals.length },
         ];
-    }, [keys, pendingApprovals.length]);
+    }, [keys]);
 
     const handleCreated = (key: APIKeyConfig) => {
         setShowCreate(false);
@@ -608,8 +397,7 @@ export default function APIKeysPage() {
                 <div>
                     <h1 className="page-title">Gateway API Keys</h1>
                     <p className="page-subtitle">
-                        Manage runtime budgets, alert mode, and human-intervention settings for every
-                        gateway workload from one place.
+                        Manage runtime budgets and rate limits for every gateway workload from one place.
                     </p>
                 </div>
                 <button onClick={() => setShowCreate(true)} className="btn btn-primary">
@@ -618,10 +406,10 @@ export default function APIKeysPage() {
             </div>
 
             <div className="gateway-info-card">
-                <h3>How the new enforcement model works</h3>
+                <h3>How enforcement works</h3>
                 <p>
-                    Use <strong>Kill Mode</strong> for strict automated protection, or <strong>Alert Mode</strong>
-                    {" "}to pause near a budget limit and wait for human approval before continuation.
+                    Every key runs in <strong>kill mode</strong> — deterministic, immediate termination
+                    when a cost, rate, or loop limit is breached. No LLM judges another LLM.
                 </p>
                 <code className="gateway-code">
                     {`client = openai.OpenAI(base_url="http://localhost:8000/gateway/v1", api_key="sk_sp_...")`}
@@ -683,7 +471,6 @@ export default function APIKeysPage() {
                             <KeyCard
                                 key={key.id}
                                 apiKey={key}
-                                pendingApprovals={pendingCounts[key.id] ?? 0}
                                 onEdit={setEditingKey}
                                 onToggle={handleToggle}
                                 onDelete={handleDelete}

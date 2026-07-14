@@ -56,7 +56,7 @@ const features = [
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
     ),
     title: "Hard Cost Ceiling",
-    desc: "Define per-run and monthly USD cost limits. Every step's token cost is tracked cumulatively across 25+ models with built-in pricing. Run in kill mode for automatic stops, or alert mode to pause near the limit and wait for human approval.",
+    desc: "Define per-run and monthly USD cost limits. Every step's token cost is tracked cumulatively across 25+ models with built-in pricing. Kill mode terminates automatically the moment a ceiling is breached — deterministic, no LLM judging another LLM.",
   },
   {
     icon: (
@@ -92,14 +92,14 @@ const features = [
 const howSteps = [
   { num: 1, title: "Install SDK", desc: "pip install steerplane — one dependency, zero config required." },
   { num: 2, title: "Point to Gateway", desc: "Set your OpenAI client's base_url to SteerPlane. Or use the @guard decorator directly." },
-  { num: 3, title: "Set Policies", desc: "Define cost limits, rate limits, allowed/denied actions, and approval workflows." },
+  { num: 3, title: "Set Policies", desc: "Define cost limits, rate limits, and allowed/denied actions." },
   { num: 4, title: "Agent Runs", desc: "Your agent executes normally. SteerPlane intercepts every LLM call and action." },
-  { num: 5, title: "Guards Activate", desc: "Loop detection, cost limits, alert-mode approvals, policy engine, and rate limits are enforced in real time." },
+  { num: 5, title: "Guards Activate", desc: "Loop detection, cost limits, policy engine, and rate limits are enforced in real time." },
   { num: 6, title: "Dashboard Shows", desc: "Every run, step, cost, and policy violation is visualized in the live dashboard." },
 ];
 
 /* ─── Architecture ─── */
-const archNodes = ["AI Agent", "AI Gateway (SSE)", "Policy Engine", "SteerPlane SDK", "Guard Engine", "REST API", "PostgreSQL", "Redis", "Dashboard UI"];
+const archNodes = ["AI Agent", "AI Gateway (SSE)", "Policy Engine", "SteerPlane SDK", "Guard Engine", "REST API", "PostgreSQL", "Dashboard UI"];
 
 /* ─── Tech Stack ─── */
 const techStack = [
@@ -108,7 +108,7 @@ const techStack = [
   { layer: "Gateway", tech: "FastAPI + httpx", detail: "SSE streaming proxy with mid-stream cost kill, 25+ model pricing" },
   { layer: "API", tech: "FastAPI", detail: "Auto-generated OpenAPI docs, Alembic migrations, CORS" },
   { layer: "Database", tech: "PostgreSQL 17", detail: "Persistent storage with SQLAlchemy ORM + Alembic" },
-  { layer: "Infrastructure", tech: "Docker Compose", detail: "4-service stack: API, Dashboard, PostgreSQL, Redis" },
+  { layer: "Infrastructure", tech: "Docker Compose", detail: "3-service stack: API, Dashboard, PostgreSQL" },
   { layer: "CI/CD", tech: "GitHub Actions", detail: "Lint, test, Docker build pipeline" },
   { layer: "Dashboard", tech: "Next.js 16", detail: "React 19, Framer Motion, standalone Docker output" },
 ];
@@ -156,7 +156,7 @@ export default function Home() {
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
           <span className="hero-badge-dot" />
-          V0.4.1 · SSE Streaming Gateway + CLI + Docker + 4 Framework Integrations
+          V1.0.0 · SSE Streaming Gateway + CLI + Docker + 4 Framework Integrations
         </motion.div>
 
         <motion.div
@@ -451,7 +451,7 @@ export default function Home() {
 
       {/* ═══════ FOOTER ═══════ */}
       <footer className="landing-footer">
-        <p>SteerPlane v0.4.1 — Open-source runtime guardrails for AI agents.</p>
+        <p>SteerPlane v1.0.0 — Open-source runtime guardrails for AI agents.</p>
         <p className="landing-footer-tagline">&quot;Ship agents. Not incidents.&quot;</p>
       </footer>
     </div>

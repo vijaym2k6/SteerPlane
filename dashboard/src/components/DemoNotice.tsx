@@ -48,7 +48,7 @@ export default function DemoNotice() {
             </span>
             <span>
                 Everything on this page is <strong style={{ color: "#fff" }}>demo data — not real</strong>.
-                These runs, costs, policies, and approvals are illustrative. To monitor your own agents,
+                These runs, costs, and policies are illustrative. To monitor your own agents,
                 run SteerPlane locally.
             </span>
         </div>

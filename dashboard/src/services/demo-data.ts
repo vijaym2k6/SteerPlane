@@ -14,7 +14,6 @@ import type {
     PolicyConfig,
     APIKeyConfig,
     CreateKeyRequest,
-    ApprovalRequest,
 } from "./api";
 
 export const DEMO_MODE = process.env.NEXT_PUBLIC_STEERPLANE_DEMO === "true";
@@ -61,7 +60,7 @@ let runs: Run[] = [
         },
     },
     {
-        id: "run_8f3955", agent_name: "finance_bot", status: "awaiting_approval",
+        id: "run_8f3955", agent_name: "finance_bot", status: "running",
         start_time: iso(2), end_time: null, total_cost: 7.8, total_steps: 33,
         total_tokens: 71200, max_cost_usd: 8, max_steps_limit: 60, error: null, error_details: null,
     },
@@ -125,48 +124,20 @@ let apiKeys: APIKeyConfig[] = [
     {
         id: "key_prod", name: "prod-support-bot", key_prefix: "sk_sp_live_a31f", max_cost_usd: 10,
         max_cost_monthly: 500, max_requests_per_min: 60, allowed_models: null, denied_models: null,
-        enforcement_mode: "kill", alert_threshold: 0.8, alert_timeout_sec: 1800, alert_channels: [],
-        alert_email: null, alert_webhook_url: null, is_active: true, total_requests: 12840,
+        is_active: true, total_requests: 12840,
         total_cost: 218.42, total_tokens: 5_120_000, last_used_at: iso(11), created_at: iso(8000),
     },
     {
         id: "key_research", name: "research-sandbox", key_prefix: "sk_sp_live_77be", max_cost_usd: 15,
         max_cost_monthly: 100, max_requests_per_min: 30, allowed_models: null, denied_models: null,
-        enforcement_mode: "alert", alert_threshold: 0.75, alert_timeout_sec: 900, alert_channels: ["email"],
-        alert_email: "ops@steerplane.com", alert_webhook_url: null, is_active: true, total_requests: 3420,
+        is_active: true, total_requests: 3420,
         total_cost: 41.07, total_tokens: 980_000, last_used_at: iso(3), created_at: iso(6000),
     },
     {
         id: "key_finance", name: "finance-bot", key_prefix: "sk_sp_live_0c9d", max_cost_usd: 8,
         max_cost_monthly: 200, max_requests_per_min: 20, allowed_models: null, denied_models: null,
-        enforcement_mode: "alert", alert_threshold: 0.9, alert_timeout_sec: 1800,
-        alert_channels: ["email", "webhook"], alert_email: "finance@steerplane.com",
-        alert_webhook_url: "https://hooks.slack.com/services/…", is_active: true, total_requests: 980,
+        is_active: true, total_requests: 980,
         total_cost: 63.5, total_tokens: 1_240_000, last_used_at: iso(2), created_at: iso(3000),
-    },
-];
-
-// ─── Seeded approvals ──────────────────────────────────────────────────────────
-let approvals: ApprovalRequest[] = [
-    {
-        id: "apr_5521", run_id: "run_8f3955", agent_name: "finance_bot", scope: "run",
-        approval_type: "cost_limit", status: "pending",
-        message: "finance_bot reached 97% of its $8.00 cost ceiling. Approve to extend the budget and continue.",
-        current_value: 7.8, limit_value: 8.0, unit: "usd", timeout_sec: 1800,
-        session_id: "sess_77a2", api_key_id: "key_finance", channels_json: ["email", "webhook"],
-        alert_email: "finance@steerplane.com", alert_webhook_url: "https://hooks.slack.com/services/…",
-        metadata_json: null, resolution_json: null, created_at: iso(2), expires_at: iso(-28),
-        resolved_at: null, resolved_by: null, resolution_note: null,
-    },
-    {
-        id: "apr_5519", run_id: "run_8f3a1d", agent_name: "research_agent", scope: "run",
-        approval_type: "step_limit", status: "pending",
-        message: "research_agent is approaching its 60-step limit. Approve to grant 20 more steps.",
-        current_value: 54, limit_value: 60, unit: "steps", timeout_sec: 900,
-        session_id: "sess_19b0", api_key_id: "key_research", channels_json: ["email"],
-        alert_email: "ops@steerplane.com", alert_webhook_url: null,
-        metadata_json: null, resolution_json: null, created_at: iso(1), expires_at: iso(-14),
-        resolved_at: null, resolved_by: null, resolution_note: null,
     },
 ];
 
@@ -203,10 +174,7 @@ export const demo = {
             id, name: req.name, key_prefix: "sk_sp_live_demo", raw_key: `sk_sp_live_${Math.random().toString(36).slice(2, 18)}`,
             max_cost_usd: req.max_cost_usd ?? 10, max_cost_monthly: req.max_cost_monthly ?? 100,
             max_requests_per_min: req.max_requests_per_min ?? 60, allowed_models: req.allowed_models ?? null,
-            denied_models: req.denied_models ?? null, enforcement_mode: req.enforcement_mode ?? "kill",
-            alert_threshold: req.alert_threshold ?? 0.8, alert_timeout_sec: req.alert_timeout_sec ?? 1800,
-            alert_channels: req.alert_channels ?? [], alert_email: req.alert_email ?? null,
-            alert_webhook_url: req.alert_webhook_url ?? null, is_active: true, total_requests: 0,
+            denied_models: req.denied_models ?? null, is_active: true, total_requests: 0,
             total_cost: 0, total_tokens: 0, last_used_at: null, created_at: iso(0),
         };
         apiKeys = [created, ...apiKeys];
@@ -219,24 +187,5 @@ export const demo = {
     deleteAPIKey: (id: string): Promise<void> => {
         apiKeys = apiKeys.filter((k) => k.id !== id);
         return delay(undefined);
-    },
-
-    fetchApprovals: (status?: string, limit = 100): Promise<ApprovalRequest[]> =>
-        delay(approvals.filter((a) => !status || a.status === status).slice(0, limit)),
-    approveRequest: (id: string, body: { note?: string; extension_value?: number } = {}): Promise<ApprovalRequest> => {
-        approvals = approvals.map((a) =>
-            a.id === id
-                ? { ...a, status: "approved", resolved_at: iso(0), resolved_by: "demo-operator", resolution_note: body.note ?? null }
-                : a,
-        );
-        return delay(approvals.find((a) => a.id === id)!);
-    },
-    denyRequest: (id: string, body: { note?: string } = {}): Promise<ApprovalRequest> => {
-        approvals = approvals.map((a) =>
-            a.id === id
-                ? { ...a, status: "denied", resolved_at: iso(0), resolved_by: "demo-operator", resolution_note: body.note ?? null }
-                : a,
-        );
-        return delay(approvals.find((a) => a.id === id)!);
     },
 };

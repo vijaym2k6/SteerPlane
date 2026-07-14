@@ -221,12 +221,6 @@ export interface APIKeyConfig {
     max_requests_per_min: number;
     allowed_models: string | null;
     denied_models: string | null;
-    enforcement_mode: string;
-    alert_threshold: number;
-    alert_timeout_sec: number;
-    alert_channels: string[];
-    alert_email: string | null;
-    alert_webhook_url: string | null;
     is_active: boolean;
     total_requests: number;
     total_cost: number;
@@ -247,12 +241,6 @@ export interface CreateKeyRequest {
     max_requests_per_min?: number;
     allowed_models?: string | null;
     denied_models?: string | null;
-    enforcement_mode?: string;
-    alert_threshold?: number;
-    alert_timeout_sec?: number;
-    alert_channels?: string[];
-    alert_email?: string | null;
-    alert_webhook_url?: string | null;
 }
 
 export async function fetchAPIKeys(): Promise<APIKeyConfig[]> {
@@ -298,90 +286,4 @@ export async function deleteAPIKey(keyId: string): Promise<void> {
         headers: withAdminHeaders(),
     });
     if (!res.ok) throw await readError(res, `Failed to delete API key ${keyId}`);
-}
-
-// ─── Approvals ───────────────────────────────────────────
-
-export interface ApprovalResolution {
-    decision?: string;
-    extension_value?: number;
-    new_limit?: number;
-    note?: string | null;
-    reason?: string | null;
-}
-
-export interface ApprovalRequest {
-    id: string;
-    run_id: string;
-    agent_name: string;
-    scope: string;
-    approval_type: string;
-    status: string;
-    message: string;
-    current_value: number;
-    limit_value: number;
-    unit: string;
-    timeout_sec: number;
-    session_id: string | null;
-    api_key_id: string | null;
-    channels_json: string[];
-    alert_email: string | null;
-    alert_webhook_url: string | null;
-    metadata_json: Record<string, unknown> | null;
-    resolution_json: ApprovalResolution | null;
-    created_at: string;
-    expires_at: string;
-    resolved_at: string | null;
-    resolved_by: string | null;
-    resolution_note: string | null;
-}
-
-export interface ApprovalListResponse {
-    approvals: ApprovalRequest[];
-    total: number;
-}
-
-export async function fetchApprovals(status?: string, limit = 100): Promise<ApprovalRequest[]> {
-    const params = new URLSearchParams();
-    params.set("limit", String(limit));
-    if (status && status.trim()) {
-        params.set("status", status);
-    }
-
-    if (DEMO_MODE) return demo.fetchApprovals(status, limit);
-    const res = await fetch(`${API_BASE}/approvals?${params.toString()}`, {
-        cache: "no-store",
-        headers: withAdminHeaders(),
-    });
-    if (!res.ok) throw await readError(res, "Failed to fetch approvals");
-    const data: ApprovalListResponse = await res.json();
-    return data.approvals;
-}
-
-export async function approveRequest(
-    approvalId: string,
-    body: { note?: string; extension_value?: number } = {}
-): Promise<ApprovalRequest> {
-    if (DEMO_MODE) return demo.approveRequest(approvalId, body);
-    const res = await fetch(`${API_BASE}/approvals/${approvalId}/approve`, {
-        method: "POST",
-        headers: withAdminHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify(body),
-    });
-    if (!res.ok) throw await readError(res, `Failed to approve request ${approvalId}`);
-    return res.json();
-}
-
-export async function denyRequest(
-    approvalId: string,
-    body: { note?: string } = {}
-): Promise<ApprovalRequest> {
-    if (DEMO_MODE) return demo.denyRequest(approvalId, body);
-    const res = await fetch(`${API_BASE}/approvals/${approvalId}/deny`, {
-        method: "POST",
-        headers: withAdminHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify(body),
-    });
-    if (!res.ok) throw await readError(res, `Failed to deny request ${approvalId}`);
-    return res.json();
 }

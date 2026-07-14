@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
 
-import { fetchApprovals, fetchRuns, RunListResponse, ApprovalRequest } from "@/services/api";
+import { fetchRuns, RunListResponse } from "@/services/api";
 import { ADMIN_TOKEN_EVENT } from "@/services/admin-auth";
 import RunTable from "@/components/RunTable";
 
@@ -25,7 +24,6 @@ const fadeUp = {
 
 export default function DashboardPage() {
     const [data, setData] = useState<RunListResponse | null>(null);
-    const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -33,12 +31,6 @@ export default function DashboardPage() {
         try {
             const result = await fetchRuns();
             setData(result);
-            try {
-                const pending = await fetchApprovals("pending");
-                setApprovals(pending);
-            } catch {
-                setApprovals([]);
-            }
             setError(null);
         } catch {
             setError("Cannot connect to SteerPlane API. Make sure the server is running on port 8000.");
@@ -81,27 +73,6 @@ export default function DashboardPage() {
                 <h1 className="page-title">Agent Runs</h1>
                 <p className="page-subtitle">Monitor all agent executions in real time</p>
             </motion.div>
-
-            {approvals.length > 0 && (
-                <motion.div
-                    className="approval-summary-card"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2, duration: 0.4 }}
-                >
-                    <div>
-                        <div className="approval-summary-eyebrow">Human Intervention Needed</div>
-                        <h3>{approvals.length} run{approvals.length === 1 ? "" : "s"} awaiting approval</h3>
-                        <p>
-                            Alert-mode limits paused these runs instead of killing them outright.
-                            Review them before their timeout expires.
-                        </p>
-                    </div>
-                    <Link href="/approvals" className="btn btn-primary">
-                        Review Approvals
-                    </Link>
-                </motion.div>
-            )}
 
             <motion.div
                 className="stats-row"
