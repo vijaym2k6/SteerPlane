@@ -77,6 +77,7 @@
 html {
   scroll-behavior: smooth;
   background: var(--bg-base);
+  overflow-x: hidden;
 }
 
 body {
@@ -1423,6 +1424,26 @@ a {
 
   .navbar-tagline {
     display: none;
+  }
+
+  /* Section pills (Dashboard / Policies / API Keys) don't fit next to the
+     logo and status/admin controls on mobile. */
+  .navbar-nav {
+    display: none;
+  }
+
+  .navbar-logo-text {
+    font-size: 13px;
+    letter-spacing: 2px;
+  }
+
+  .navbar-right {
+    gap: 6px;
+  }
+
+  .navbar-right .btn-sm {
+    padding: 6px 10px;
+    font-size: 11px;
   }
 
   .main-content {
