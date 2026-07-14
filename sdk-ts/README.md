@@ -103,10 +103,10 @@ policy.addApproval('execute_trade*');
 ```
 
 ### 🐳 Docker Compose
-Full 4-service production stack:
+Full 3-service production stack:
 ```bash
 docker compose up -d
-# API (8000) + Dashboard (3000) + PostgreSQL (5432) + Redis (6379)
+# API (8000) + Dashboard (3000) + PostgreSQL (5432)
 ```
 
 ### 🖥️ CLI Tool (Python SDK)
@@ -124,14 +124,14 @@ steerplane logs --tail     # Live log stream
 |---------|-------------|
 | 🌉 **AI Gateway Proxy** | OpenAI-compatible proxy. Point your client, get instant monitoring. |
 | 🌊 **SSE Streaming** | Real-time chunk forwarding with mid-stream cost enforcement. |
-| 🛡️ **Policy Engine** | Allow/deny rules, sliding-window rate limits, approval workflows. |
+| 🛡️ **Policy Engine** | Allow/deny rules, sliding-window rate limits, human-approval callbacks. |
 | 🔄 **Loop Detection** | Sliding-window pattern detector catches infinite agent loops. |
 | 💰 **Hard Cost Ceiling** | Per-run and monthly USD limits across 25+ LLM models. |
 | 🚫 **Step Limits** | Cap maximum execution steps to prevent runaway agents. |
 | 📊 **Deep Telemetry** | Tokens, cost, latency per step — synced to the live dashboard. |
 | 🛡️ **Graceful Degradation** | API down? Guards still enforce locally. |
 | ⚡ **Zero Dependencies** | Uses native `fetch` — no bloat. |
-| 🐳 **Docker Compose** | 4-service production stack in one command. |
+| 🐳 **Docker Compose** | 3-service production stack in one command. |
 
 ## Error Handling
 
@@ -162,12 +162,12 @@ const runAgent = guard(async () => {
 │  AI Agent   │────▶│ SteerPlane   │────▶│  FastAPI    │────▶│  PostgreSQL   │
 │  (Your App) │     │  SDK / GW    │     │  Server     │     │  Database     │
 └─────────────┘     └──────────────┘     └────────────┘     └───────────────┘
-                                                │                    │
-                                                ▼                    ▼
-                                         ┌───────────────┐   ┌───────────┐
-                                         │   Next.js     │   │   Redis   │
-                                         │   Dashboard   │   │   Cache   │
-                                         └───────────────┘   └───────────┘
+                                                │
+                                                ▼
+                                         ┌───────────────┐
+                                         │   Next.js     │
+                                         │   Dashboard   │
+                                         └───────────────┘
 ```
 
 ## Tech Stack
@@ -178,7 +178,7 @@ const runAgent = guard(async () => {
 | Python SDK | Python 3.10+, CLI, Config files, 4 framework integrations |
 | Gateway | FastAPI + httpx, SSE streaming, 25+ model pricing |
 | Database | PostgreSQL 17 + SQLAlchemy + Alembic |
-| Infrastructure | Docker Compose (API + Dashboard + PostgreSQL + Redis) |
+| Infrastructure | Docker Compose (API + Dashboard + PostgreSQL) |
 | CI/CD | GitHub Actions (lint, test, Docker build) |
 | Dashboard | Next.js 16, React 19, Framer Motion |
 

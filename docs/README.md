@@ -1,6 +1,6 @@
 # SteerPlane Documentation
 
-Welcome to the SteerPlane v0.4.1 documentation. SteerPlane is a **runtime control plane for autonomous AI agents** — providing safety guardrails, cost control, loop detection, SSE streaming enforcement, and full observability.
+Welcome to the SteerPlane v1.0.0 documentation. SteerPlane is a **runtime control plane for autonomous AI agents** — providing safety guardrails, cost control, loop detection, SSE streaming enforcement, and full observability.
 
 ## Documentation Pages
 
@@ -20,18 +20,18 @@ Welcome to the SteerPlane v0.4.1 documentation. SteerPlane is a **runtime contro
 │  AI Agent   │────▶│ SteerPlane   │────▶│  FastAPI    │────▶│  PostgreSQL   │
 │  (Your App) │     │  SDK / GW    │     │  Server     │     │  Database     │
 └─────────────┘     └──────────────┘     └────────────┘     └───────────────┘
-                                                │                    │
-                                                ▼                    ▼
-                                         ┌───────────────┐   ┌───────────┐
-                                         │   Next.js     │   │   Redis   │
-                                         │   Dashboard   │   │   Cache   │
-                                         └───────────────┘   └───────────┘
+                                                │
+                                                ▼
+                                         ┌───────────────┐
+                                         │   Next.js     │
+                                         │   Dashboard   │
+                                         └───────────────┘
 ```
 
 ## What's New in v0.4.0
 
 - **SSE Streaming Gateway** — Real-time chunk forwarding with mid-stream cost enforcement
-- **Docker Compose** — 4-service production stack (API + Dashboard + PostgreSQL + Redis)
+- **Docker Compose** — 3-service production stack (API + Dashboard + PostgreSQL)
 - **CLI Tool** — `steerplane status`, `steerplane runs`, `steerplane keys`, `steerplane logs`
 - **Config File** — `.steerplane.yml` auto-discovery with project-level defaults
 - **Alembic Migrations** — Versioned PostgreSQL schema management

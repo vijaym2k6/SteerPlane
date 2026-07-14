@@ -85,10 +85,10 @@ steerplane logs --tail         # Live log stream
 ```
 
 ### 🐳 Docker Compose
-Full 4-service production stack in one command:
+Full 3-service production stack in one command:
 ```bash
 docker compose up -d
-# API (8000) + Dashboard (3000) + PostgreSQL (5432) + Redis (6379)
+# API (8000) + Dashboard (3000) + PostgreSQL (5432)
 ```
 
 ### 📄 Config File (.steerplane.yml)
@@ -136,14 +136,14 @@ monitor = SteerPlaneAutoGenMonitor(agent_name="autogen_bot", max_cost_usd=10.0)
 |---------|-------------|
 | 🌉 **AI Gateway Proxy** | OpenAI-compatible proxy. Point your client, get instant monitoring. |
 | 🌊 **SSE Streaming** | Real-time chunk forwarding with mid-stream cost enforcement. |
-| 🛡️ **Policy Engine** | Allow/deny rules, sliding-window rate limits, approval workflows. |
+| 🛡️ **Policy Engine** | Allow/deny rules, sliding-window rate limits, human-approval callbacks. |
 | 🔄 **Loop Detection** | Sliding-window pattern detector catches infinite agent loops. |
 | 💰 **Hard Cost Ceiling** | Per-run and monthly USD limits across 25+ LLM models. |
 | 🚫 **Step Limits** | Cap maximum execution steps. |
 | 📊 **Deep Telemetry** | Tokens, cost, latency per step — synced to the dashboard. |
 | 🛡️ **Graceful Degradation** | API down? SDK still enforces guards locally. |
 | 🖥️ **CLI Tool** | `steerplane status`, `runs`, `keys`, `logs` from terminal. |
-| 🐳 **Docker Compose** | 4-service production stack in one command. |
+| 🐳 **Docker Compose** | 3-service production stack in one command. |
 | 📄 **Config File** | `.steerplane.yml` for project-level defaults. |
 | 🔌 **4 Integrations** | LangChain, OpenAI Agents SDK, CrewAI, AutoGen. |
 
@@ -154,12 +154,12 @@ monitor = SteerPlaneAutoGenMonitor(agent_name="autogen_bot", max_cost_usd=10.0)
 │  AI Agent   │────▶│ SteerPlane   │────▶│  FastAPI    │────▶│  PostgreSQL   │
 │  (Your App) │     │  SDK / GW    │     │  Server     │     │  Database     │
 └─────────────┘     └──────────────┘     └────────────┘     └───────────────┘
-                                                │                    │
-                                                ▼                    ▼
-                                         ┌───────────────┐   ┌───────────┐
-                                         │   Next.js     │   │   Redis   │
-                                         │   Dashboard   │   │   Cache   │
-                                         └───────────────┘   └───────────┘
+                                                │
+                                                ▼
+                                         ┌───────────────┐
+                                         │   Next.js     │
+                                         │   Dashboard   │
+                                         └───────────────┘
 ```
 
 ## Tech Stack
@@ -171,7 +171,7 @@ monitor = SteerPlaneAutoGenMonitor(agent_name="autogen_bot", max_cost_usd=10.0)
 | Gateway | FastAPI + httpx, SSE streaming, 25+ model pricing |
 | API | FastAPI, Alembic migrations, OpenAPI docs |
 | Database | PostgreSQL 17 + SQLAlchemy ORM |
-| Infrastructure | Docker Compose (API + Dashboard + PostgreSQL + Redis) |
+| Infrastructure | Docker Compose (API + Dashboard + PostgreSQL) |
 | CI/CD | GitHub Actions (lint, test, Docker build) |
 | Dashboard | Next.js 16, React 19, Framer Motion |
 

@@ -10,7 +10,7 @@ Get SteerPlane running locally in a few minutes.
 
 ## Option A: Docker Compose (Recommended) — New in v0.4.0
 
-The fastest way to start. Brings up API, Dashboard, PostgreSQL, and Redis:
+The fastest way to start. Brings up API, Dashboard, and PostgreSQL:
 
 ```bash
 git clone https://github.com/vijaym2k6/SteerPlane.git
@@ -27,7 +27,6 @@ Services start on:
 - **API**: `http://localhost:8000`
 - **Dashboard**: `http://localhost:3000`
 - **PostgreSQL**: `localhost:5432`
-- **Redis**: `localhost:6379`
 
 ## Option B: Manual Setup
 

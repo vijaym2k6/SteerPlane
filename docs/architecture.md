@@ -2,7 +2,7 @@
 
 ## Overview
 
-SteerPlane v0.4.1 is a monorepo with five main layers:
+SteerPlane v1.0.0 is a monorepo with five main layers:
 
 1. `sdk/` and `sdk-ts/`
 The Python and TypeScript SDKs enforce local guardrails such as step limits, cost ceilings, loop detection, and policy checks. They also stream run telemetry to the API when it is available. The Python SDK includes a CLI tool (`steerplane`) and `.steerplane.yml` config file support.
@@ -14,7 +14,7 @@ The FastAPI control plane stores runs, steps, policies, and gateway API keys. It
 The Next.js dashboard reads run telemetry from the API, auto-refreshes every 3 seconds on run pages, and lets admins manage policies and gateway keys. Ships as a standalone Docker image.
 
 4. `infrastructure/`
-Docker Compose orchestrates a 4-service stack: API, Dashboard, PostgreSQL, and Redis. GitHub Actions CI/CD runs lint, test, and Docker build on every push.
+Docker Compose orchestrates a 3-service stack: API, Dashboard, and PostgreSQL. GitHub Actions CI/CD runs lint, test, and Docker build on every push.
 
 5. `integrations/`
 Native integration modules for LangChain, OpenAI Agents SDK, CrewAI, and AutoGen. All use lazy imports so framework dependencies are only required when actually used.
@@ -147,7 +147,6 @@ services:
   api        # Python 3.11, FastAPI, Alembic migrations
   dashboard  # Node 20, Next.js standalone
   postgres   # PostgreSQL 16-alpine
-  redis      # Redis 7-alpine (caching layer)
 ```
 
 ### CI/CD Pipeline
