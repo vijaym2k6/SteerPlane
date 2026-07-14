@@ -16,7 +16,6 @@ from .routes.telemetry import router as telemetry_router
 from .routes.policies import router as policies_router
 from .routes.gateway import router as gateway_router
 from .routes.api_keys import router as api_keys_router
-from .routes.approvals import router as approvals_router
 
 
 @asynccontextmanager
@@ -61,7 +60,6 @@ app.include_router(telemetry_router)
 app.include_router(policies_router)
 app.include_router(gateway_router)
 app.include_router(api_keys_router)
-app.include_router(approvals_router)
 
 
 @app.get("/health")

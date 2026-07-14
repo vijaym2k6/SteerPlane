@@ -1,26 +1,17 @@
-"""Pluggable state backend for gateway session + loop-detection state.
+"""State backend for gateway session + loop-detection state.
 
 The gateway tracks, per API key, its active sessions and, per session, a short
-history of prompt hashes for loop detection. By default this lives in process
-memory — correct for a single worker, but lost on restart and not shared across
-workers. Set ``REDIS_URL`` to back it with Redis so multiple workers/replicas
-share the state and it survives restarts.
-
-The idle-timeout and loop-detection *semantics* stay in the gateway service;
-this module only persists and retrieves raw state, so both backends behave
-identically (verified with fakeredis in api/tests/test_gateway_state.py).
+history of prompt hashes for loop detection. This lives in process memory —
+correct for a single worker; the idle-timeout and loop-detection *semantics*
+stay in the gateway service, this module only persists and retrieves raw
+state.
 """
 
 from __future__ import annotations
 
-import json
-import logging
-import os
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Optional
-
-logger = logging.getLogger("steerplane")
 
 
 class StateStore(ABC):
@@ -107,72 +98,6 @@ class InMemoryStateStore(StateStore):
         self._histories.clear()
 
 
-class RedisStateStore(StateStore):
-    """Redis-backed store for multi-worker / restart-safe gateway state."""
-
-    def __init__(self, client, prefix: str = "sp:gw:") -> None:
-        self._r = client
-        self._p = prefix
-
-    def _skey(self, key_hash: str) -> str:
-        return f"{self._p}sessions:{key_hash}"
-
-    def _dkey(self, key_hash: str) -> str:
-        return f"{self._p}default:{key_hash}"
-
-    def _lkey(self, storage_key: str) -> str:
-        return f"{self._p}loop:{storage_key}"
-
-    def get_session(self, key_hash, session_id):
-        raw = self._r.hget(self._skey(key_hash), session_id)
-        return json.loads(raw) if raw else None
-
-    def all_sessions(self, key_hash):
-        return {sid: json.loads(raw) for sid, raw in self._r.hgetall(self._skey(key_hash)).items()}
-
-    def put_session(self, key_hash, session_id, data):
-        self._r.hset(self._skey(key_hash), session_id, json.dumps(data))
-
-    def delete_session(self, key_hash, session_id):
-        self._r.hdel(self._skey(key_hash), session_id)
-
-    def get_default_session_id(self, key_hash):
-        return self._r.get(self._dkey(key_hash))
-
-    def set_default_session_id(self, key_hash, session_id):
-        self._r.set(self._dkey(key_hash), session_id)
-
-    def delete_default_session_id(self, key_hash):
-        self._r.delete(self._dkey(key_hash))
-
-    def append_loop(self, storage_key, value, max_len):
-        key = self._lkey(storage_key)
-        pipe = self._r.pipeline()
-        pipe.rpush(key, value)
-        pipe.ltrim(key, -max_len, -1)
-        pipe.lrange(key, 0, -1)
-        return pipe.execute()[-1]
-
-    def clear_loop(self, storage_key):
-        self._r.delete(self._lkey(storage_key))
-
-    def reset(self):
-        for key in self._r.scan_iter(f"{self._p}*"):
-            self._r.delete(key)
-
-
 def build_state_store() -> StateStore:
-    """In-memory by default; Redis when ``REDIS_URL`` is set and reachable."""
-    url = os.getenv("REDIS_URL", "").strip()
-    if not url:
-        return InMemoryStateStore()
-    try:
-        import redis
-
-        client = redis.from_url(url, decode_responses=True)
-        client.ping()
-        logger.info("Gateway state backend: Redis (%s)", url)
-        return RedisStateStore(client)
-    except Exception as exc:  # noqa: BLE001 — any Redis failure degrades to memory
-        logger.warning("Gateway state backend: Redis unavailable (%s); using in-memory store", exc)
-        return InMemoryStateStore()
+    """Build the gateway's state store (in-memory, single-worker)."""
+    return InMemoryStateStore()

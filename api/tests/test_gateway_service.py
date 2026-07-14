@@ -8,7 +8,6 @@ from sqlalchemy.orm import sessionmaker
 from api.app.db.base import Base
 from api.app.models.api_key import APIKey
 from api.app.models.run import Run
-from api.app.services.approval_service import ApprovalService
 from api.app.services.gateway_service import (
     GatewayService,
     _session_tracker,
@@ -99,65 +98,3 @@ def test_auto_session_rotation_closes_expired_run():
     assert second_session.run_id != first_session.run_id
     assert expired_run is not None
     assert expired_run.status == "completed"
-
-
-def test_gateway_alert_mode_creates_pending_approval_after_threshold_cross():
-    db = _make_db()
-    api_key = _make_api_key()
-    api_key.max_cost_usd = 10.0
-    db.add(api_key)
-    db.commit()
-    db.refresh(api_key)
-
-    approval_service = ApprovalService(db)
-    enforcement = approval_service.get_or_create_api_key_enforcement(api_key.id)
-    enforcement.enforcement_mode = "alert"
-    enforcement.alert_threshold = 0.8
-    enforcement.alert_timeout_sec = 600
-    db.commit()
-
-    svc = GatewayService(db)
-    session = svc.resolve_session(api_key, "ops-bot")
-    svc.log_request(api_key, session, "gpt-4o", 100, 50, 8.2, 120.0)
-
-    approval = svc.maybe_trigger_threshold_alert(api_key, session)
-
-    assert approval is not None
-    assert approval.status == "pending"
-    assert approval.approval_type == "cost_limit"
-    assert approval.scope == "gateway"
-
-
-def test_gateway_approved_extension_increases_effective_session_limit():
-    db = _make_db()
-    api_key = _make_api_key()
-    api_key.max_cost_usd = 10.0
-    db.add(api_key)
-    db.commit()
-    db.refresh(api_key)
-
-    approval_service = ApprovalService(db)
-    enforcement = approval_service.get_or_create_api_key_enforcement(api_key.id)
-    enforcement.enforcement_mode = "alert"
-    db.commit()
-
-    svc = GatewayService(db)
-    session = svc.resolve_session(api_key, "critical-job")
-    approval = approval_service.create_approval(
-        run_id=session.run_id,
-        agent_name="gateway:prod-key",
-        approval_type="cost_limit",
-        current_value=10.0,
-        limit_value=10.0,
-        unit="usd",
-        message="Need approval",
-        timeout_sec=600,
-        scope="gateway",
-        session_id=session.session_id,
-        api_key_id=api_key.id,
-    )
-    approval_service.approve(approval.id)
-
-    effective_limit = svc.get_session_cost_limit(api_key, session)
-
-    assert effective_limit == 20.0

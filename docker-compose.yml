@@ -1,7 +1,7 @@
 ###############################################################################
 # SteerPlane — Docker Compose
 #
-# Brings up all 4 services with one command:
+# Brings up all 3 services with one command:
 #   docker compose up -d
 #
 # Copy .env.example to .env and fill in your values first.
@@ -26,18 +26,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # ─── Redis ─────────────────────────────────────────────────────────────
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
   # ─── API Server (FastAPI) ──────────────────────────────────────────────
   api:
     build:
@@ -48,20 +36,12 @@ services:
       - "${API_PORT:-8000}:8000"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-steerplane}:${POSTGRES_PASSWORD:-steerplane}@postgres:5432/${POSTGRES_DB:-steerplane}
-      REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: http://localhost:3000,http://dashboard:3000
       STEERPLANE_ADMIN_TOKEN: ${STEERPLANE_ADMIN_TOKEN:-}
       STEERPLANE_DASHBOARD_URL: http://localhost:3000
-      STEERPLANE_SMTP_HOST: ${STEERPLANE_SMTP_HOST:-}
-      STEERPLANE_SMTP_PORT: ${STEERPLANE_SMTP_PORT:-587}
-      STEERPLANE_SMTP_USERNAME: ${STEERPLANE_SMTP_USERNAME:-}
-      STEERPLANE_SMTP_PASSWORD: ${STEERPLANE_SMTP_PASSWORD:-}
-      STEERPLANE_SMTP_FROM: ${STEERPLANE_SMTP_FROM:-}
       DEBUG: ${DEBUG:-false}
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
 
   # ─── Dashboard (Next.js) ───────────────────────────────────────────────

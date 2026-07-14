@@ -82,18 +82,18 @@ def run_agent():
 |---|---------|-------------|
 | 🔄 | **Loop Detection** | O(W²) sliding-window algorithm catches single-action, alternating, and multi-step repeating patterns in sub-millisecond time — no LLM calls |
 | 💰 | **Cost Ceiling** | Per-run (SDK) / per-session (gateway) USD limits, checked after each step so overshoot is bounded to a single step. Built-in pricing for 25+ models across OpenAI, Anthropic, Google, Meta, and Mistral |
-| 🔔 | **Dual Enforcement (Kill/Alert)** | Kill mode terminates instantly. Alert mode pauses, notifies humans (email/webhook), and waits for approve/deny/extend |
 | 🌊 | **Streaming Gateway** | Real-time SSE chunk forwarding with mid-stream cost kill — if the budget is exceeded during a stream, SteerPlane injects a termination event and cuts the connection |
-| 🛡️ | **Policy Engine** | Allow/deny lists with glob patterns, sliding-window rate limits, and human-in-the-loop approval gates |
+| 🛡️ | **Policy Engine** | Allow/deny lists with glob patterns and sliding-window rate limits |
 | 🌐 | **Gateway Proxy** | OpenAI-compatible API proxy — change only `base_url` for zero-code enforcement. The agent passes its provider key through the gateway, which forces all traffic through enforcement before forwarding upstream |
-| 🖥️ | **Real-Time Dashboard** | Next.js dashboard with auto-refresh, animated timelines, cost breakdowns, policy management, and approval workflows |
+| 🖥️ | **Real-Time Dashboard** | Next.js dashboard with auto-refresh, animated timelines, cost breakdowns, and policy management |
 | 🔧 | **CLI Tool** | `steerplane runs list`, `steerplane status`, `steerplane keys create` — manage everything from your terminal |
 | 📄 | **Config File** | `.steerplane.yml` auto-discovery — set defaults without hardcoding limits in source code |
 | 🔗 | **4 Framework Integrations** | LangChain, OpenAI Agents SDK, CrewAI, AutoGen — zero-config drop-in handlers |
-| 🐳 | **Docker Compose** | One command brings up API + Dashboard + PostgreSQL + Redis |
-| 🔌 | **Graceful Degradation** | If the API goes down, the SDK enforces all limits locally. Alert mode degrades to kill mode. Agents are never unprotected |
-| 📧 | **Notifications** | Multi-channel dispatch — SMTP email and HTTP webhooks (Slack, Discord, PagerDuty, etc.) |
+| 🐳 | **Docker Compose** | One command brings up API + Dashboard + PostgreSQL |
+| 🔌 | **Graceful Degradation** | If the API goes down, the SDK enforces all limits locally. Agents are never unprotected |
 | 🧪 | **CI/CD** | GitHub Actions pipeline — lint, test, build Docker on every push |
+
+> **Hosted/Enterprise tier:** alert-mode human-approval workflows (with email/webhook notifications), server-side provider-key vaulting, and Redis-backed multi-worker gateway state are available on SteerPlane's hosted plan. The open-source SDK still exposes the `enforcement="alert"` client options so it works out of the box against a hosted or enterprise deployment — self-hosting only the free tier here runs kill-mode enforcement.
 
 ---
 
@@ -108,7 +108,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-API at `localhost:8000` · Dashboard at `localhost:3000` · PostgreSQL + Redis auto-configured.
+API at `localhost:8000` · Dashboard at `localhost:3000` · PostgreSQL auto-configured.
 
 ### Option B: Manual Setup
 
@@ -367,13 +367,12 @@ for chunk in client.chat.completions.create(
 - Policy rules (deny/allow/rate limits)
 - Session cost vs. ceiling (including mid-stream kill)
 - SHA-256 prompt-hash loop detection
-- Per-key enforcement mode (kill or alert)
 - Monthly budget tracking
 - Anthropic + OpenAI streaming support
 
 **Security model:** The agent points its OpenAI client at the gateway and passes the real provider key in the `X-LLM-API-Key` header. The gateway authenticates the SteerPlane key, runs every request through enforcement (policy → cost → loop), and only then forwards it upstream with that provider key — so the agent can't reach the provider directly or bypass the guardrails.
 
-**Optional server-side key vaulting:** set `STEERPLANE_SECRET_KEY` (a stable, high-entropy secret — never auto-generated) and store a provider key with `POST /api-keys/{id}/provider-key` (admin only). It is encrypted at rest with PBKDF2-HMAC-SHA256 → Fernet (AES) and injected automatically on each forwarded request, so the agent no longer needs to send `X-LLM-API-Key` at all. The vaulted key is **never** returned by any read endpoint or logged. The header path remains as a fallback when no key is vaulted. Rotating the secret makes existing vaulted keys unrecoverable — re-enter them after a rotation.
+> Server-side provider-key vaulting (so the agent never sends `X-LLM-API-Key`) is available on the hosted/enterprise plan.
 
 ---
 
@@ -401,7 +400,7 @@ pip install steerplane[cli]
 The policy engine runs **before** any cost is incurred, enforcing rules in strict priority order:
 
 ```
-Deny List → Allow List → Rate Limits → Approval Workflow
+Deny List → Allow List → Rate Limits
 ```
 
 | Rule Type | How It Works |
@@ -409,18 +408,16 @@ Deny List → Allow List → Rate Limits → Approval Workflow
 | **Deny list** | Glob patterns (e.g. `delete_*`) — any match is blocked immediately |
 | **Allow list** | If set, action must match at least one pattern to proceed |
 | **Rate limits** | Sliding-window counters per pattern — blocks when count exceeds threshold |
-| **Approval workflow** | Matched actions trigger a callback for human-in-the-loop approval |
 
 Available in Python and TypeScript SDKs, the dashboard UI, REST API, and `.steerplane.yml` config file.
 
 ---
 
-## Dual Enforcement (Kill / Alert)
+## Enforcement Mode
 
-| Mode | Behavior |
-|------|----------|
-| **Kill** (default) | Immediately terminates the agent on any violation. Fast, deterministic. |
-| **Alert** | Pauses execution → dispatches notifications (email/webhook) → waits for human to approve, deny, or extend the limit → auto-terminates on timeout as safety net |
+The self-hosted free tier runs **kill mode**: immediate, deterministic termination on any violation.
+
+The SDK also exposes an `enforcement="alert"` option (pause → notify a human → approve/deny/extend → auto-terminate on timeout) — this requires the human-approval workflow backend, which is part of the hosted/enterprise plan. Pointed at the free self-hosted API, alert mode fails closed: it safely terminates the run with a clear error rather than continuing unprotected.
 
 > **Safety invariant:** Loop detection and policy violations **always** trigger immediate termination regardless of enforcement mode. These are non-overridable security constraints.
 
@@ -430,13 +427,12 @@ Available in Python and TypeScript SDKs, the dashboard UI, REST API, and `.steer
 
 ```bash
 cp .env.example .env    # Edit with your values
-docker compose up -d    # Starts all 4 services
+docker compose up -d    # Starts all 3 services
 ```
 
 | Service | Image | Port | Purpose |
 |---------|-------|------|---------|
 | `postgres` | postgres:16-alpine | 5432 | Primary database |
-| `redis` | redis:7-alpine | 6379 | Pub/sub (future WebSocket) |
 | `api` | steerplane-api | 8000 | FastAPI backend |
 | `dashboard` | steerplane-dashboard | 3000 | Next.js UI |
 
@@ -476,22 +472,22 @@ alembic upgrade head
 ┌────────────────────────────────────────────────────┐
 │              SteerPlane API Server                  │
 │      (FastAPI + SQLAlchemy + PostgreSQL/SQLite)     │
-│    Runs · Steps · Policies · Approvals · API Keys  │
-└──────┬──────────┬──────────────┬──────────────────┘
-       │          │              │
-  ┌────▼───┐  ┌───▼──────┐  ┌───▼──────────────────┐
-  │ CLI    │  │ Next.js  │  │  Notifications       │
-  │ Tool   │  │ Dashboard│  │  (Email / Webhook)   │
-  └────────┘  └──────────┘  └──────────────────────┘
+│         Runs · Steps · Policies · API Keys          │
+└──────┬──────────────────────────┬──────────────────┘
+       │                          │
+  ┌────▼───┐                 ┌───▼──────┐
+  │ CLI    │                 │ Next.js  │
+  │ Tool   │                 │ Dashboard│
+  └────────┘                 └──────────┘
 ```
 
 | Layer | Stack | Purpose |
 |-------|-------|---------|
-| **SDK** | Python 3.10+ / Node.js 18+ | `@guard` decorator, cost tracking, loop detection, policy engine, config file, dual enforcement |
+| **SDK** | Python 3.10+ / Node.js 18+ | `@guard` decorator, cost tracking, loop detection, policy engine, config file |
 | **Gateway Proxy** | FastAPI + HTTPX | OpenAI-compatible proxy with SSE streaming, mid-stream cost kill, and forced enforcement on every forwarded request |
-| **API** | FastAPI + SQLAlchemy + Alembic | REST endpoints for runs, steps, policies, approvals, API keys, telemetry |
+| **API** | FastAPI + SQLAlchemy + Alembic | REST endpoints for runs, steps, policies, API keys, telemetry |
 | **Database** | PostgreSQL (prod) / SQLite (dev) | Persistent storage with versioned migrations |
-| **Dashboard** | Next.js + React + Framer Motion | Real-time monitoring, run timelines, policy management, approval workflows |
+| **Dashboard** | Next.js + React + Framer Motion | Real-time monitoring, run timelines, and policy management |
 | **CLI** | Click | Terminal-based management — runs, keys, status, live logs |
 | **CI/CD** | GitHub Actions | Lint → Test → Build Docker on every push |
 
@@ -504,10 +500,10 @@ SteerPlane/
 ├── sdk/                         # Python SDK (pip install steerplane)
 │   └── steerplane/
 │       ├── guard.py             # @guard decorator + SteerPlane class
-│       ├── run_manager.py       # Run lifecycle + dual enforcement (kill/alert)
+│       ├── run_manager.py       # Run lifecycle + enforcement (kill; alert on hosted plan)
 │       ├── cost_tracker.py      # Cost calculation + model pricing
 │       ├── loop_detector.py     # O(W²) sliding-window loop detection
-│       ├── policy_engine.py     # Allow/deny, rate limits, approval gates
+│       ├── policy_engine.py     # Allow/deny, rate limits
 │       ├── client.py            # HTTP client with graceful degradation
 │       ├── cli.py               # CLI tool (steerplane command)         ← NEW
 │       ├── config_file.py       # .steerplane.yml auto-discovery       ← NEW
@@ -522,7 +518,7 @@ SteerPlane/
 ├── sdk-ts/                      # TypeScript SDK (npm install steerplane)
 │   └── src/
 │       ├── guard.ts             # guard() HOF + SteerPlane class
-│       ├── run-manager.ts       # Run lifecycle + dual enforcement
+│       ├── run-manager.ts       # Run lifecycle + enforcement
 │       ├── cost-tracker.ts      # Cost tracking + limits
 │       ├── loop-detector.ts     # Loop detection
 │       ├── policy-engine.ts     # Policy engine + glob matching
@@ -538,26 +534,22 @@ SteerPlane/
 │       ├── routes/
 │       │   ├── runs.py          # Run lifecycle endpoints
 │       │   ├── policies.py      # Policy CRUD + evaluation
-│       │   ├── approvals.py     # Approval create/approve/deny/list
 │       │   ├── gateway.py       # Streaming proxy + mid-stream kill     ← UPDATED
-│       │   ├── api_keys.py      # API key management with enforcement
+│       │   ├── api_keys.py      # API key management
 │       │   └── telemetry.py     # Batch telemetry ingestion
-│       ├── models/              # Run, Step, Policy, APIKey, Approval
+│       ├── models/              # Run, Step, Policy, APIKey
 │       └── services/
 │           ├── run_service.py
 │           ├── policy_service.py
-│           ├── gateway_service.py   # 25 model pricing
-│           ├── approval_service.py
-│           └── notification_service.py
+│           └── gateway_service.py   # 25 model pricing
 ├── dashboard/                   # Next.js real-time dashboard
 │   ├── Dockerfile               # Multi-stage production build          ← NEW
 │   └── src/
 │       └── app/
 │           ├── dashboard/       # Run list + run detail pages
 │           ├── policies/        # Policy management UI
-│           ├── approvals/       # Approve/deny/extend pending requests
 │           └── api-keys/        # API key management
-├── docker-compose.yml           # 4-service orchestration               ← NEW
+├── docker-compose.yml           # 3-service orchestration               ← NEW
 ├── .env.example                 # All env vars documented               ← NEW
 ├── .github/workflows/ci.yml    # CI/CD pipeline                         ← NEW
 └── examples/                    # Example agent integrations
@@ -584,7 +576,7 @@ The FastAPI server exposes endpoints with auto-generated docs at `/docs`:
 | `POST` | `/gateway/v1/chat/completions` | OpenAI-compatible proxy (streaming + non-streaming) |
 | `GET` | `/gateway/v1/models` | List available models |
 
-**Policies · Approvals · API Keys · Telemetry · Health**  
+**Policies · API Keys · Telemetry · Health**  
 See full API docs at `http://localhost:8000/docs`
 
 ---
@@ -607,17 +599,15 @@ See full API docs at `http://localhost:8000/docs`
 - [x] TypeScript SDK with `guard()` HOF and class API
 - [x] Cost tracking with built-in pricing for 25+ models (5 providers)
 - [x] O(W²) sliding-window infinite loop detection
-- [x] Policy engine — allow/deny lists, rate limits, approval workflows
+- [x] Policy engine — allow/deny lists, rate limits
 - [x] Real-time Next.js dashboard
-- [x] Dual enforcement — kill mode + alert mode
-- [x] Human-in-the-loop approval workflow
+- [x] Kill-mode enforcement
 - [x] OpenAI-compatible gateway proxy
 - [x] LangChain/LangGraph callback handler integration
-- [x] API key management with per-key enforcement config
-- [x] Notification dispatch — SMTP email + HTTP webhooks
+- [x] API key management
 - [x] Graceful offline degradation
 - [x] **SSE streaming in gateway with mid-stream cost kill** ← v0.4.0
-- [x] **Docker Compose (API + Dashboard + PostgreSQL + Redis)** ← v0.4.0
+- [x] **Docker Compose (API + Dashboard + PostgreSQL)** ← v0.4.0
 - [x] **PostgreSQL support + Alembic migrations** ← v0.4.0
 - [x] **GitHub Actions CI/CD pipeline** ← v0.4.0
 - [x] **CLI tool (`steerplane runs`, `steerplane keys`, `steerplane status`)** ← v0.4.0
@@ -634,9 +624,9 @@ See full API docs at `http://localhost:8000/docs`
 - [ ] OpenTelemetry export
 - [ ] Fleet monitoring dashboard
 - [ ] Policy-as-code (GitOps YAML)
-- [ ] Slack app with interactive approval buttons
 - [ ] Multi-tenant RBAC
-- [ ] Cloud-hosted SaaS
+
+**Hosted / Enterprise plan:** human-in-the-loop alert-mode approval workflow, SMTP/webhook notification dispatch, server-side provider-key vaulting, and Redis-backed multi-worker gateway state.
 
 ---
 

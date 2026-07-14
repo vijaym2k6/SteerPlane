@@ -1,24 +1,20 @@
-"""StateStore parity tests (#5).
+"""StateStore tests (#5).
 
-The in-memory and Redis (fakeredis) backends must behave identically for session
-tracking, idle expiry, and loop history — so switching to Redis for multi-worker
-deployments does not change gateway behavior.
+Covers session tracking, idle expiry, and loop history for the in-memory
+gateway state store.
 """
 
 from __future__ import annotations
 
-import fakeredis
 import pytest
 
 from api.app.services.gateway_service import GatewayLoopDetector, SessionTracker
-from api.app.services.state_store import InMemoryStateStore, RedisStateStore
+from api.app.services.state_store import InMemoryStateStore
 
 
-@pytest.fixture(params=["memory", "redis"])
-def store(request):
-    if request.param == "memory":
-        return InMemoryStateStore()
-    return RedisStateStore(fakeredis.FakeStrictRedis(decode_responses=True))
+@pytest.fixture
+def store():
+    return InMemoryStateStore()
 
 
 def test_default_session_is_reused(store):

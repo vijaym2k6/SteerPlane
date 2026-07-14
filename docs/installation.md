@@ -121,11 +121,10 @@ cp .env.example .env
 docker compose up -d
 ```
 
-This starts 4 services:
+This starts 3 services:
 - **API** (port 8000)
 - **Dashboard** (port 3000)
 - **PostgreSQL** (port 5432)
-- **Redis** (port 6379)
 
 ## CLI Tool — New in v0.4.0
 
@@ -151,7 +150,6 @@ steerplane keys create --name "my-agent"
 | `STEERPLANE_ADMIN_TOKEN` | auto-generated | Admin token for sensitive routes |
 | `DATABASE_URL` | `sqlite:///steerplane.db` | Database connection string |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | Dashboard → API URL |
-| `REDIS_URL` | `redis://localhost:6379` | Redis connection (Docker) |
 | `STEERPLANE_CONFIG` | auto-discovered | Path to `.steerplane.yml` |
 
 ## Verification

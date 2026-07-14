@@ -7,24 +7,21 @@ All notable changes to SteerPlane are documented here. The project follows
 
 ### Added
 - **Optional data-plane authentication** (`STEERPLANE_REQUIRE_RUN_AUTH`, default off).
-  When enabled, `/runs/*`, `/telemetry`, and `/approvals/*` require a SteerPlane API key
+  When enabled, `/runs/*` and `/telemetry` require a SteerPlane API key
   (`Authorization: Bearer sk_sp_...`) or the admin token (superuser). Reads **and writes**
   are authorized by run ownership: a non-admin key may only read/write/step/end runs it
-  owns and create/read approvals for them; legacy NULL-owned runs are visible to admin
-  only. Runs are stamped with the owning API key (`runs.api_key_id`, new migration). While
-  off, unauthenticated calls are warn-logged so the existing keyless SDK/self-host flow is
-  unchanged.
-- **Pluggable gateway state backend** (`StateStore`). Gateway session and prompt-hash
-  loop state now go through an interface with an in-memory default and a Redis
-  implementation enabled by `REDIS_URL`, making the gateway multi-worker- and
-  restart-safe while preserving idle-timeout and loop-detection semantics (fakeredis
-  parity tests). Unreachable Redis degrades gracefully to in-memory.
-- **Server-side provider-key vaulting** (optional, `STEERPLANE_SECRET_KEY`). Store a
-  provider key with `POST /api-keys/{id}/provider-key` (admin only); it is encrypted at
-  rest with PBKDF2-HMAC-SHA256 → Fernet (AES) and injected automatically by the gateway, so
-  agents no longer need to send `X-LLM-API-Key`. The header path remains as a fallback. The
-  vaulted key is never returned by any read endpoint or logged. The secret is never
-  auto-generated; rotating it requires re-entering vaulted keys.
+  owns; legacy NULL-owned runs are visible to admin only. Runs are stamped with the owning
+  API key (`runs.api_key_id`, new migration). While off, unauthenticated calls are
+  warn-logged so the existing keyless SDK/self-host flow is unchanged.
+
+### Changed
+- **Open-core tier split.** Alert-mode human-approval workflow (with email/webhook
+  notifications), server-side provider-key vaulting, and the Redis-backed gateway state
+  backend are now part of the hosted/enterprise plan and no longer ship in this public
+  repo. The free self-hosted API runs kill-mode enforcement with an in-memory gateway
+  state store. The SDK still exposes the `enforcement="alert"` client-side options — they
+  work automatically against a hosted/enterprise deployment, and fail closed (safely
+  terminate the run) against the free self-hosted API.
 
 ### Fixed
 - **Loop detector** is less false-positive prone: single-action loops now require **≥3**

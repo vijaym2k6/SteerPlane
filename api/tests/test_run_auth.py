@@ -158,34 +158,3 @@ def test_enforced_write_ownership_step_and_end(client, db_session):
     end = {"run_id": "run-a", "status": "completed"}
     assert client.post("/runs/end", json=end, headers=auth_b).status_code == 403
     assert client.post("/runs/end", json=end, headers=auth_a).status_code == 200
-
-
-def test_enforced_approval_ownership(client, db_session):
-    """H2: approval create/read are authorized by the run's ownership."""
-    settings.REQUIRE_RUN_AUTH = True
-    raw_a, _ = _make_key(db_session, "key-a")
-    raw_b, _ = _make_key(db_session, "key-b")
-    auth_a = {"Authorization": f"Bearer {raw_a}"}
-    auth_b = {"Authorization": f"Bearer {raw_b}"}
-
-    _start(client, "run-a", headers=auth_a)
-    body = {
-        "run_id": "run-a",
-        "agent_name": "bot",
-        "approval_type": "cost_limit",
-        "current_value": 5.0,
-        "limit_value": 4.0,
-        "unit": "usd",
-        "message": "need approval",
-    }
-
-    # B cannot create an approval against A's run.
-    assert client.post("/approvals/request", json=body, headers=auth_b).status_code == 403
-
-    resp = client.post("/approvals/request", json=body, headers=auth_a)
-    assert resp.status_code == 200
-    approval_id = resp.json()["id"]
-
-    # B cannot read A's approval; A can.
-    assert client.get(f"/approvals/{approval_id}", headers=auth_b).status_code == 403
-    assert client.get(f"/approvals/{approval_id}", headers=auth_a).status_code == 200

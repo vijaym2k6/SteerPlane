@@ -89,21 +89,6 @@ async def chat_completions(request: Request, db: Session = Depends(get_db)):
         requested_session_id,
     )
     session = decision.session
-    if decision.decision == "paused":
-        svc.log_paused_request(api_key, session, model, decision.reason, decision.approval_id)
-        return JSONResponse(
-            status_code=202,
-            content={
-                "status": "paused",
-                "awaiting_approval": True,
-                "message": decision.reason,
-                "type": "steerplane_approval_required",
-                "session_id": session.session_id,
-                "approval_id": decision.approval_id,
-            },
-            headers={"X-SteerPlane-Session-ID": session.session_id},
-        )
-
     if decision.decision != "allow":
         svc.log_blocked_request(api_key, session, model, decision.reason)
         raise HTTPException(
@@ -120,10 +105,7 @@ async def chat_completions(request: Request, db: Session = Depends(get_db)):
     if not llm_api_key:
         raise HTTPException(
             status_code=400,
-            detail=(
-                "No provider key available: send the X-LLM-API-Key header or vault a key "
-                "server-side via POST /api-keys/{id}/provider-key"
-            ),
+            detail="No provider key available: send the X-LLM-API-Key header",
         )
 
     custom_url = request.headers.get("X-Provider-URL", "")
@@ -290,7 +272,6 @@ async def chat_completions(request: Request, db: Session = Depends(get_db)):
     normalized_model = normalize_model_name(model)
     cost = calculate_cost(normalized_model, input_tokens, output_tokens)
     svc.log_request(api_key, session, model, input_tokens, output_tokens, cost, latency_ms)
-    pending_approval = svc.maybe_trigger_threshold_alert(api_key, session)
 
     session_cost = svc.get_session_cost(session)
     response_data["steerplane"] = {
@@ -301,8 +282,6 @@ async def chat_completions(request: Request, db: Session = Depends(get_db)):
         "monthly_cost_limit_usd": api_key.max_cost_monthly,
         "request_number": api_key.total_requests,
         "session_id": session.session_id,
-        "awaiting_approval": pending_approval is not None,
-        "approval_id": pending_approval.id if pending_approval else None,
     }
 
     return JSONResponse(
@@ -498,8 +477,6 @@ async def _handle_streaming(
                 status,
                 error_msg,
             )
-            if not stream_state["terminated_mid_stream"]:
-                svc.maybe_trigger_threshold_alert(api_key, session)
 
     return StreamingResponse(
         stream_generator(),

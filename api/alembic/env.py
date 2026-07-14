@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from app.db.base import Base  # noqa: E402
 
 # Import all models so they register with Base.metadata
-from app.models import run, step, policy, api_key, api_key_enforcement, approval_request  # noqa: E402, F401
+from app.models import run, step, policy, api_key  # noqa: E402, F401
 
 # Alembic Config object
 config = context.config

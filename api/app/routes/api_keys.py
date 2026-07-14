@@ -13,12 +13,6 @@ from sqlalchemy import func
 from ..db.database import get_db
 from ..models.api_key import APIKey, generate_api_key, hash_api_key
 from ..security import require_admin
-from ..services import crypto
-from ..services.approval_service import (
-    ApprovalService,
-    DEFAULT_ALERT_THRESHOLD,
-    DEFAULT_ALERT_TIMEOUT_SEC,
-)
 
 
 router = APIRouter(
@@ -40,18 +34,6 @@ class CreateKeyRequest(BaseModel):
         default=None, description="Comma-separated allowed models"
     )
     denied_models: Optional[str] = Field(default=None, description="Comma-separated denied models")
-    enforcement_mode: str = Field(default="kill", description="kill or alert")
-    alert_threshold: float = Field(
-        default=DEFAULT_ALERT_THRESHOLD, description="Fraction of the limit that triggers an alert"
-    )
-    alert_timeout_sec: int = Field(
-        default=DEFAULT_ALERT_TIMEOUT_SEC, description="How long to wait for human approval"
-    )
-    alert_channels: list[str] = Field(default_factory=list, description="email, webhook")
-    alert_email: Optional[str] = Field(default=None, description="Email recipient for alert mode")
-    alert_webhook_url: Optional[str] = Field(
-        default=None, description="Webhook target for alert mode"
-    )
 
 
 class KeyResponse(BaseModel):
@@ -63,17 +45,10 @@ class KeyResponse(BaseModel):
     max_requests_per_min: int
     allowed_models: Optional[str] = None
     denied_models: Optional[str] = None
-    enforcement_mode: str
-    alert_threshold: float
-    alert_timeout_sec: int
-    alert_channels: list[str]
-    alert_email: Optional[str] = None
-    alert_webhook_url: Optional[str] = None
     is_active: bool
     total_requests: int
     total_cost: float
     total_tokens: int
-    has_provider_key: bool = False
     last_used_at: Optional[str] = None
     created_at: str
 
@@ -92,12 +67,6 @@ class UpdateKeyRequest(BaseModel):
     max_requests_per_min: Optional[int] = None
     allowed_models: Optional[str] = None
     denied_models: Optional[str] = None
-    enforcement_mode: Optional[str] = None
-    alert_threshold: Optional[float] = None
-    alert_timeout_sec: Optional[int] = None
-    alert_channels: Optional[list[str]] = None
-    alert_email: Optional[str] = None
-    alert_webhook_url: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -130,17 +99,6 @@ def create_key(req: CreateKeyRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(api_key)
 
-    approval_service = ApprovalService(db)
-    enforcement = approval_service.get_or_create_api_key_enforcement(api_key.id)
-    enforcement.enforcement_mode = req.enforcement_mode
-    enforcement.alert_threshold = req.alert_threshold
-    enforcement.alert_timeout_sec = req.alert_timeout_sec
-    enforcement.alert_channels_json = req.alert_channels
-    enforcement.alert_email = req.alert_email
-    enforcement.alert_webhook_url = req.alert_webhook_url
-    db.commit()
-    db.refresh(enforcement)
-
     return KeyCreatedResponse(
         id=api_key.id,
         name=api_key.name,
@@ -151,17 +109,10 @@ def create_key(req: CreateKeyRequest, db: Session = Depends(get_db)):
         max_requests_per_min=api_key.max_requests_per_min,
         allowed_models=api_key.allowed_models,
         denied_models=api_key.denied_models,
-        enforcement_mode=enforcement.enforcement_mode,
-        alert_threshold=enforcement.alert_threshold,
-        alert_timeout_sec=enforcement.alert_timeout_sec,
-        alert_channels=enforcement.alert_channels_json or [],
-        alert_email=enforcement.alert_email,
-        alert_webhook_url=enforcement.alert_webhook_url,
         is_active=api_key.is_active,
         total_requests=api_key.total_requests,
         total_cost=api_key.total_cost,
         total_tokens=api_key.total_tokens,
-        has_provider_key=api_key.has_provider_key,
         last_used_at=api_key.last_used_at.isoformat() if api_key.last_used_at else None,
         created_at=api_key.created_at.isoformat(),
     )
@@ -170,12 +121,11 @@ def create_key(req: CreateKeyRequest, db: Session = Depends(get_db)):
 @router.get("/", response_model=KeyListResponse)
 def list_keys(db: Session = Depends(get_db)):
     """List all API keys (without the raw key)."""
-    approval_service = ApprovalService(db)
     total = db.query(func.count(APIKey.id)).scalar()
     keys = db.query(APIKey).order_by(APIKey.created_at.desc()).all()
 
     return KeyListResponse(
-        keys=[_build_key_response(k, approval_service.get_api_key_enforcement(k.id)) for k in keys],
+        keys=[_build_key_response(k) for k in keys],
         total=total,
     )
 
@@ -187,8 +137,7 @@ def get_key(key_id: str, db: Session = Depends(get_db)):
     if not api_key:
         raise HTTPException(status_code=404, detail="API key not found")
 
-    approval_service = ApprovalService(db)
-    return _build_key_response(api_key, approval_service.get_api_key_enforcement(api_key.id))
+    return _build_key_response(api_key)
 
 
 @router.put("/{key_id}", response_model=KeyResponse)
@@ -215,29 +164,13 @@ def update_key(key_id: str, req: UpdateKeyRequest, db: Session = Depends(get_db)
     if "is_active" in provided_fields:
         api_key.is_active = req.is_active
 
-    approval_service = ApprovalService(db)
-    enforcement = approval_service.get_or_create_api_key_enforcement(api_key.id)
-    if "enforcement_mode" in provided_fields:
-        enforcement.enforcement_mode = req.enforcement_mode
-    if "alert_threshold" in provided_fields:
-        enforcement.alert_threshold = req.alert_threshold
-    if "alert_timeout_sec" in provided_fields:
-        enforcement.alert_timeout_sec = req.alert_timeout_sec
-    if "alert_channels" in provided_fields:
-        enforcement.alert_channels_json = req.alert_channels
-    if "alert_email" in provided_fields:
-        enforcement.alert_email = req.alert_email
-    if "alert_webhook_url" in provided_fields:
-        enforcement.alert_webhook_url = req.alert_webhook_url
-
     db.commit()
     db.refresh(api_key)
-    db.refresh(enforcement)
 
-    return _build_key_response(api_key, enforcement)
+    return _build_key_response(api_key)
 
 
-def _build_key_response(api_key: APIKey, enforcement) -> KeyResponse:
+def _build_key_response(api_key: APIKey) -> KeyResponse:
     return KeyResponse(
         id=api_key.id,
         name=api_key.name,
@@ -247,65 +180,13 @@ def _build_key_response(api_key: APIKey, enforcement) -> KeyResponse:
         max_requests_per_min=api_key.max_requests_per_min,
         allowed_models=api_key.allowed_models,
         denied_models=api_key.denied_models,
-        enforcement_mode=enforcement.enforcement_mode,
-        alert_threshold=enforcement.alert_threshold,
-        alert_timeout_sec=enforcement.alert_timeout_sec,
-        alert_channels=enforcement.alert_channels_json or [],
-        alert_email=enforcement.alert_email,
-        alert_webhook_url=enforcement.alert_webhook_url,
         is_active=api_key.is_active,
         total_requests=api_key.total_requests,
         total_cost=api_key.total_cost,
         total_tokens=api_key.total_tokens,
-        has_provider_key=api_key.has_provider_key,
         last_used_at=api_key.last_used_at.isoformat() if api_key.last_used_at else None,
         created_at=api_key.created_at.isoformat(),
     )
-
-
-class SetProviderKeyRequest(BaseModel):
-    provider_key: str = Field(..., min_length=1, description="Upstream LLM provider API key")
-
-
-@router.post("/{key_id}/provider-key", response_model=KeyResponse)
-def set_provider_key(key_id: str, req: SetProviderKeyRequest, db: Session = Depends(get_db)):
-    """Vault a provider key for this API key (admin only).
-
-    The key is encrypted at rest with STEERPLANE_SECRET_KEY and is never returned
-    by any read endpoint. Once set, the gateway uses it automatically so the agent
-    no longer needs to send X-LLM-API-Key.
-    """
-    if not crypto.vault_enabled():
-        raise HTTPException(
-            status_code=400,
-            detail="Provider-key vaulting is disabled. Set STEERPLANE_SECRET_KEY to enable it.",
-        )
-
-    api_key = db.query(APIKey).filter(APIKey.id == key_id).first()
-    if not api_key:
-        raise HTTPException(status_code=404, detail="API key not found")
-
-    api_key.provider_key_encrypted = crypto.encrypt(req.provider_key)
-    db.commit()
-    db.refresh(api_key)
-
-    approval_service = ApprovalService(db)
-    return _build_key_response(api_key, approval_service.get_api_key_enforcement(api_key.id))
-
-
-@router.delete("/{key_id}/provider-key", response_model=KeyResponse)
-def clear_provider_key(key_id: str, db: Session = Depends(get_db)):
-    """Remove a vaulted provider key (admin only)."""
-    api_key = db.query(APIKey).filter(APIKey.id == key_id).first()
-    if not api_key:
-        raise HTTPException(status_code=404, detail="API key not found")
-
-    api_key.provider_key_encrypted = None
-    db.commit()
-    db.refresh(api_key)
-
-    approval_service = ApprovalService(db)
-    return _build_key_response(api_key, approval_service.get_api_key_enforcement(api_key.id))
 
 
 @router.delete("/{key_id}")

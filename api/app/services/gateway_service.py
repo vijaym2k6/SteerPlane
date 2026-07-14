@@ -19,8 +19,6 @@ from ..config import settings
 from ..models.api_key import APIKey, hash_api_key
 from ..models.run import Run
 from ..models.step import Step
-from . import crypto
-from .approval_service import ApprovalService
 from .state_store import StateStore, build_state_store
 
 
@@ -160,10 +158,9 @@ def _session_from_dict(data: dict) -> GatewaySession:
 class GatewayPreflightResult:
     """Gateway decision before a proxied request is sent upstream."""
 
-    decision: str  # allow, paused, blocked
+    decision: str  # allow, blocked
     reason: str
     session: GatewaySession
-    approval_id: str | None = None
 
 
 class SessionTracker:
@@ -254,17 +251,7 @@ class GatewayService:
         self.db = db
 
     def resolve_provider_key(self, api_key: APIKey, header_value: str | None) -> str:
-        """Pick the upstream provider key: vaulted key first, header as fallback.
-
-        If a key is vaulted and decrypts, it is used (the agent need not transmit
-        the provider key at all). Otherwise the X-LLM-API-Key header is used, so
-        existing header-based callers keep working.
-        """
-        if api_key.provider_key_encrypted and crypto.vault_enabled():
-            try:
-                return crypto.decrypt(api_key.provider_key_encrypted)
-            except crypto.VaultError:
-                pass  # fall back to the header rather than hard-failing
+        """Pick the upstream provider key from the X-LLM-API-Key header."""
         return (header_value or "").strip()
 
     def validate_api_key(self, raw_key: str) -> APIKey | None:
@@ -332,11 +319,7 @@ class GatewayService:
         )
 
     def get_session_cost_limit(self, api_key: APIKey, session: GatewaySession) -> float:
-        approval_service = ApprovalService(self.db)
-        return api_key.max_cost_usd + approval_service.get_gateway_cost_extension(
-            session.run_id,
-            session.session_id,
-        )
+        return api_key.max_cost_usd
 
     def get_run(self, run_id: str) -> Run | None:
         return self.db.query(Run).filter(Run.id == run_id).first()
@@ -437,7 +420,6 @@ class GatewayService:
         requested_session_id: str | None = None,
     ) -> GatewayPreflightResult:
         session = self.resolve_session(api_key, requested_session_id)
-        approval_service = ApprovalService(self.db)
         run = self.get_run(session.run_id)
         if run and run.status == "terminated":
             return GatewayPreflightResult(
@@ -446,57 +428,12 @@ class GatewayService:
                 session=session,
             )
 
-        pending = approval_service.find_pending(
-            session.run_id,
-            "cost_limit",
-            session_id=session.session_id,
-        )
-        if pending and pending.status == "pending":
-            return GatewayPreflightResult(
-                decision="paused",
-                reason=pending.message,
-                session=session,
-                approval_id=pending.id,
-            )
-
         ok, reason = self.check_model_allowed(api_key, model)
         if not ok:
             return GatewayPreflightResult("blocked", reason, session)
 
-        ok, reason, session_limit = self.check_cost_limit(api_key, session)
+        ok, reason, _session_limit = self.check_cost_limit(api_key, session)
         if not ok:
-            enforcement = approval_service.get_api_key_enforcement(api_key.id)
-            if enforcement.enforcement_mode == "alert" and "Session cost limit exceeded" in reason:
-                approval = approval_service.create_approval(
-                    run_id=session.run_id,
-                    agent_name=f"gateway:{api_key.name}",
-                    approval_type="cost_limit",
-                    current_value=self.get_session_cost(session),
-                    limit_value=session_limit,
-                    unit="usd",
-                    message=(
-                        f"Gateway session {session.session_id} for '{api_key.name}' "
-                        f"has reached its cost limit. Approve to continue or let it terminate."
-                    ),
-                    timeout_sec=enforcement.alert_timeout_sec,
-                    scope="gateway",
-                    session_id=session.session_id,
-                    api_key_id=api_key.id,
-                    channels=enforcement.alert_channels_json or [],
-                    alert_email=enforcement.alert_email,
-                    alert_webhook_url=enforcement.alert_webhook_url,
-                    metadata={
-                        "key_name": api_key.name,
-                        "session_cost_usd": self.get_session_cost(session),
-                        "session_limit_usd": session_limit,
-                    },
-                )
-                return GatewayPreflightResult(
-                    "paused",
-                    approval.message,
-                    session,
-                    approval_id=approval.id,
-                )
             return GatewayPreflightResult("blocked", reason, session)
 
         ok, reason = self.check_rate_limit(api_key)
@@ -579,96 +516,6 @@ class GatewayService:
         api_key.total_tokens += total_tokens
         api_key.last_used_at = datetime.now(timezone.utc)
 
-        self.db.commit()
-
-    def maybe_trigger_threshold_alert(
-        self,
-        api_key: APIKey,
-        session: GatewaySession,
-    ):
-        approval_service = ApprovalService(self.db)
-        enforcement = approval_service.get_api_key_enforcement(api_key.id)
-        if enforcement.enforcement_mode != "alert":
-            return None
-
-        if approval_service.find_pending(
-            session.run_id,
-            "cost_limit",
-            session_id=session.session_id,
-        ):
-            return None
-
-        session_limit = self.get_session_cost_limit(api_key, session)
-        if session_limit <= 0:
-            return None
-
-        session_cost = self.get_session_cost(session)
-        threshold_value = session_limit * enforcement.alert_threshold
-        if session_cost < threshold_value:
-            return None
-
-        return approval_service.create_approval(
-            run_id=session.run_id,
-            agent_name=f"gateway:{api_key.name}",
-            approval_type="cost_limit",
-            current_value=session_cost,
-            limit_value=session_limit,
-            unit="usd",
-            message=(
-                f"Gateway session {session.session_id} for '{api_key.name}' has crossed "
-                f"{int(enforcement.alert_threshold * 100)}% of its cost budget. "
-                "Approve to continue or let it terminate on timeout."
-            ),
-            timeout_sec=enforcement.alert_timeout_sec,
-            scope="gateway",
-            session_id=session.session_id,
-            api_key_id=api_key.id,
-            channels=enforcement.alert_channels_json or [],
-            alert_email=enforcement.alert_email,
-            alert_webhook_url=enforcement.alert_webhook_url,
-            metadata={
-                "key_name": api_key.name,
-                "session_cost_usd": session_cost,
-                "session_limit_usd": session_limit,
-                "alert_threshold": enforcement.alert_threshold,
-            },
-        )
-
-    def log_paused_request(
-        self,
-        api_key: APIKey,
-        session: GatewaySession,
-        model: str,
-        reason: str,
-        approval_id: str | None = None,
-    ):
-        run = self.ensure_run(api_key, session)
-        step_number = self.next_step_number(session.run_id)
-
-        step = Step(
-            run_id=session.run_id,
-            step_number=step_number,
-            action=f"paused:{model}",
-            tokens=0,
-            cost_usd=0.0,
-            latency_ms=0.0,
-            status="awaiting_approval",
-            error=reason,
-            metadata_json={
-                "source": "gateway",
-                "model": model,
-                "paused_reason": reason,
-                "approval_id": approval_id,
-                "session_id": session.session_id,
-                "session_explicit": session.explicit,
-            },
-            timestamp=datetime.now(timezone.utc),
-        )
-        self.db.add(step)
-
-        run.total_steps = step_number
-        run.status = "awaiting_approval"
-        run.error = reason
         self.db.commit()
 
     def log_blocked_request(
