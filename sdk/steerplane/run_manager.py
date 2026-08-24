@@ -409,7 +409,16 @@ class RunManager:
         )
 
         if self._context_token is not None:
-            reset_active_run(self._context_token)
+            try:
+                reset_active_run(self._context_token)
+            except ValueError:
+                # The token was created in a different context. This happens
+                # whenever a framework starts the run on one thread/context and
+                # ends it on another (LangGraph tool nodes, CrewAI workers,
+                # asyncio tasks). The binding dies with its own context, so
+                # failing to reset it is safe -- but raising here would mask the
+                # real SteerPlaneError that triggered the shutdown.
+                pass
             self._context_token = None
 
     def _terminate(self, reason: str, details: dict | None = None):
