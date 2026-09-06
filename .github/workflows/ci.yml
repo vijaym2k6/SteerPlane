@@ -31,7 +31,11 @@ jobs:
           python-version: "3.11"
 
       - name: Install ruff
-        run: pip install ruff
+        # Pinned deliberately. An unpinned linter means CI can fail on a day
+        # nobody touched the code: ruff 0.16.6 (3 Sep 2026) widened its default
+        # rule set and broke this job on an unchanged tree. Bump this on
+        # purpose, with the lint fixes the new version wants, never by accident.
+        run: pip install ruff==0.15.12
 
       - name: Run ruff check
         run: ruff check sdk/ api/ --output-format=github
