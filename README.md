@@ -617,12 +617,7 @@ See full API docs at `http://localhost:8000/docs`
 - [x] **AutoGen integration** ← v0.4.0
 - [ ] WebSocket real-time dashboard (replace polling)
 - [ ] Webhook event system
-- [ ] Recommendation engine (auto-suggest limits)
-- [ ] Agent replay (flight recorder)
-- [ ] Cost projection (live burn rate widget)
-- [ ] Anomaly detection (deterministic thresholds)
 - [ ] OpenTelemetry export
-- [ ] Fleet monitoring dashboard
 - [ ] Policy-as-code (GitOps YAML)
 - [ ] Multi-tenant RBAC
 

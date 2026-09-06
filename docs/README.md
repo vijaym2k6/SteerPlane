@@ -28,7 +28,14 @@ Welcome to the SteerPlane v1.0.0 documentation. SteerPlane is a **runtime contro
                                          └───────────────┘
 ```
 
-## What's New in v0.4.0
+## What's New in v1.0.0
+
+- **Optional data-plane authentication** — `/runs/*` and `/telemetry` can require an API key, with run-ownership authorization
+- **Open-core tier split** — alert-mode approvals, provider-key vaulting, and the Redis gateway backend moved to the hosted plan; the free self-hosted stack runs kill mode
+- **Fewer loop false positives** — single-action loops now need at least 3 consecutive repetitions, so a benign double-call no longer terminates a run
+- **TypeScript detector parity** — the TS loop detector now matches the end-anchored Python algorithm
+
+## Previously in v0.4.0
 
 - **SSE Streaming Gateway** — Real-time chunk forwarding with mid-stream cost enforcement
 - **Docker Compose** — 3-service production stack (API + Dashboard + PostgreSQL)

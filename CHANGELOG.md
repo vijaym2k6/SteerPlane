@@ -3,7 +3,11 @@
 All notable changes to SteerPlane are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.0.0]
+
+First stable release. Security hardening, an open-core tier split, and a less
+false-positive-prone loop detector. The public API is unchanged from 0.4.1, so
+existing SDK and gateway integrations keep working without edits.
 
 ### Added
 - **Optional data-plane authentication** (`STEERPLANE_REQUIRE_RUN_AUTH`, default off).
