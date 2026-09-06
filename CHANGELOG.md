@@ -28,6 +28,15 @@ existing SDK and gateway integrations keep working without edits.
   terminate the run) against the free self-hosted API.
 
 ### Fixed
+- **LangChain enforcement is no longer advisory.** LangChain's callback manager caught
+  `SteerPlaneError` raised from the handler and let the agent run to completion after a
+  violation. Passing `enforce=True` to `SteerPlaneCallbackHandler` now sets `raise_error`
+  so the exception propagates and the run actually stops. The handler also accepts
+  `loop_window_size`, which it previously ignored.
+- **Ending a run no longer masks the error that caused it.** When a framework starts a run
+  on one context and ends it on another (LangGraph tool nodes, CrewAI workers, asyncio
+  tasks), resetting the context token raised `ValueError` and hid the real
+  `SteerPlaneError`. The reset is now best-effort.
 - **Loop detector** is less false-positive prone: single-action loops now require **≥3**
   consecutive repetitions (a benign double-call no longer terminates a run); multi-step
   patterns are unchanged. The TypeScript detector was also brought to parity with the
