@@ -93,5 +93,6 @@ READMEs and `docs/` for the full breakdown.
 - Config file support (`.steerplane.yml`) with auto-discovery.
 - Framework integrations: LangChain, OpenAI Agents SDK, CrewAI, AutoGen.
 
+[1.0.0]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.0.0
 [0.4.1]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v0.4.1
 [0.4.0]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v0.4.0
