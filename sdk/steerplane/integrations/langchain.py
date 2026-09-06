@@ -66,6 +66,8 @@ class SteerPlaneCallbackHandler(BaseCallbackHandler):
         api_url: Optional[str] = None,
         api_key: Optional[str] = None,
         log_to_console: bool = True,
+        loop_window_size: int = 8,
+        enforce: bool = False,
         # Policy engine options
         allowed_actions: Optional[list[str]] = None,
         denied_actions: Optional[list[str]] = None,
@@ -98,11 +100,18 @@ class SteerPlaneCallbackHandler(BaseCallbackHandler):
                 approval_callback=approval_callback,
             )
 
+        # Ask LangChain to re-raise exceptions from this handler instead of
+        # logging and continuing. Without this, LangChain's callback manager
+        # swallows SteerPlaneError (see langchain_core.callbacks.manager
+        # .handle_event) and the agent keeps running after a violation.
+        self.raise_error = enforce
+
         self.run_manager = RunManager(
             agent_name=agent_name,
             max_cost_usd=max_cost_usd,
             max_steps=max_steps,
             max_runtime_sec=max_runtime_sec,
+            loop_window_size=loop_window_size,
             model=model,
             api_url=api_url,
             api_key=api_key,
@@ -287,7 +296,7 @@ class SteerPlaneCallbackHandler(BaseCallbackHandler):
 
     def __del__(self):
         """Auto-end run on garbage collection if not already ended."""
-        if self._started:
+        if getattr(self, "_started", False):
             try:
                 self.run_manager.end(status="completed")
             except Exception:
