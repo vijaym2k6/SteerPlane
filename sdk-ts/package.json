@@ -1,7 +1,7 @@
 {
   "name": "steerplane",
   "version": "1.0.0",
-  "description": "The safety layer for the AGI era: guards, cost limits, loop detection, and telemetry for autonomous AI agents.",
+  "description": "The safety layer for the AGI era. Runtime guardrails for autonomous AI agents. Guards, cost limits, loop detection, and telemetry.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",

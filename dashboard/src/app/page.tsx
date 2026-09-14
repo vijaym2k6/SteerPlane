@@ -174,7 +174,7 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.25 }}
         >
-          The open-source safety layer for autonomous AI agents. It intercepts every LLM call
+          The safety layer for the AGI era. Runtime guardrails for autonomous AI agents. It intercepts every LLM call
           through an OpenAI-compatible gateway, enforces safety policies, detects infinite loops,
           tracks token costs across 25+ models, and gives you complete observability — without
           modifying a single line of agent code.
