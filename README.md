@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <b>Runtime guardrails for autonomous AI agents.</b><br>
+  <b>The safety layer for the AGI era.</b> Runtime guardrails for autonomous AI agents.<br>
   Cost limits · Loop detection · Dual enforcement (Kill/Alert) · Streaming gateway · Policy engine · Human-in-the-loop · CLI · Docker · 4 framework integrations<br><br>
   <code>pip install steerplane</code> · <code>npm install steerplane</code><br><br>
   🌐 <a href="https://steerplane.com"><b>steerplane.com</b></a>

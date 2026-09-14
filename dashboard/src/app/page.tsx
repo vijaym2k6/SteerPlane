@@ -174,7 +174,7 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.25 }}
         >
-          An open-source runtime control plane for AI agents. It intercepts every LLM call
+          The open-source safety layer for autonomous AI agents. It intercepts every LLM call
           through an OpenAI-compatible gateway, enforces safety policies, detects infinite loops,
           tracks token costs across 25+ models, and gives you complete observability — without
           modifying a single line of agent code.
@@ -451,7 +451,7 @@ export default function Home() {
 
       {/* ═══════ FOOTER ═══════ */}
       <footer className="landing-footer">
-        <p>SteerPlane v1.0.0 — Open-source runtime guardrails for AI agents.</p>
+        <p>SteerPlane v1.0.0: The safety layer for the AGI era.</p>
         <p className="landing-footer-tagline">&quot;Ship agents. Not incidents.&quot;</p>
       </footer>
     </div>

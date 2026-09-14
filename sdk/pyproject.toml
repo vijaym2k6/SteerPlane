@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "steerplane"
 version = "1.0.0"
-description = "Agent Control Plane for Autonomous Systems — Runtime guards, loop detection, cost limits, and telemetry for AI agents."
+description = "The safety layer for the AGI era: runtime guards, loop detection, cost limits, and telemetry for AI agents."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"

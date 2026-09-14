@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="Agent Control Plane for Autonomous Systems — Runtime API",
+    description="The Safety Layer for the AGI Era: Runtime API",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,

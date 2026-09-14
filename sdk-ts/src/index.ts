@@ -1,7 +1,7 @@
 /**
  * SteerPlane SDK (TypeScript)
  *
- * Runtime control plane for autonomous AI agents.
+ * The Safety Layer for the AGI Era.
  * "Agents don't fail in the dark anymore."
  *
  * @example HOF Style

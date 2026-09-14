@@ -1,7 +1,7 @@
 """
 SteerPlane SDK
 
-Agent Control Plane for Autonomous Systems.
+The Safety Layer for the AGI Era.
 "Agents don't fail in the dark anymore."
 
 Usage:

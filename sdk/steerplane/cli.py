@@ -94,7 +94,7 @@ def _delete(path: str) -> dict:
 @click.group()
 @click.version_option(__version__, prog_name="steerplane")
 def cli():
-    """SteerPlane — Agent Control Plane for Autonomous Systems."""
+    """SteerPlane: The Safety Layer for the AGI Era."""
     pass
 
 

@@ -1,6 +1,6 @@
 # SteerPlane Documentation
 
-Welcome to the SteerPlane v1.0.0 documentation. SteerPlane is a **runtime control plane for autonomous AI agents** — providing safety guardrails, cost control, loop detection, SSE streaming enforcement, and full observability.
+Welcome to the SteerPlane v1.0.0 documentation. SteerPlane is **the safety layer for the AGI era**: runtime guardrails for autonomous AI agents — providing safety guardrails, cost control, loop detection, SSE streaming enforcement, and full observability.
 
 ## Documentation Pages
 

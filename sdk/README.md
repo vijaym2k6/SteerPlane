@@ -1,6 +1,6 @@
 # SteerPlane SDK
 
-**Runtime guardrails for autonomous AI agents.**
+**The safety layer for the AGI era.** Runtime guardrails for autonomous AI agents.
 
 > Cost limits · Loop detection · Dual enforcement (Kill/Alert) · SSE streaming gateway · Policy engine · Human-in-the-loop · CLI · Docker · 4 framework integrations
 

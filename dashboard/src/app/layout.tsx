@@ -5,7 +5,7 @@ import DemoBanner from '@/components/DemoBanner';
 import DemoNotice from '@/components/DemoNotice';
 
 export const metadata: Metadata = {
-  title: 'SteerPlane — Agent Control Plane',
+  title: 'SteerPlane: The Safety Layer for the AGI Era',
   description: 'Runtime guardrails, monitoring, and loop detection for autonomous AI agents.',
 };
 
