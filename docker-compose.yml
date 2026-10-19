@@ -49,6 +49,8 @@ services:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-8000}
     restart: unless-stopped
     ports:
       - "${DASHBOARD_PORT:-3000}:3000"

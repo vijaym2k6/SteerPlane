@@ -439,6 +439,8 @@ docker compose up -d    # Starts all 3 services
 | `api` | steerplane-api | 8000 | FastAPI backend |
 | `dashboard` | steerplane-dashboard | 3000 | Next.js UI |
 
+Running one server for several teams? Use `docker-compose.hosted.yml`, which turns run auth on and gives each team its own API key and its own view of runs. See [docs/hosted-deployment.md](docs/hosted-deployment.md).
+
 Database migrations via Alembic:
 ```bash
 cd api

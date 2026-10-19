@@ -14,6 +14,11 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# NEXT_PUBLIC_* values are compiled into the browser bundle by `next build`,
+# so the API address has to be known here, not only at container start.
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 RUN npm run build
 
 # -- Runner --

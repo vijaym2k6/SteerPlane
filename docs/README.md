@@ -12,6 +12,7 @@ Welcome to the SteerPlane v1.0.0 documentation. **The safety layer for the AGI e
 | [Example Agents](example-agents.md) | Real-world agent integration examples |
 | [Dashboard Guide](dashboard-guide.md) | Using the monitoring dashboard |
 | [Architecture](architecture.md) | System design, data flows, and infrastructure |
+| [Hosted Deployment](hosted-deployment.md) | One server for several teams, each with its own key and runs |
 
 ## Architecture Overview
 

@@ -17,6 +17,7 @@ build/
 .env
 .env.local
 .env.production
+.env.hosted
 
 # IDE
 .vscode/

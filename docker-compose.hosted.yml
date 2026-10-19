@@ -1,0 +1,70 @@
+###############################################################################
+# SteerPlane — Docker Compose for a shared server
+#
+# Use this when one SteerPlane instance serves several teams. It differs from
+# docker-compose.yml in four ways:
+#   1. Run auth is ON: every SDK/gateway call needs a team API key (sk_sp_...)
+#      or the admin token, and each team sees only its own runs.
+#   2. The admin token must be set. The API will not invent one.
+#   3. The database port is not published. Only the API can reach Postgres.
+#   4. The API and dashboard listen on 127.0.0.1 only. Put an HTTPS reverse
+#      proxy (Caddy, nginx, a cloud load balancer) in front of them.
+#
+#   cp .env.hosted.example .env.hosted     # fill in every value
+#   docker compose -f docker-compose.hosted.yml --env-file .env.hosted up -d --build
+#
+# Full guide: docs/hosted-deployment.md
+###############################################################################
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-steerplane}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.hosted}
+      POSTGRES_DB: ${POSTGRES_DB:-steerplane}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-steerplane}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-steerplane}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.hosted}@postgres:5432/${POSTGRES_DB:-steerplane}
+      STEERPLANE_REQUIRE_RUN_AUTH: "true"
+      STEERPLANE_ADMIN_TOKEN: ${STEERPLANE_ADMIN_TOKEN:?Set STEERPLANE_ADMIN_TOKEN in .env.hosted}
+      CORS_ORIGINS: ${STEERPLANE_DASHBOARD_URL:?Set STEERPLANE_DASHBOARD_URL in .env.hosted}
+      STEERPLANE_DASHBOARD_URL: ${STEERPLANE_DASHBOARD_URL:?Set STEERPLANE_DASHBOARD_URL in .env.hosted}
+      STEERPLANE_GATEWAY_SESSION_IDLE_SEC: ${STEERPLANE_GATEWAY_SESSION_IDLE_SEC:-1800}
+      STEERPLANE_ALLOWED_PROVIDER_URLS: ${STEERPLANE_ALLOWED_PROVIDER_URLS:-}
+      DEBUG: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+      args:
+        # The browser calls the API directly, so this must be the API's
+        # public HTTPS address. It is baked into the dashboard at build time.
+        NEXT_PUBLIC_API_URL: ${STEERPLANE_PUBLIC_API_URL:?Set STEERPLANE_PUBLIC_API_URL in .env.hosted}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${DASHBOARD_PORT:-3000}:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

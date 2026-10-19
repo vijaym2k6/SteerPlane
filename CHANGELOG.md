@@ -9,8 +9,17 @@ All notable changes to SteerPlane are documented here. The project follows
 - **`detectLoops` option in the TypeScript SDK** (default `true`). Set it to `false` on
   `guard()`, `SteerPlane.run()`, `createRun()` or `RunManager` to stop loop detection from
   ending a run. Cost, step, runtime and policy limits still apply.
+- **`docker-compose.hosted.yml`** for running one server for several teams. Run auth is
+  always on, the admin token is required, the Postgres port is not published, and the
+  API and dashboard listen on `127.0.0.1` behind your HTTPS proxy. Settings live in
+  `.env.hosted` (template: `.env.hosted.example`, git-ignored). Guide:
+  `docs/hosted-deployment.md`.
 
 ### Fixed
+- **Dashboard image now uses the configured API address.** `NEXT_PUBLIC_API_URL` is
+  compiled into the browser bundle at build time, but the Dockerfile never received it,
+  so a dashboard built from it always called `http://localhost:8000`. It is now a build
+  argument (default unchanged), and both compose files pass it.
 - **`detect_loops` now works in the Python SDK.** The docs have listed
   `@guard(detect_loops=True)` since v0.1.0, but the parameter did not exist, so passing it
   raised `TypeError`. It is now accepted (default `True`) by `@guard`, `SteerPlane.run()`,
