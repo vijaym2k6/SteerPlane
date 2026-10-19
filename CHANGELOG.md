@@ -3,6 +3,13 @@
 All notable changes to SteerPlane are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **`detectLoops` option in the TypeScript SDK** (default `true`). Set it to `false` on
+  `guard()`, `SteerPlane.run()`, `createRun()` or `RunManager` to stop loop detection from
+  ending a run. Cost, step, runtime and policy limits still apply.
+
 ## [1.0.0]
 
 First stable release. Security hardening, an open-core tier split, and a less

@@ -31,6 +31,8 @@ export interface GuardOptions {
   alertChannels?: string[];
   alertEmail?: string;
   alertWebhookUrl?: string;
+  /** Set false to stop loop detection from ending the run. Default true. */
+  detectLoops?: boolean;
 }
 
 export function guard<TArgs extends unknown[], TResult>(
@@ -55,6 +57,7 @@ export function guard<TArgs extends unknown[], TResult>(
       alertChannels: opts.alertChannels,
       alertEmail: opts.alertEmail,
       alertWebhookUrl: opts.alertWebhookUrl,
+      detectLoops: opts.detectLoops,
     });
 
     return activeRunStorage.run(run, async () => {
@@ -92,6 +95,8 @@ export interface RunOptions {
   alertChannels?: string[];
   alertEmail?: string;
   alertWebhookUrl?: string;
+  /** Set false to stop loop detection from ending the run. Default true. */
+  detectLoops?: boolean;
 }
 
 export class SteerPlane {
@@ -147,6 +152,7 @@ export class SteerPlane {
       alertChannels: opts.alertChannels,
       alertEmail: opts.alertEmail,
       alertWebhookUrl: opts.alertWebhookUrl,
+      detectLoops: opts.detectLoops,
     });
   }
 }

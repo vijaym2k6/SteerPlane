@@ -60,6 +60,12 @@ export interface RunManagerOptions {
   alertChannels?: string[];
   alertEmail?: string;
   alertWebhookUrl?: string;
+  /**
+   * Set false to stop loop detection from ending the run (for example, an agent
+   * that calls one tool over a long list). Cost, step, runtime and policy limits
+   * still apply. Default true.
+   */
+  detectLoops?: boolean;
 }
 
 export class RunManager {
@@ -74,6 +80,7 @@ export class RunManager {
   public readonly alertChannels: string[];
   public readonly alertEmail?: string;
   public readonly alertWebhookUrl?: string;
+  public readonly detectLoops: boolean;
 
   public readonly client: SteerPlaneClient;
   public readonly loopDetector: LoopDetector;
@@ -100,6 +107,7 @@ export class RunManager {
     this.alertChannels = [...(opts.alertChannels ?? [])];
     this.alertEmail = opts.alertEmail;
     this.alertWebhookUrl = opts.alertWebhookUrl;
+    this.detectLoops = opts.detectLoops ?? true;
 
     this.client = new SteerPlaneClient(opts.apiUrl, opts.apiKey);
     this.loopDetector = new LoopDetector(opts.loopWindowSize ?? 8);
@@ -283,9 +291,9 @@ export class RunManager {
       }
     }
 
-    // 2. Loop detection
-    const result = this.loopDetector.recordAction(opts.action);
-    if (result.loopDetected) {
+    // 2. Loop detection (skipped entirely when detectLoops is false)
+    const result = this.detectLoops ? this.loopDetector.recordAction(opts.action) : null;
+    if (result && result.loopDetected) {
       await this.terminate("loop_detected");
       throw new LoopDetectedError(result.pattern, result.windowSize);
     }

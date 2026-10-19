@@ -84,6 +84,23 @@ await run.logStep({ action: 'generate', tokens: 1240, cost: 0.008 });
 await run.end();
 ```
 
+### Turning loop detection off
+
+Loop detection is on by default. If your agent calls the same tool many times
+on purpose (for example, once per item in a list), you can stop it from ending
+the run. Cost, step, runtime and policy limits still apply.
+
+```typescript
+const runAgent = guard(async () => { await agent.run(); }, {
+  maxCostUsd: 10,
+  maxSteps: 200,
+  detectLoops: false,
+});
+```
+
+`detectLoops` is accepted by `guard()`, `SteerPlane.run()`, `createRun()` and
+`new RunManager()`.
+
 ## What's New in v0.4.0
 
 ### 🌊 SSE Streaming Gateway
