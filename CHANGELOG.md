@@ -31,6 +31,11 @@ All notable changes to SteerPlane are documented here. The project follows
   `ModuleNotFoundError: No module named 'psycopg'`. `DATABASE_URL` now names psycopg2
   explicitly (`postgres://` is accepted too). URLs that already name a driver are left
   alone.
+
+### Security
+- **The API no longer prints the database password at startup.** The startup banner
+  echoed `DATABASE_URL` as-is, so the Postgres password ended up in console and container
+  logs. It is now shown with the password masked (`postgresql://user:***@host/db`).
 - **`detect_loops` now works in the Python SDK.** The docs have listed
   `@guard(detect_loops=True)` since v0.1.0, but the parameter did not exist, so passing it
   raised `TypeError`. It is now accepted (default `True`) by `@guard`, `SteerPlane.run()`,

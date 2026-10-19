@@ -2,6 +2,17 @@
 SteerPlane API — database URL handling.
 """
 
+from sqlalchemy.engine import make_url
+
+
+def mask_database_password(url: str) -> str:
+    """Return the URL with its password masked, for logs and console output."""
+    try:
+        return make_url(url).render_as_string(hide_password=True)
+    except Exception:
+        # Never echo a URL we could not parse; it may still contain a password.
+        return "<DATABASE_URL set, not shown>"
+
 
 def resolve_database_url(url: str) -> str:
     """Name the PostgreSQL driver explicitly.

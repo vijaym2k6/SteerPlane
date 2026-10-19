@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .db.database import init_db
+from .db.url import mask_database_password
 from .routes.runs import router as runs_router
 from .routes.telemetry import router as telemetry_router
 from .routes.policies import router as policies_router
@@ -23,7 +24,7 @@ async def lifespan(app: FastAPI):
     """Application lifespan: initialize the database on startup."""
     init_db()
     print(f"\n[STARTED] {settings.APP_NAME} v{settings.APP_VERSION}")
-    print(f"   Database:  {settings.DATABASE_URL}")
+    print(f"   Database:  {mask_database_password(settings.DATABASE_URL)}")
     print("   Gateway:   http://localhost:8000/gateway/v1")
     print("   Docs:      http://localhost:8000/docs")
     print(f"   Dashboard: {settings.DASHBOARD_URL}   <- open this to view your runs")
