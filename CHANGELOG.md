@@ -25,6 +25,12 @@ All notable changes to SteerPlane are documented here. The project follows
   compiled into the browser bundle at build time, but the Dockerfile never received it,
   so a dashboard built from it always called `http://localhost:8000`. It is now a build
   argument (default unchanged), and both compose files pass it.
+- **API works again on a fresh install with SQLAlchemy 2.1.** SQLAlchemy 2.1 changed the
+  driver behind a bare `postgresql://` URL from psycopg2 to psycopg 3, which is not
+  installed, so the API and its migrations failed at startup with
+  `ModuleNotFoundError: No module named 'psycopg'`. `DATABASE_URL` now names psycopg2
+  explicitly (`postgres://` is accepted too). URLs that already name a driver are left
+  alone.
 - **`detect_loops` now works in the Python SDK.** The docs have listed
   `@guard(detect_loops=True)` since v0.1.0, but the parameter did not exist, so passing it
   raised `TypeError`. It is now accepted (default `True`) by `@guard`, `SteerPlane.run()`,

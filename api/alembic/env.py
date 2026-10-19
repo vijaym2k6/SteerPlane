@@ -16,6 +16,7 @@ from alembic import context
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.db.base import Base  # noqa: E402
+from app.db.url import resolve_database_url  # noqa: E402
 
 # Import all models so they register with Base.metadata
 from app.models import run, step, policy, api_key  # noqa: E402, F401
@@ -24,7 +25,7 @@ from app.models import run, step, policy, api_key  # noqa: E402, F401
 config = context.config
 
 # Override sqlalchemy.url from environment variable if set
-database_url = os.getenv("DATABASE_URL", "sqlite:///./steerplane.db")
+database_url = resolve_database_url(os.getenv("DATABASE_URL", "sqlite:///./steerplane.db"))
 config.set_main_option("sqlalchemy.url", database_url)
 
 # Setup logging
