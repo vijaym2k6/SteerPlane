@@ -90,16 +90,22 @@ Manage gateway API keys:
 | `loop_detected` | Purple | Run was caught in an infinite loop |
 | `terminated` | Red | Run was manually killed via CLI or API |
 
-## Admin Token
+## Signing In
 
-The dashboard requires an admin token for sensitive operations:
+Click **Sign In** in the navbar and paste either an admin token or a team API key.
+It is stored in browser localStorage.
+
+**Admin token.** Needed to manage policies and API keys, and shows every run.
 
 1. Set `STEERPLANE_ADMIN_TOKEN` before starting the API
 2. Or copy the auto-generated token from API startup logs
-3. Click the "Admin Token" button in the dashboard navbar
-4. Paste the token — it's stored in browser localStorage
 
-Without the admin token, you can still view runs and steps, but cannot manage policies or API keys.
+**Team API key (`sk_sp_...`).** Shows only the runs made with that key. Use this when
+one server is shared by several teams with `STEERPLANE_REQUIRE_RUN_AUTH=true` (see
+[Hosted Deployment](hosted-deployment.md)). Policies and API keys stay admin-only.
+
+When run auth is off (the local default), you can view runs and steps without signing in,
+but cannot manage policies or API keys.
 
 ## API Connection
 

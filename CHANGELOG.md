@@ -14,6 +14,11 @@ All notable changes to SteerPlane are documented here. The project follows
   API and dashboard listen on `127.0.0.1` behind your HTTPS proxy. Settings live in
   `.env.hosted` (template: `.env.hosted.example`, git-ignored). Guide:
   `docs/hosted-deployment.md`.
+- **Team sign-in on the dashboard.** The navbar **Sign In** box now accepts a team API key
+  (`sk_sp_...`) as well as the admin token. A team key is sent as
+  `Authorization: Bearer`, so with run auth on the team sees only its own runs. Policies
+  and API keys stay admin-only. The API Keys page snippets now show the dashboard's
+  configured API address instead of always `http://localhost:8000`.
 
 ### Fixed
 - **Dashboard image now uses the configured API address.** `NEXT_PUBLIC_API_URL` is

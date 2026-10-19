@@ -3,10 +3,21 @@ import { DEMO_MODE, demo } from "./demo-data";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const ADMIN_TOKEN_HEADER = "X-SteerPlane-Admin-Token";
+const TEAM_KEY_PREFIX = "sk_sp_";
 
+// The saved token is either the admin token or a team API key (sk_sp_...).
+// A team key goes in the Authorization header, where the API scopes runs to
+// that key's owner, so a team sees only its own runs. Admin-only screens
+// (API keys, policies) still need the admin token.
 function withAdminHeaders(headers: HeadersInit = {}): HeadersInit {
     const token = getAdminToken();
     if (!token) return headers;
+    if (token.startsWith(TEAM_KEY_PREFIX)) {
+        return {
+            ...headers,
+            Authorization: `Bearer ${token}`,
+        };
+    }
     return {
         ...headers,
         [ADMIN_TOKEN_HEADER]: token,

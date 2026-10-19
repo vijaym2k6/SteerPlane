@@ -142,7 +142,7 @@ export default function Navbar() {
                                 className={`btn btn-sm navbar-admin-button ${hasAdminToken ? "btn-success" : "btn-secondary"}`}
                                 onClick={() => setShowTokenModal(true)}
                             >
-                                {hasAdminToken ? "Admin Ready" : "Admin Token"}
+                                {hasAdminToken ? "Signed In" : "Sign In"}
                             </button>
 
                             <div className={`navbar-status ${apiStatus === "offline" ? "offline" : ""}`}>
@@ -164,22 +164,23 @@ export default function Navbar() {
                             exit={{ opacity: 0, scale: 0.95 }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <h2 className="modal-title">Admin Access Token</h2>
+                            <h2 className="modal-title">Sign In</h2>
                             <div className="modal-form">
                                 <div className="form-group">
-                                    <label>Admin Token</label>
+                                    <label>Admin token or team API key</label>
                                     <input
                                         type="password"
                                         value={draftToken}
                                         onChange={(e) => setDraftToken(e.target.value)}
                                         className="form-input"
-                                        placeholder="Paste X-SteerPlane-Admin-Token value"
+                                        placeholder="Paste your admin token or sk_sp_... key"
                                         autoFocus
                                     />
                                 </div>
                                 <p className="modal-helper-text">
-                                    Use the token printed by the API on startup, or the value from
-                                    the <code>STEERPLANE_ADMIN_TOKEN</code> environment variable.
+                                    Admins: use the token printed by the API on startup, or the value
+                                    of <code>STEERPLANE_ADMIN_TOKEN</code>. Teams: paste your{" "}
+                                    <code>sk_sp_</code> API key to see only your own runs.
                                 </p>
                                 <div className="modal-actions">
                                     <button type="button" onClick={clearToken} className="btn btn-secondary">

@@ -13,6 +13,9 @@ import {
 } from "../../services/api";
 import { ADMIN_TOKEN_EVENT } from "@/services/admin-auth";
 
+// Used in the copy-paste snippets, so a hosted dashboard shows its own API address.
+const GATEWAY_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/gateway/v1`;
+
 type KeyFormValues = {
     name: string;
     maxCost: number;
@@ -220,7 +223,7 @@ function RawKeyDisplay({
             <div className="raw-key-usage">
                 <strong>Quick Start:</strong>
                 <code className="raw-key-code-block">
-                    {`import openai\nclient = openai.OpenAI(\n    base_url="http://localhost:8000/gateway/v1",\n    api_key="${rawKey}",\n    default_headers={"X-LLM-API-Key": "your-openai-key"}\n)`}
+                    {`import openai\nclient = openai.OpenAI(\n    base_url="${GATEWAY_URL}",\n    api_key="${rawKey}",\n    default_headers={"X-LLM-API-Key": "your-openai-key"}\n)`}
                 </code>
             </div>
             <button onClick={onDismiss} className="btn btn-secondary raw-key-dismiss">
@@ -412,7 +415,7 @@ export default function APIKeysPage() {
                     when a cost, rate, or loop limit is breached. No LLM judges another LLM.
                 </p>
                 <code className="gateway-code">
-                    {`client = openai.OpenAI(base_url="http://localhost:8000/gateway/v1", api_key="sk_sp_...")`}
+                    {`client = openai.OpenAI(base_url="${GATEWAY_URL}", api_key="sk_sp_...")`}
                 </code>
             </div>
 
