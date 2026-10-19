@@ -10,6 +10,15 @@ All notable changes to SteerPlane are documented here. The project follows
   `guard()`, `SteerPlane.run()`, `createRun()` or `RunManager` to stop loop detection from
   ending a run. Cost, step, runtime and policy limits still apply.
 
+### Fixed
+- **`detect_loops` now works in the Python SDK.** The docs have listed
+  `@guard(detect_loops=True)` since v0.1.0, but the parameter did not exist, so passing it
+  raised `TypeError`. It is now accepted (default `True`) by `@guard`, `SteerPlane.run()`,
+  `RunManager` and the LangChain, CrewAI, AutoGen and OpenAI Agents integrations, and can
+  be set in `.steerplane.yml` either under `defaults:` or at the top level. Setting it to
+  `False` stops loop detection from ending a run; cost, step, runtime and policy limits
+  still apply.
+
 ## [1.0.0]
 
 First stable release. Security hardening, an open-core tier split, and a less

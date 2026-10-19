@@ -74,6 +74,7 @@ class SteerPlaneCallbackHandler(BaseCallbackHandler):
         rate_limits: Optional[list[dict]] = None,
         require_approval: Optional[list[str]] = None,
         approval_callback: Optional[Any] = None,
+        detect_loops: bool = True,
     ):
         super().__init__()
 
@@ -117,6 +118,7 @@ class SteerPlaneCallbackHandler(BaseCallbackHandler):
             api_key=api_key,
             log_to_console=log_to_console,
             policy=policy,
+            detect_loops=detect_loops,
         )
 
         self._started = False

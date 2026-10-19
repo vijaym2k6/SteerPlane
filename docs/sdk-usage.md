@@ -45,7 +45,7 @@ def run_agent():
 | `agent_name` | str | `"default"` | Agent identifier in the dashboard |
 | `max_cost_usd` | float | `None` | Maximum cost per run in USD |
 | `max_steps` | int | `None` | Maximum number of steps per run |
-| `detect_loops` | bool | `True` | Enable infinite loop detection |
+| `detect_loops` | bool | `True` | Enable loop detection. Set `False` to stop repeated actions from ending the run; cost, step, runtime and policy limits still apply |
 | `loop_window_size` | int | `6` | Number of actions in the pattern window |
 | `api_url` | str | `http://localhost:8000` | SteerPlane API server URL |
 

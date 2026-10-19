@@ -92,6 +92,7 @@ class SteerPlaneAutoGenMonitor:
         require_approval: Optional[list[str]] = None,
         approval_callback: Optional[Any] = None,
         enforcement: str = "kill",
+        detect_loops: bool = True,
     ):
         policy = None
         if allowed_actions or denied_actions or rate_limits or require_approval:
@@ -114,6 +115,7 @@ class SteerPlaneAutoGenMonitor:
             log_to_console=log_to_console,
             policy=policy,
             enforcement=enforcement,
+            detect_loops=detect_loops,
         )
         self._model = model
         self._started = False

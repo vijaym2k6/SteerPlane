@@ -20,6 +20,7 @@ Example .steerplane.yml:
       max_runtime_sec: 1800
       enforcement: alert
       loop_window_size: 10
+      detect_loops: true
     policy:
       denied_actions:
         - "delete_*"
@@ -118,6 +119,8 @@ def load_config_file(force_reload: bool = False) -> dict[str, Any]:
         "max_runtime_sec": defaults.get("max_runtime_sec"),
         "enforcement": defaults.get("enforcement"),
         "loop_window_size": defaults.get("loop_window_size"),
+        # Accepted under `defaults:` or at the top level (the form the docs show).
+        "detect_loops": defaults.get("detect_loops", raw.get("detect_loops")),
         "model": defaults.get("model"),
         # Policy
         "denied_actions": policy.get("denied_actions"),

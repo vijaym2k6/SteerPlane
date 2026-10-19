@@ -100,6 +100,7 @@ class SteerPlaneAgentHooks:
         require_approval: Optional[list[str]] = None,
         approval_callback: Optional[Any] = None,
         enforcement: str = "kill",
+        detect_loops: bool = True,
     ):
         # Build policy engine if any rules provided
         policy = None
@@ -123,6 +124,7 @@ class SteerPlaneAgentHooks:
             log_to_console=log_to_console,
             policy=policy,
             enforcement=enforcement,
+            detect_loops=detect_loops,
         )
         self._model = model
         self._started = False

@@ -75,6 +75,7 @@ class RunManager:
         alert_email: str | None = None,
         alert_webhook_url: str | None = None,
         alert_poll_interval_sec: int = 5,
+        detect_loops: bool = True,
     ):
         self.agent_name = agent_name
         self.run_id = run_id or generate_run_id()
@@ -93,6 +94,9 @@ class RunManager:
         self.client = SteerPlaneClient(api_url=api_url, api_key=api_key)
         self.telemetry = TelemetryCollector(self.run_id)
         self.loop_detector = LoopDetector(window_size=loop_window_size)
+        # When False, repeated action patterns never terminate the run. Cost,
+        # step, runtime and policy limits still apply.
+        self.detect_loops = bool(detect_loops)
         self.cost_tracker = CostTracker(max_cost_usd=max_cost_usd, model=model)
         self.policy = policy
 
@@ -352,9 +356,9 @@ class RunManager:
                 )
                 raise
 
-        # 2. Loop detection
-        result = self.loop_detector.record_action(action)
-        if result.loop_detected:
+        # 2. Loop detection (skipped entirely when detect_loops is False)
+        result = self.loop_detector.record_action(action) if self.detect_loops else None
+        if result is not None and result.loop_detected:
             self._terminate(
                 "loop_detected",
                 details={

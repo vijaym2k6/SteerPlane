@@ -238,6 +238,7 @@ defaults:
   max_runtime_sec: 1800
   enforcement: alert
   loop_window_size: 10
+  detect_loops: true       # set false to stop loop detection from ending runs
 
 policy:
   denied_actions:
@@ -419,7 +420,9 @@ The self-hosted free tier runs **kill mode**: immediate, deterministic terminati
 
 The SDK also exposes an `enforcement="alert"` option (pause → notify a human → approve/deny/extend → auto-terminate on timeout) — this requires the human-approval workflow backend, which is part of the hosted/enterprise plan. Pointed at the free self-hosted API, alert mode fails closed: it safely terminates the run with a clear error rather than continuing unprotected.
 
-> **Safety invariant:** Loop detection and policy violations **always** trigger immediate termination regardless of enforcement mode. These are non-overridable security constraints.
+> **Safety invariant:** Policy violations, and loops while loop detection is on (the default), **always** trigger immediate termination regardless of enforcement mode. Alert mode cannot override them.
+>
+> If your agent repeats a tool on purpose (for example, once per item in a list), pass `detect_loops=False` (Python) or `detectLoops: false` (TypeScript). Repeated actions then never end the run, while cost, step, runtime and policy limits still apply.
 
 ---
 

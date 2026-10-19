@@ -48,6 +48,7 @@ def guard(
     alert_channels: list[str] | None = None,
     alert_email: str | None = None,
     alert_webhook_url: str | None = None,
+    detect_loops: bool | None = None,
 ) -> Callable:
     """
     Guard decorator for agent functions.
@@ -86,6 +87,9 @@ def guard(
         alert_channels: Notification channels such as ["email", "webhook"].
         alert_email: Email recipient for alert notifications.
         alert_webhook_url: Webhook target for alert notifications.
+        detect_loops: Set False to stop loop detection from ending the run
+            (for example, an agent that calls one tool over a long list).
+            Cost, step, runtime and policy limits still apply. Default True.
 
     Returns:
         Decorated function with guard capabilities.
@@ -104,6 +108,7 @@ def guard(
             _runtime = get_with_fallback(max_runtime_sec, "max_runtime_sec", 3600)
             _model = get_with_fallback(model, "model", "default")
             _window = get_with_fallback(loop_window_size, "loop_window_size", 8)
+            _detect_loops = get_with_fallback(detect_loops, "detect_loops", True)
             _enforcement = get_with_fallback(enforcement, "enforcement", "kill")
             _threshold = get_with_fallback(alert_threshold, "alert_threshold", 0.8)
             _timeout = get_with_fallback(alert_timeout_sec, "alert_timeout_sec", 1800)
@@ -144,6 +149,7 @@ def guard(
                 alert_channels=alert_channels,
                 alert_email=_email,
                 alert_webhook_url=_webhook,
+                detect_loops=_detect_loops,
             )
 
         if inspect.iscoroutinefunction(func):
@@ -235,6 +241,7 @@ class SteerPlane:
         alert_channels: list[str] | None = None,
         alert_email: str | None = None,
         alert_webhook_url: str | None = None,
+        detect_loops: bool = True,
     ) -> RunManager:
         """
         Create a new run context manager.
@@ -272,6 +279,7 @@ class SteerPlane:
             alert_channels=alert_channels,
             alert_email=alert_email,
             alert_webhook_url=alert_webhook_url,
+            detect_loops=detect_loops,
         )
 
     def create_run(self, **kwargs) -> RunManager:
