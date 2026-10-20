@@ -586,7 +586,7 @@ See full API docs at `http://localhost:8000/docs`
 
 ---
 
-## Supported Models (25+)
+## Supported Models (23)
 
 | Provider | Models |
 |----------|--------|
@@ -602,7 +602,7 @@ See full API docs at `http://localhost:8000/docs`
 
 - [x] Python SDK with `@guard` decorator and context manager API
 - [x] TypeScript SDK with `guard()` HOF and class API
-- [x] Cost tracking with built-in pricing for 25+ models (5 providers)
+- [x] Cost tracking with built-in pricing for 23 models (5 providers)
 - [x] O(W²) sliding-window infinite loop detection
 - [x] Policy engine — allow/deny lists, rate limits
 - [x] Real-time Next.js dashboard

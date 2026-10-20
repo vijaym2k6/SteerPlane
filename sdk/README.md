@@ -2,10 +2,10 @@
 
 **The safety layer for the AGI era.** Runtime guardrails for autonomous AI agents.
 
-> Cost limits · Loop detection · Dual enforcement (Kill/Alert) · SSE streaming gateway · Policy engine · Human-in-the-loop · CLI · Docker · 4 framework integrations
+> Cost limits · Loop detection · Policy engine · Human approval callbacks · SSE streaming gateway · CLI · Docker · 4 framework integrations
 
 [![PyPI](https://img.shields.io/pypi/v/steerplane?style=flat-square&color=3B82F6&label=PyPI)](https://pypi.org/project/steerplane/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](https://github.com/vijaym2k6/SteerPlane/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue?style=flat-square&logo=python&logoColor=white)](https://python.org)
 
 ## Install
@@ -86,14 +86,14 @@ The AI Gateway now supports Server-Sent Events (SSE) streaming. It accumulates t
 steerplane status              # Check API health
 steerplane runs list           # List recent runs
 steerplane runs inspect <id>   # Inspect a run
-steerplane runs kill <id>      # Kill a running agent
+steerplane runs kill <id>      # Mark a run as terminated
 steerplane keys list           # List API keys
 steerplane keys create         # Create new gateway key
 steerplane logs --tail         # Live log stream
 ```
 
 ### 🐳 Docker Compose
-Full 3-service production stack in one command:
+Full 3-service stack in one command (for one server shared by several teams, use `docker-compose.hosted.yml`):
 ```bash
 docker compose up -d
 # API (8000) + Dashboard (3000) + PostgreSQL (5432)
@@ -147,12 +147,12 @@ monitor = SteerPlaneAutoGenMonitor(agent_name="autogen_bot", max_cost_usd=10.0)
 | 🌊 **SSE Streaming** | Real-time chunk forwarding with mid-stream cost enforcement. |
 | 🛡️ **Policy Engine** | Allow/deny rules, sliding-window rate limits, human-approval callbacks. |
 | 🔄 **Loop Detection** | Sliding-window pattern detector catches infinite agent loops. |
-| 💰 **Hard Cost Ceiling** | Per-run and monthly USD limits across 25+ LLM models. |
+| 💰 **Hard Cost Ceiling** | Per-run USD limits in the SDK, per-key monthly limits in the gateway. Built-in pricing for 23 models; for any other model, pass your own `cost=` to `log_step`. |
 | 🚫 **Step Limits** | Cap maximum execution steps. |
 | 📊 **Deep Telemetry** | Tokens, cost, latency per step — synced to the dashboard. |
 | 🛡️ **Graceful Degradation** | API down? SDK still enforces guards locally. |
 | 🖥️ **CLI Tool** | `steerplane status`, `runs`, `keys`, `logs` from terminal. |
-| 🐳 **Docker Compose** | 3-service production stack in one command. |
+| 🐳 **Docker Compose** | 3-service stack in one command. |
 | 📄 **Config File** | `.steerplane.yml` for project-level defaults. |
 | 🔌 **4 Integrations** | LangChain, OpenAI Agents SDK, CrewAI, AutoGen. |
 
@@ -177,9 +177,9 @@ monitor = SteerPlaneAutoGenMonitor(agent_name="autogen_bot", max_cost_usd=10.0)
 |-----------|-----------|
 | Python SDK | Python 3.10+, Decorator/Context Manager API, CLI, Config files |
 | TypeScript SDK | TypeScript, `guard()` wrapper, npm-ready |
-| Gateway | FastAPI + httpx, SSE streaming, 25+ model pricing |
+| Gateway | FastAPI + httpx, SSE streaming, built-in pricing for 23 models |
 | API | FastAPI, Alembic migrations, OpenAPI docs |
-| Database | PostgreSQL 17 + SQLAlchemy ORM |
+| Database | PostgreSQL 16 + SQLAlchemy ORM |
 | Infrastructure | Docker Compose (API + Dashboard + PostgreSQL) |
 | CI/CD | GitHub Actions (lint, test, Docker build) |
 | Dashboard | Next.js 16, React 19, Framer Motion |

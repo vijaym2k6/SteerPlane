@@ -2,10 +2,10 @@
 
 **The safety layer for the AGI era.** Runtime guardrails for autonomous AI agents.
 
-> Cost limits · Loop detection · Dual enforcement (Kill/Alert) · SSE streaming gateway · Policy engine · Human-in-the-loop · Zero dependencies
+> Cost limits · Loop detection · Policy engine · Human approval callbacks · SSE streaming gateway · Zero dependencies
 
 [![npm](https://img.shields.io/npm/v/steerplane?style=flat-square&color=3B82F6&label=npm)](https://www.npmjs.com/package/steerplane)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](https://github.com/vijaym2k6/SteerPlane/blob/main/LICENSE)
 [![Node](https://img.shields.io/badge/Node.js-18+-green?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 
 ## Install
@@ -113,20 +113,24 @@ const runAgent = guard(async () => { await agent.run(); }, {
 The AI Gateway now supports Server-Sent Events (SSE) streaming. It accumulates token costs per chunk in real time and can **terminate a stream mid-response** by injecting a `steerplane_enforcement` event when the cost ceiling is breached — without corrupting the SSE protocol.
 
 ### 🛡️ Policy Engine
-Define strict allow/deny rules, sliding-window rate limits, and human-in-the-loop approval workflows:
+Define allow/deny rules, sliding-window rate limits, and human approval callbacks:
 
 ```typescript
-import { PolicyEngine } from 'steerplane';
+import { guard } from 'steerplane';
 
-const policy = new PolicyEngine();
-policy.addDeny('DROP TABLE*');
-policy.addDeny('rm -rf*');
-policy.addRateLimit('send_email', { maxCount: 5, windowSeconds: 60 });
-policy.addApproval('execute_trade*');
+const runAgent = guard(async () => { await agent.run(); }, {
+  maxCostUsd: 10,
+  policy: {
+    deniedActions: ['DROP TABLE*', 'rm -rf*'],
+    rateLimits: [{ pattern: 'send_email', max_count: 5, window_seconds: 60 }],
+    requireApproval: ['execute_trade*'],
+    approvalCallback: async (action) => askAHuman(action), // return true to allow
+  },
+});
 ```
 
 ### 🐳 Docker Compose
-Full 3-service production stack:
+Full 3-service stack (for one server shared by several teams, use `docker-compose.hosted.yml`):
 ```bash
 docker compose up -d
 # API (8000) + Dashboard (3000) + PostgreSQL (5432)
@@ -149,12 +153,12 @@ steerplane logs --tail     # Live log stream
 | 🌊 **SSE Streaming** | Real-time chunk forwarding with mid-stream cost enforcement. |
 | 🛡️ **Policy Engine** | Allow/deny rules, sliding-window rate limits, human-approval callbacks. |
 | 🔄 **Loop Detection** | Sliding-window pattern detector catches infinite agent loops. |
-| 💰 **Hard Cost Ceiling** | Per-run and monthly USD limits across 25+ LLM models. |
+| 💰 **Hard Cost Ceiling** | Per-run USD limits in the SDK, per-key monthly limits in the gateway. Built-in pricing for 23 models; for any other model, pass your own `cost` to `logStep`. |
 | 🚫 **Step Limits** | Cap maximum execution steps to prevent runaway agents. |
 | 📊 **Deep Telemetry** | Tokens, cost, latency per step — synced to the live dashboard. |
 | 🛡️ **Graceful Degradation** | API down? Guards still enforce locally. |
 | ⚡ **Zero Dependencies** | Uses native `fetch` — no bloat. |
-| 🐳 **Docker Compose** | 3-service production stack in one command. |
+| 🐳 **Docker Compose** | 3-service stack in one command. |
 
 ## Error Handling
 
@@ -199,8 +203,8 @@ const runAgent = guard(async () => {
 |-----------|-----------|
 | TypeScript SDK | TypeScript, `guard()` wrapper, zero dependencies |
 | Python SDK | Python 3.10+, CLI, Config files, 4 framework integrations |
-| Gateway | FastAPI + httpx, SSE streaming, 25+ model pricing |
-| Database | PostgreSQL 17 + SQLAlchemy + Alembic |
+| Gateway | FastAPI + httpx, SSE streaming, built-in pricing for 23 models |
+| Database | PostgreSQL 16 + SQLAlchemy + Alembic |
 | Infrastructure | Docker Compose (API + Dashboard + PostgreSQL) |
 | CI/CD | GitHub Actions (lint, test, Docker build) |
 | Dashboard | Next.js 16, React 19, Framer Motion |
