@@ -85,6 +85,12 @@ def _parse_yaml(path: Path) -> dict[str, Any]:
         return {}
 
 
+def _default(defaults: dict[str, Any], raw: dict[str, Any], key: str) -> Any:
+    """Value from `defaults:` if present, else the same key at the top level."""
+    value = defaults.get(key)
+    return value if value is not None else raw.get(key)
+
+
 def load_config_file(force_reload: bool = False) -> dict[str, Any]:
     """
     Load and cache the .steerplane.yml config.
@@ -103,9 +109,9 @@ def load_config_file(force_reload: bool = False) -> dict[str, Any]:
     raw = _parse_yaml(path)
 
     # Flatten into a usable config dict
-    defaults = raw.get("defaults", {})
-    policy = raw.get("policy", {})
-    alerts = raw.get("alerts", {})
+    defaults = raw.get("defaults") or {}
+    policy = raw.get("policy") or {}
+    alerts = raw.get("alerts") or {}
 
     config = {
         # Top-level
@@ -113,15 +119,16 @@ def load_config_file(force_reload: bool = False) -> dict[str, Any]:
         "api_key": raw.get("api_key"),
         "agent_name": raw.get("agent_name"),
         "log_to_console": raw.get("log_to_console"),
-        # Defaults
-        "max_cost_usd": defaults.get("max_cost_usd"),
-        "max_steps": defaults.get("max_steps"),
-        "max_runtime_sec": defaults.get("max_runtime_sec"),
-        "enforcement": defaults.get("enforcement"),
-        "loop_window_size": defaults.get("loop_window_size"),
-        # Accepted under `defaults:` or at the top level (the form the docs show).
-        "detect_loops": defaults.get("detect_loops", raw.get("detect_loops")),
-        "model": defaults.get("model"),
+        # Defaults: read under `defaults:` first, then at the top level. Older
+        # docs showed limits at the top level, and ignoring them silently left
+        # runs on the built-in defaults.
+        "max_cost_usd": _default(defaults, raw, "max_cost_usd"),
+        "max_steps": _default(defaults, raw, "max_steps"),
+        "max_runtime_sec": _default(defaults, raw, "max_runtime_sec"),
+        "enforcement": _default(defaults, raw, "enforcement"),
+        "loop_window_size": _default(defaults, raw, "loop_window_size"),
+        "detect_loops": _default(defaults, raw, "detect_loops"),
+        "model": _default(defaults, raw, "model"),
         # Policy
         "denied_actions": policy.get("denied_actions"),
         "allowed_actions": policy.get("allowed_actions"),

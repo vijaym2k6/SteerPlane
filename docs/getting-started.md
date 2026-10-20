@@ -135,9 +135,10 @@ Create a `.steerplane.yml` in your project root to set defaults:
 ```yaml
 api_url: http://localhost:8000
 agent_name: my_bot
-max_cost_usd: 10.0
-max_steps: 100
-detect_loops: true
+defaults:
+  max_cost_usd: 10.0
+  max_steps: 100
+  detect_loops: true
 ```
 
 The SDK auto-discovers this file walking up from the current directory.

@@ -46,6 +46,12 @@ old behaviour, so existing SDK and gateway integrations keep working without edi
   be set in `.steerplane.yml` either under `defaults:` or at the top level. Setting it to
   `False` stops loop detection from ending a run; cost, step, runtime and policy limits
   still apply.
+- **Limits at the top level of `.steerplane.yml` are no longer ignored.** Several docs showed
+  `max_cost_usd`, `max_steps` and similar keys at the top level, but the loader only read them
+  under `defaults:`, so those runs silently used the built-in limits (for example a $50 cost
+  ceiling instead of the $10 written in the file). Limits are now read from `defaults:` first,
+  then from the top level, and an empty `defaults:`, `policy:` or `alerts:` section no longer
+  crashes the loader. The docs now show the `defaults:` form.
 
 ## [1.0.0]
 

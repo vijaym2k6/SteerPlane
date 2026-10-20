@@ -59,10 +59,11 @@ Create a `.steerplane.yml` in your project root:
 ```yaml
 api_url: http://localhost:8000
 agent_name: my_bot
-max_cost_usd: 10.0
-max_steps: 100
-detect_loops: true
-loop_window_size: 8
+defaults:
+  max_cost_usd: 10.0
+  max_steps: 100
+  detect_loops: true
+  loop_window_size: 8
 ```
 
 The SDK auto-discovers this file by walking up from `cwd`. Override with:

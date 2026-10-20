@@ -104,9 +104,10 @@ Project-level defaults auto-discovered from your working directory:
 ```yaml
 api_url: http://localhost:8000
 agent_name: my_bot
-max_cost_usd: 10.0
-max_steps: 100
-detect_loops: true
+defaults:
+  max_cost_usd: 10.0
+  max_steps: 100
+  detect_loops: true
 ```
 
 ### 🔌 Framework Integrations
