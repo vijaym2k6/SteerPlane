@@ -3,7 +3,10 @@
 All notable changes to SteerPlane are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.1.0]
+
+Team hosting and fixes. Backward compatible with 1.0.0: every new option defaults to the
+old behaviour, so existing SDK and gateway integrations keep working without edits.
 
 ### Added
 - **`detectLoops` option in the TypeScript SDK** (default `true`). Set it to `false` on
@@ -134,6 +137,7 @@ READMEs and `docs/` for the full breakdown.
 - Config file support (`.steerplane.yml`) with auto-discovery.
 - Framework integrations: LangChain, OpenAI Agents SDK, CrewAI, AutoGen.
 
+[1.1.0]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.0
 [1.0.0]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.0.0
 [0.4.1]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v0.4.1
 [0.4.0]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v0.4.0

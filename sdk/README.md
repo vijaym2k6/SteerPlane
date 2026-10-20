@@ -68,6 +68,14 @@ with sp.run(max_cost_usd=10.0, max_steps=50) as run:
     run.log_step("generate_response", tokens=1240, cost=0.008, latency_ms=320)
 ```
 
+## What's New in v1.1.0
+
+- `detect_loops` now works. The docs have shown `@guard(detect_loops=True)` for a long time, but
+  the parameter did not exist. It is accepted by `@guard`, `SteerPlane.run()`, `RunManager` and all
+  four framework integrations, and in `.steerplane.yml`. Set it to `False` to stop loop detection
+  from ending a run; cost, step, runtime and policy limits still apply.
+- Self-hosting for several teams: see `docs/hosted-deployment.md` in the repository.
+
 ## What's New in v0.4.0
 
 ### 🌊 SSE Streaming Gateway

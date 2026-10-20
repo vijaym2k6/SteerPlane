@@ -101,6 +101,12 @@ const runAgent = guard(async () => { await agent.run(); }, {
 `detectLoops` is accepted by `guard()`, `SteerPlane.run()`, `createRun()` and
 `new RunManager()`.
 
+## What's New in v1.1.0
+
+- New `detectLoops` option on `guard()`, `SteerPlane.run()`, `createRun()` and `RunManager`.
+  Set it to `false` to stop loop detection from ending a run; cost, step, runtime and policy
+  limits still apply. See [Turning loop detection off](#turning-loop-detection-off).
+
 ## What's New in v0.4.0
 
 ### 🌊 SSE Streaming Gateway

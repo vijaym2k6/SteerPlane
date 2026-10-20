@@ -1,6 +1,6 @@
 # SteerPlane Documentation
 
-Welcome to the SteerPlane v1.0.0 documentation. **The safety layer for the AGI era.** Runtime guardrails for autonomous AI agents. SteerPlane provides safety guardrails, cost control, loop detection, SSE streaming enforcement, and full observability.
+Welcome to the SteerPlane v1.1.0 documentation. **The safety layer for the AGI era.** Runtime guardrails for autonomous AI agents. SteerPlane provides safety guardrails, cost control, loop detection, SSE streaming enforcement, and full observability.
 
 ## Documentation Pages
 
@@ -29,7 +29,14 @@ Welcome to the SteerPlane v1.0.0 documentation. **The safety layer for the AGI e
                                          └───────────────┘
 ```
 
-## What's New in v1.0.0
+## What's New in v1.1.0
+
+- **Several teams on one server**: `docker-compose.hosted.yml` turns run auth on and gives each team its own API key and its own view of runs. See [Hosted Deployment](hosted-deployment.md)
+- **Team sign-in on the dashboard**: paste a team `sk_sp_` key to see only that team's runs
+- **`detect_loops` / `detectLoops` works**: set it to false to stop loop detection from ending a run; cost, step, runtime and policy limits still apply
+- **Fixes**: the API starts again on SQLAlchemy 2.1, the dashboard image uses the configured API address, and the database password is no longer printed at startup
+
+## Previously in v1.0.0
 
 - **Optional data-plane authentication** — `/runs/*` and `/telemetry` can require an API key, with run-ownership authorization
 - **Open-core tier split** — alert-mode approvals, provider-key vaulting, and the Redis gateway backend moved to the hosted plan; the free self-hosted stack runs kill mode
