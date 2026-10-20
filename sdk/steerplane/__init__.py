@@ -25,7 +25,7 @@ Usage:
     run.end()
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 from .guard import guard, SteerPlane
 from .runtime_context import get_active_run
