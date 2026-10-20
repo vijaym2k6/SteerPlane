@@ -49,6 +49,15 @@ old behaviour, so existing SDK and gateway integrations keep working without edi
   then from the top level, and an empty `defaults:`, `policy:` or `alerts:` section no longer
   crashes the loader. The docs now show the `defaults:` form.
 
+### Documentation
+- **Package README corrections.** The npm README's policy example called `addDeny`,
+  `addRateLimit` and `addApproval`, which do not exist; it now uses the real `guard()` policy
+  options. Built-in pricing covers 23 models (not 25+), and both READMEs show how to pass your
+  own cost for other models. "Dual enforcement (Kill/Alert)" was removed from the package
+  headlines because alert mode needs a backend the free self-hosted API does not include.
+  `steerplane runs kill` is described as marking a run terminated (it does not stop a running
+  agent), and the Postgres version matches the compose files (16).
+
 ### Security
 - **The API no longer prints the database password at startup.** The startup banner
   echoed `DATABASE_URL` as-is, so the Postgres password ended up in console and container
