@@ -81,7 +81,7 @@ def run_agent():
 | | Feature | What It Does |
 |---|---------|-------------|
 | 🔄 | **Loop Detection** | O(W²) sliding-window algorithm catches single-action, alternating, and multi-step repeating patterns in sub-millisecond time — no LLM calls |
-| 💰 | **Cost Ceiling** | Per-run (SDK) / per-session (gateway) USD limits, checked after each step so overshoot is bounded to a single step. Built-in pricing for 25+ models across OpenAI, Anthropic, Google, Meta, and Mistral |
+| 💰 | **Cost Ceiling** | Per-run (SDK) / per-session (gateway) USD limits, checked after each step so overshoot is bounded to a single step. Built-in pricing for 83 models across OpenAI, Anthropic, Google, Meta, and Mistral; for any other model, pass your own cost per step |
 | 🌊 | **Streaming Gateway** | Real-time SSE chunk forwarding with mid-stream cost kill — if the budget is exceeded during a stream, SteerPlane injects a termination event and cuts the connection |
 | 🛡️ | **Policy Engine** | Allow/deny lists with glob patterns and sliding-window rate limits |
 | 🌐 | **Gateway Proxy** | OpenAI-compatible API proxy — change only `base_url` for zero-code enforcement. The agent passes its provider key through the gateway, which forces all traffic through enforcement before forwarding upstream |
@@ -602,7 +602,7 @@ See full API docs at `http://localhost:8000/docs`
 
 - [x] Python SDK with `@guard` decorator and context manager API
 - [x] TypeScript SDK with `guard()` HOF and class API
-- [x] Cost tracking with built-in pricing for 23 models (5 providers)
+- [x] Cost tracking with built-in pricing for 83 models (5 providers)
 - [x] O(W²) sliding-window infinite loop detection
 - [x] Policy engine — allow/deny lists, rate limits
 - [x] Real-time Next.js dashboard

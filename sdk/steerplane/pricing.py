@@ -6,6 +6,15 @@ model costs. The API gateway ships a byte-identical copy at
 ``api/app/services/model_pricing.json`` and the TypeScript SDK mirrors it in
 ``sdk-ts/src/model-pricing.ts``; ``api/tests/test_pricing_consistency.py`` fails
 if any of them drift. Edit pricing in one place and update the others to match.
+
+Prices are each provider's standard (non-batch) rate for text, at the base or
+short-context tier, taken from the providers' own pricing pages on 2026-10-21:
+OpenAI (developers.openai.com/api/docs/pricing), Anthropic
+(platform.claude.com/docs/en/about-claude/pricing) and Google
+(ai.google.dev/gemini-api/docs/pricing). Long-context tiers and announced price
+changes are not modelled (for example, Gemini 3.8 Flash and 3.6 Flash rise on
+2027-01-01, Gemini 4 Argon on 2026-12-01). For exact billing on any model, pass
+your own per-step cost.
 """
 
 from __future__ import annotations

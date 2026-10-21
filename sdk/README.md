@@ -147,7 +147,7 @@ monitor = SteerPlaneAutoGenMonitor(agent_name="autogen_bot", max_cost_usd=10.0)
 | 🌊 **SSE Streaming** | Real-time chunk forwarding with mid-stream cost enforcement. |
 | 🛡️ **Policy Engine** | Allow/deny rules, sliding-window rate limits, human-approval callbacks. |
 | 🔄 **Loop Detection** | Sliding-window pattern detector catches infinite agent loops. |
-| 💰 **Hard Cost Ceiling** | Per-run USD limits in the SDK, per-key monthly limits in the gateway. Built-in pricing for 23 models; for any other model, pass your own `cost=` to `log_step`. |
+| 💰 **Hard Cost Ceiling** | Per-run USD limits in the SDK, per-key monthly limits in the gateway. Built-in pricing for 83 models; for any other model, pass your own `cost=` to `log_step`. |
 | 🚫 **Step Limits** | Cap maximum execution steps. |
 | 📊 **Deep Telemetry** | Tokens, cost, latency per step — synced to the dashboard. |
 | 🛡️ **Graceful Degradation** | API down? SDK still enforces guards locally. |
@@ -177,7 +177,7 @@ monitor = SteerPlaneAutoGenMonitor(agent_name="autogen_bot", max_cost_usd=10.0)
 |-----------|-----------|
 | Python SDK | Python 3.10+, Decorator/Context Manager API, CLI, Config files |
 | TypeScript SDK | TypeScript, `guard()` wrapper, npm-ready |
-| Gateway | FastAPI + httpx, SSE streaming, built-in pricing for 23 models |
+| Gateway | FastAPI + httpx, SSE streaming, built-in pricing for 83 models |
 | API | FastAPI, Alembic migrations, OpenAPI docs |
 | Database | PostgreSQL 16 + SQLAlchemy ORM |
 | Infrastructure | Docker Compose (API + Dashboard + PostgreSQL) |

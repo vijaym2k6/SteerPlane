@@ -3,6 +3,25 @@
 All notable changes to SteerPlane are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- **Dated model names are now priced correctly in the SDK cost trackers.** The Python
+  `CostTracker` and the TypeScript `CostTracker` looked model names up exactly, so a
+  provider-reported id such as `gpt-4o-2024-08-06` was priced at the `default` rate. Both
+  now resolve names by longest matching prefix, the same way `pricing.calculate_cost` and
+  the gateway already did.
+
+### Changed
+- **Pricing table updated to 83 models** (from 23), checked against the OpenAI, Anthropic
+  and Google pricing pages on 21 Oct 2026. Adds current models such as the GPT-6, GPT-5.x,
+  GPT-4.1 and o3/o4 families, Claude Fable 5.1, Opus 5.5, Sonnet 5.5 and Haiku 5.5 (by
+  their API ids, e.g. `claude-sonnet-5-5`), and Gemini 4 Argon, 3.8 Flash, 3.1 Pro and the
+  2.5 family. This also fixes `gpt-4.1` being priced as `gpt-4` ($30/$60 per 1M) through
+  prefix matching. Every existing entry and price is unchanged. Long-context tiers and
+  announced future price changes are not modelled; pass your own per-step cost for exact
+  billing.
+
 ## [1.1.0]
 
 Team hosting and fixes. Backward compatible with 1.0.0: every new option defaults to the
