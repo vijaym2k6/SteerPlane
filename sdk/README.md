@@ -68,6 +68,17 @@ with sp.run(max_cost_usd=10.0, max_steps=50) as run:
     run.log_step("generate_response", tokens=1240, cost=0.008, latency_ms=320)
 ```
 
+## What's New in v1.1.2
+
+- Built-in pricing now covers 106 models. Adds Mistral's current models by their API ids
+  (for example `mistral-large-4`, `mistral-medium-3-5`, `codestral-2508`), GPT-5.6 Cyber and
+  GPT-5.5 Cyber, GPT-Rosalind, Gemini Robotics-ER 2, and the Gemini and Mistral `-latest` aliases.
+- Fixes ids that were priced as an older model with a similar name: `gemini-pro-latest` was priced
+  as the old `gemini-pro` row, `gpt-5.6-cyber` as `gpt-5`, and current Mistral ids as the older Mistral rows.
+- Audio, image, video, speech, realtime, transcription and embedding models are not in the table, and nor
+  are ids with a cloud or router prefix (such as Bedrock's `anthropic.` ids). For those, pass your
+  own cost per step: `run.log_step(..., cost=0.0042)`.
+
 ## What's New in v1.1.1
 
 - Built-in pricing now covers 83 models, checked against the OpenAI, Anthropic and Google pricing
@@ -155,7 +166,7 @@ monitor = SteerPlaneAutoGenMonitor(agent_name="autogen_bot", max_cost_usd=10.0)
 | 🌊 **SSE Streaming** | Real-time chunk forwarding with mid-stream cost enforcement. |
 | 🛡️ **Policy Engine** | Allow/deny rules, sliding-window rate limits, human-approval callbacks. |
 | 🔄 **Loop Detection** | Sliding-window pattern detector catches infinite agent loops. |
-| 💰 **Hard Cost Ceiling** | Per-run USD limits in the SDK, per-key monthly limits in the gateway. Built-in pricing for 83 models; for any other model, pass your own `cost=` to `log_step`. |
+| 💰 **Hard Cost Ceiling** | Per-run USD limits in the SDK, per-key monthly limits in the gateway. Built-in pricing for 106 models; for any other model, pass your own `cost=` to `log_step`. |
 | 🚫 **Step Limits** | Cap maximum execution steps. |
 | 📊 **Deep Telemetry** | Tokens, cost, latency per step — synced to the dashboard. |
 | 🛡️ **Graceful Degradation** | API down? SDK still enforces guards locally. |
@@ -185,7 +196,7 @@ monitor = SteerPlaneAutoGenMonitor(agent_name="autogen_bot", max_cost_usd=10.0)
 |-----------|-----------|
 | Python SDK | Python 3.10+, Decorator/Context Manager API, CLI, Config files |
 | TypeScript SDK | TypeScript, `guard()` wrapper, npm-ready |
-| Gateway | FastAPI + httpx, SSE streaming, built-in pricing for 83 models |
+| Gateway | FastAPI + httpx, SSE streaming, built-in pricing for 106 models |
 | API | FastAPI, Alembic migrations, OpenAPI docs |
 | Database | PostgreSQL 16 + SQLAlchemy ORM |
 | Infrastructure | Docker Compose (API + Dashboard + PostgreSQL) |

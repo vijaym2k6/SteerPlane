@@ -101,6 +101,17 @@ const runAgent = guard(async () => { await agent.run(); }, {
 `detectLoops` is accepted by `guard()`, `SteerPlane.run()`, `createRun()` and
 `new RunManager()`.
 
+## What's New in v1.1.2
+
+- Built-in pricing now covers 106 models. Adds Mistral's current models by their API ids
+  (for example `mistral-large-4`, `mistral-medium-3-5`, `codestral-2508`), GPT-5.6 Cyber and
+  GPT-5.5 Cyber, GPT-Rosalind, Gemini Robotics-ER 2, and the Gemini and Mistral `-latest` aliases.
+- Fixes ids that were priced as an older model with a similar name: `gemini-pro-latest` was priced
+  as the old `gemini-pro` row, `gpt-5.6-cyber` as `gpt-5`, and current Mistral ids as the older Mistral rows.
+- Audio, image, video, speech, realtime, transcription and embedding models are not in the table, and nor
+  are ids with a cloud or router prefix (such as Bedrock's `anthropic.` ids). For those, pass your
+  own cost per step with `cost` in `logStep`.
+
 ## What's New in v1.1.1
 
 - Built-in pricing now covers 83 models, checked against the OpenAI, Anthropic and Google pricing
@@ -161,7 +172,7 @@ steerplane logs --tail     # Live log stream
 | 🌊 **SSE Streaming** | Real-time chunk forwarding with mid-stream cost enforcement. |
 | 🛡️ **Policy Engine** | Allow/deny rules, sliding-window rate limits, human-approval callbacks. |
 | 🔄 **Loop Detection** | Sliding-window pattern detector catches infinite agent loops. |
-| 💰 **Hard Cost Ceiling** | Per-run USD limits in the SDK, per-key monthly limits in the gateway. Built-in pricing for 83 models; for any other model, pass your own `cost` to `logStep`. |
+| 💰 **Hard Cost Ceiling** | Per-run USD limits in the SDK, per-key monthly limits in the gateway. Built-in pricing for 106 models; for any other model, pass your own `cost` to `logStep`. |
 | 🚫 **Step Limits** | Cap maximum execution steps to prevent runaway agents. |
 | 📊 **Deep Telemetry** | Tokens, cost, latency per step — synced to the live dashboard. |
 | 🛡️ **Graceful Degradation** | API down? Guards still enforce locally. |
@@ -211,7 +222,7 @@ const runAgent = guard(async () => {
 |-----------|-----------|
 | TypeScript SDK | TypeScript, `guard()` wrapper, zero dependencies |
 | Python SDK | Python 3.10+, CLI, Config files, 4 framework integrations |
-| Gateway | FastAPI + httpx, SSE streaming, built-in pricing for 83 models |
+| Gateway | FastAPI + httpx, SSE streaming, built-in pricing for 106 models |
 | Database | PostgreSQL 16 + SQLAlchemy + Alembic |
 | Infrastructure | Docker Compose (API + Dashboard + PostgreSQL) |
 | CI/CD | GitHub Actions (lint, test, Docker build) |

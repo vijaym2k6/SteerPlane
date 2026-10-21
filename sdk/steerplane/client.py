@@ -29,7 +29,7 @@ class SteerPlaneClient:
         self.session.headers.update(
             {
                 "Content-Type": "application/json",
-                "User-Agent": "SteerPlane-SDK/1.1.1",
+                "User-Agent": "SteerPlane-SDK/1.1.2",
             }
         )
         if self.api_key:

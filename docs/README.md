@@ -1,6 +1,6 @@
 # SteerPlane Documentation
 
-Welcome to the SteerPlane v1.1.1 documentation. **The safety layer for the AGI era.** Runtime guardrails for autonomous AI agents. SteerPlane provides safety guardrails, cost control, loop detection, SSE streaming enforcement, and full observability.
+Welcome to the SteerPlane v1.1.2 documentation. **The safety layer for the AGI era.** Runtime guardrails for autonomous AI agents. SteerPlane provides safety guardrails, cost control, loop detection, SSE streaming enforcement, and full observability.
 
 ## Documentation Pages
 
@@ -28,6 +28,12 @@ Welcome to the SteerPlane v1.1.1 documentation. **The safety layer for the AGI e
                                          │   Dashboard   │
                                          └───────────────┘
 ```
+
+## What's New in v1.1.2
+
+- **Pricing for 106 models**: adds Mistral's current models, GPT-5.6 Cyber, GPT-5.5 Cyber, GPT-Rosalind, Gemini Robotics-ER 2, and the Gemini and Mistral `-latest` aliases, checked against each provider's pricing page on 21 Oct 2026
+- **Similar names priced correctly**: `gemini-pro-latest`, `gpt-5.6-cyber` and current Mistral ids no longer get an older model's price
+- **Not in the table**: audio, image, video, speech, realtime, transcription and embedding models, and ids with a cloud or router prefix. Pass your own cost per step for those
 
 ## What's New in v1.1.1
 

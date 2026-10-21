@@ -3,6 +3,33 @@
 All notable changes to SteerPlane are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.2]
+
+Pricing fixes. Backward compatible with 1.1.1: every existing table entry is unchanged.
+
+### Fixed
+- **Ids priced as an older model with a similar name.** Names resolve by longest matching
+  prefix, so an id with no row of its own took the price of a shorter one. `gemini-pro-latest`
+  was priced as the old `gemini-pro` row ($0.25/$0.50 per 1M instead of $2/$12), `gpt-5.6-cyber` as
+  `gpt-5` ($1.25/$10 instead of $12.50/$75), `gpt-5.5-cyber` as `gpt-5.5`, and current Mistral
+  ids such as `mistral-large-2512` and `mistral-small-2603` as the older `mistral-large` and
+  `mistral-small` rows. Each now has its own row.
+
+### Changed
+- **Pricing table updated to 106 models** (from 83), checked against the OpenAI, Anthropic,
+  Google and Mistral pricing pages on 21 Oct 2026. Adds Mistral Large 4 and Large 3, Medium 3.5,
+  Small 4, Codestral and Ministral 3 (14B, 8B, 3B) by their API ids; GPT-5.6 Cyber, GPT-5.5
+  Cyber and GPT-Rosalind (research, discovery); Gemini Robotics-ER 2 Preview; and the `-latest`
+  aliases for Gemini Pro, Flash and Flash-Lite and for the Mistral models. A `-latest` alias is
+  priced as the family's current model on 21 Oct 2026 (Mistral Large: Large 4, the higher of
+  the two current Large prices).
+- **Not in the table:** audio, image, video, speech, realtime, transcription and embedding models,
+  and ids with a cloud or router prefix (for example Bedrock's `anthropic.` ids or
+  `provider/model` names). Pass your own per-step cost for those, and for exact billing on any
+  model.
+- A test now checks every text model id on the four providers' pricing pages against its
+  published price.
+
 ## [1.1.1]
 
 Pricing fixes. Backward compatible with 1.1.0: every existing price is unchanged.
@@ -174,6 +201,7 @@ READMEs and `docs/` for the full breakdown.
 - Config file support (`.steerplane.yml`) with auto-discovery.
 - Framework integrations: LangChain, OpenAI Agents SDK, CrewAI, AutoGen.
 
+[1.1.2]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.2
 [1.1.1]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.1
 [1.1.0]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.0
 [1.0.0]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.0.0
