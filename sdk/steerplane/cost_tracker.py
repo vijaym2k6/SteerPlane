@@ -7,7 +7,7 @@ Enforces cost limits and projects final cost.
 
 from dataclasses import dataclass, field
 from .exceptions import CostLimitExceeded
-from .pricing import MODEL_PRICING, _PER_MILLION
+from .pricing import MODEL_PRICING, _PER_MILLION, normalize_model_name
 
 
 # Per-token pricing, derived from the canonical per-1M table in pricing.py so the
@@ -84,7 +84,9 @@ class CostTracker:
             StepCost with the calculated cost.
         """
         use_model = model or self.model
-        pricing = DEFAULT_PRICING.get(use_model, DEFAULT_PRICING["default"])
+        # Resolve dated/versioned names (e.g. "gpt-4o-2024-08-06") the same way
+        # pricing.calculate_cost and the gateway do.
+        pricing = DEFAULT_PRICING.get(normalize_model_name(use_model), DEFAULT_PRICING["default"])
 
         if cost_override is not None:
             cost = cost_override

@@ -62,3 +62,16 @@ class TestCostTracker:
         summary = tracker.get_summary()
         assert summary.total_cost_usd == 0.50
         assert len(summary.step_costs) == 1
+
+    def test_dated_model_name_uses_model_pricing(self):
+        # Providers report dated ids ("gpt-4o-2024-08-06"). The tracker must price
+        # them like pricing.calculate_cost does, not fall back to "default".
+        from steerplane.pricing import calculate_cost
+
+        tracker = CostTracker(max_cost_usd=10.0)
+        step = tracker.calculate_step_cost(
+            input_tokens=1_000_000, output_tokens=0, model="gpt-4o-2024-08-06"
+        )
+        assert step.cost_usd == pytest.approx(calculate_cost("gpt-4o-2024-08-06", 1_000_000, 0))
+        assert step.cost_usd == pytest.approx(2.5)
+        assert step.model == "gpt-4o-2024-08-06"

@@ -6,7 +6,7 @@
  */
 
 import { CostLimitExceeded } from "./errors.js";
-import { MODEL_PRICING } from "./model-pricing.js";
+import { MODEL_PRICING, normalizeModelName } from "./model-pricing.js";
 
 /**
  * Per-token pricing, derived from the canonical per-1M table in
@@ -77,7 +77,10 @@ export class CostTracker {
     } = opts;
     let { totalTokens = 0 } = opts;
     const useModel = stepModel ?? this.model;
-    const pricing = DEFAULT_PRICING[useModel] ?? DEFAULT_PRICING["default"];
+    // Resolve dated/versioned names (e.g. "gpt-4o-2024-08-06") the same way
+    // pricePerToken and the gateway do.
+    const pricing =
+      DEFAULT_PRICING[normalizeModelName(useModel)] ?? DEFAULT_PRICING["default"];
 
     let cost: number;
 
