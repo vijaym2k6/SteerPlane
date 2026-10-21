@@ -68,6 +68,14 @@ with sp.run(max_cost_usd=10.0, max_steps=50) as run:
     run.log_step("generate_response", tokens=1240, cost=0.008, latency_ms=320)
 ```
 
+## What's New in v1.1.1
+
+- Built-in pricing now covers 83 models, checked against the OpenAI, Anthropic and Google pricing
+  pages on 21 Oct 2026 (current GPT, Claude and Gemini models, by their API ids).
+- Dated model names such as `gpt-4o-2024-08-06` are priced as their model instead of the
+  default rate, and `gpt-4.1` is no longer priced as `gpt-4`.
+- For a model that is not in the table, pass your own cost per step: `run.log_step(..., cost=0.0042)`.
+
 ## What's New in v1.1.0
 
 - `detect_loops` now works. The docs have shown `@guard(detect_loops=True)` for a long time, but

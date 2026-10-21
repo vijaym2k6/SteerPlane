@@ -1,6 +1,6 @@
 # SteerPlane Documentation
 
-Welcome to the SteerPlane v1.1.0 documentation. **The safety layer for the AGI era.** Runtime guardrails for autonomous AI agents. SteerPlane provides safety guardrails, cost control, loop detection, SSE streaming enforcement, and full observability.
+Welcome to the SteerPlane v1.1.1 documentation. **The safety layer for the AGI era.** Runtime guardrails for autonomous AI agents. SteerPlane provides safety guardrails, cost control, loop detection, SSE streaming enforcement, and full observability.
 
 ## Documentation Pages
 
@@ -28,6 +28,12 @@ Welcome to the SteerPlane v1.1.0 documentation. **The safety layer for the AGI e
                                          │   Dashboard   │
                                          └───────────────┘
 ```
+
+## What's New in v1.1.1
+
+- **Pricing for 83 models**, checked against the OpenAI, Anthropic and Google pricing pages on 21 Oct 2026
+- **Dated model names priced correctly**: `gpt-4o-2024-08-06` uses the `gpt-4o` price, and `gpt-4.1` is no longer priced as `gpt-4`
+- **Any other model**: pass your own cost per step (`cost=` in Python, `cost` in TypeScript)
 
 ## What's New in v1.1.0
 
