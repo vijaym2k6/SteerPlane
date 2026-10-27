@@ -77,7 +77,9 @@
 html {
   scroll-behavior: smooth;
   background: var(--bg-base);
-  overflow-x: hidden;
+  /* clip, not hidden: hidden on both html and body turns body into a scroll
+     container, which stops the sticky navbar from sticking. */
+  overflow-x: clip;
 }
 
 body {
@@ -86,7 +88,7 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 a {
@@ -2783,12 +2785,10 @@ select.form-input option {
 }
 
 /* ─── Navbar: full width at the top, a floating bar once scrolled ─── */
-/* Fixed rather than sticky, so no ancestor's overflow can break it. */
+/* Sticky, so the demo banner above it stays visible at the top of the page. */
 .navbar-shell {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
   z-index: 100;
   transition: padding 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -2811,7 +2811,7 @@ select.form-input option {
   background: rgba(4, 14, 16, 0.82);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45), 0 0 40px rgba(37, 99, 235, 0.12);
 }
-.navbar-spacer { height: 72px; }
+.navbar-spacer { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .navbar-shell, .navbar-shell .navbar { transition: none; }
 }
