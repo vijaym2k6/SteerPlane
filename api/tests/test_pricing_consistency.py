@@ -18,6 +18,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SDK_JSON = _REPO_ROOT / "sdk" / "steerplane" / "model_pricing.json"
 _API_JSON = _REPO_ROOT / "api" / "app" / "services" / "model_pricing.json"
 _TS_FILE = _REPO_ROOT / "sdk-ts" / "src" / "model-pricing.ts"
+_DASHBOARD_MODELS = _REPO_ROOT / "dashboard" / "src" / "services" / "model-names.ts"
 
 
 def _load_json(path: Path) -> dict:
@@ -40,6 +41,17 @@ def test_sdk_api_and_ts_pricing_are_identical():
     assert sdk == api, "SDK and API pricing tables differ"
     assert sdk == ts, "SDK and TS pricing tables differ"
     assert "default" in sdk
+
+
+def test_dashboard_model_list_matches_pricing_table():
+    """The API key form warns about unknown models using its own copy of the ids."""
+    text = _DASHBOARD_MODELS.read_text("utf-8")
+    match = re.search(r"KNOWN_MODELS[^=]*=\s*(\[.*?\])\s*;", text, re.DOTALL)
+    assert match, "Could not find KNOWN_MODELS array in the dashboard"
+    dashboard = json.loads(match.group(1))
+
+    canonical = [name for name in _load_json(_SDK_JSON) if name != "default"]
+    assert dashboard == canonical, "Dashboard model list differs from the pricing table"
 
 
 def _canonical_cost(pricing: dict, model: str, input_tokens: int, output_tokens: int) -> float:

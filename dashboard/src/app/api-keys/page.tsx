@@ -12,6 +12,7 @@ import {
     updateAPIKey,
 } from "../../services/api";
 import { ADMIN_TOKEN_EVENT } from "@/services/admin-auth";
+import { SUPPORTED_MODELS_URL, checkModelList } from "@/services/model-names";
 
 // Used in the copy-paste snippets, so a hosted dashboard shows its own API address.
 const GATEWAY_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/gateway/v1`;
@@ -45,6 +46,29 @@ function toKeyRequest(values: KeyFormValues): CreateKeyRequest {
         allowed_models: values.allowedModels.trim() || null,
         denied_models: values.deniedModels.trim() || null,
     };
+}
+
+/** Flags model names SteerPlane does not know, under the allow/deny inputs. */
+function ModelWarnings({ value }: { value: string }) {
+    const issues = useMemo(() => checkModelList(value), [value]);
+    if (issues.length === 0) return null;
+
+    return (
+        <div className="model-warning" role="status">
+            {issues.map((issue) => (
+                <p key={issue.entry}>
+                    {issue.kind === "unknown" ? (
+                        <><code>{issue.entry}</code> is not a model SteerPlane knows.</>
+                    ) : (
+                        <><code>{issue.entry}</code> will be treated as <code>{issue.model}</code>.</>
+                    )}
+                </p>
+            ))}
+            <a href={SUPPORTED_MODELS_URL} target="_blank" rel="noopener noreferrer">
+                See supported models →
+            </a>
+        </div>
+    );
 }
 
 function KeyModal({
@@ -165,7 +189,11 @@ function KeyModal({
                                 onChange={(e) => setValues((prev) => ({ ...prev, allowedModels: e.target.value }))}
                                 className="form-input"
                                 placeholder="gpt-4o,gpt-4o-mini"
+                                aria-describedby="allowedModels-help"
                             />
+                            <div id="allowedModels-help">
+                                <ModelWarnings value={values.allowedModels} />
+                            </div>
                         </div>
                         <div className="form-group">
                             <label>Denied Models</label>
@@ -175,7 +203,11 @@ function KeyModal({
                                 onChange={(e) => setValues((prev) => ({ ...prev, deniedModels: e.target.value }))}
                                 className="form-input"
                                 placeholder="o1,claude-4-opus"
+                                aria-describedby="deniedModels-help"
                             />
+                            <div id="deniedModels-help">
+                                <ModelWarnings value={values.deniedModels} />
+                            </div>
                         </div>
                     </div>
 

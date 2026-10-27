@@ -2842,3 +2842,19 @@ select.form-input option {
   .navbar-shell .navbar-link { padding: 8px 12px; font-size: 14px; }
   .navbar-shell.scrolled .navbar { padding: 10px 14px 8px; }
 }
+
+/* ─── API key form: unknown model names ─── */
+.model-warning {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #fcd34d;
+}
+.model-warning p { margin: 0 0 4px; }
+.model-warning code { color: #fde68a; font-family: var(--font-mono); }
+.model-warning a { color: #93c5fd; font-weight: 600; }
+.model-warning a:hover { text-decoration: underline; }
