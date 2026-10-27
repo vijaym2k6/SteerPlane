@@ -22,7 +22,7 @@ export default function RunTable({ runs }: RunTableProps) {
     };
 
     const formatDuration = (start: string, end: string | null) => {
-        if (!end) return "—";
+        if (!end) return "-";
         const ms = new Date(end).getTime() - new Date(start).getTime();
         if (ms < 1000) return `${ms}ms`;
         if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;

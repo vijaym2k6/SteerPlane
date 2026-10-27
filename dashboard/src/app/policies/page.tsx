@@ -12,7 +12,7 @@ import {
 import { ADMIN_TOKEN_EVENT } from "@/services/admin-auth";
 
 /* ═══════════════════════════════════════════════════════
-   Helper — empty policy object
+   Helper: empty policy object
    ═══════════════════════════════════════════════════════ */
 function emptyPolicy(): PolicyConfig {
     return {

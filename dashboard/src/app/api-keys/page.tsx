@@ -101,7 +101,7 @@ function KeyModal({
                         <h2 className="modal-title">{title}</h2>
                         <p className="modal-helper-text">
                             {mode === "create"
-                                ? "Set cost and rate limits for this gateway key. Limits are enforced deterministically — kill mode terminates immediately on breach."
+                                ? "Set cost and rate limits for this gateway key. Limits are enforced deterministically. Kill mode terminates immediately on breach."
                                 : "Update cost limits and gateway behavior without rotating the key."}
                         </p>
                     </div>
@@ -212,7 +212,7 @@ function RawKeyDisplay({
         <motion.div className="raw-key-banner" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="raw-key-header">
                 <span className="raw-key-icon">&#x1f511;</span>
-                <strong>Save your API key now — it won&apos;t be shown again!</strong>
+                <strong>Save your API key now. It won&apos;t be shown again!</strong>
             </div>
             <div className="raw-key-value">
                 <code>{rawKey}</code>
@@ -411,7 +411,7 @@ export default function APIKeysPage() {
             <div className="gateway-info-card">
                 <h3>How enforcement works</h3>
                 <p>
-                    Every key runs in <strong>kill mode</strong> — deterministic, immediate termination
+                    Every key runs in <strong>kill mode</strong>: deterministic, immediate termination
                     when a cost, rate, or loop limit is breached. No LLM judges another LLM.
                 </p>
                 <code className="gateway-code">

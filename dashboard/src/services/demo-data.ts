@@ -1,5 +1,5 @@
 /**
- * Demo mode — serves realistic seeded data so the dashboard can be shown as a
+ * Demo mode: serves realistic seeded data so the dashboard can be shown as a
  * live, read-only preview (e.g. on app.steerplane.com) with no backend.
  *
  * Enabled by setting NEXT_PUBLIC_STEERPLANE_DEMO=true at build time. When off

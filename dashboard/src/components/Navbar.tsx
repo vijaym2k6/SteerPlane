@@ -33,6 +33,18 @@ export default function Navbar() {
     const [hasAdminToken, setHasAdminToken] = useState(false);
     const [showTokenModal, setShowTokenModal] = useState(false);
     const [draftToken, setDraftToken] = useState("");
+    const [scrolled, setScrolled] = useState(false);
+
+    // Shrink the full-width bar into a floating one once the page scrolls.
+    useEffect(() => {
+        const onScroll = () => setScrolled(window.scrollY > 24);
+        const frame = requestAnimationFrame(onScroll);
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => {
+            cancelAnimationFrame(frame);
+            window.removeEventListener("scroll", onScroll);
+        };
+    }, []);
 
     const getIsActive = (href: string) => {
         if (href === "/") return pathname === "/";
@@ -40,7 +52,7 @@ export default function Navbar() {
     };
 
     useEffect(() => {
-        // Demo mode has no live backend — skip the health probe (which would
+        // Demo mode has no live backend, so skip the health probe (which would
         // always read "offline") and show a static "Demo Mode" indicator.
         if (DEMO_MODE) {
             setApiStatus("connected");
@@ -93,6 +105,7 @@ export default function Navbar() {
 
     return (
         <>
+            <header className={`navbar-shell${scrolled ? " scrolled" : ""}`}>
             <nav className="navbar">
                 <div className="navbar-brand">
                     <Link href="/" className="navbar-logo">
@@ -153,6 +166,8 @@ export default function Navbar() {
                     )}
                 </div>
             </nav>
+            </header>
+            <div className="navbar-spacer" aria-hidden="true" />
 
             <AnimatePresence>
                 {showTokenModal && (

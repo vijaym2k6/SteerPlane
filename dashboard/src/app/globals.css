@@ -2781,3 +2781,37 @@ select.form-input option {
     flex-direction: column;
   }
 }
+
+/* ─── Navbar: full width at the top, a floating bar once scrolled ─── */
+/* Fixed rather than sticky, so no ancestor's overflow can break it. */
+.navbar-shell {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  transition: padding 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.navbar-shell .navbar {
+  position: static;
+  margin: 0 auto;
+  max-width: 100%;
+  border: 1px solid transparent;
+  border-bottom-color: var(--border-color);
+  transition: max-width 0.45s cubic-bezier(0.22, 1, 0.36, 1), border-radius 0.45s,
+    padding 0.35s, background 0.3s, box-shadow 0.3s;
+}
+.navbar-shell.scrolled { padding: 12px 16px 0; }
+.navbar-shell.scrolled .navbar {
+  max-width: 1180px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-color: var(--border-color);
+  border-radius: 14px;
+  background: rgba(4, 14, 16, 0.82);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45), 0 0 40px rgba(37, 99, 235, 0.12);
+}
+.navbar-spacer { height: 72px; }
+@media (prefers-reduced-motion: reduce) {
+  .navbar-shell, .navbar-shell .navbar { transition: none; }
+}

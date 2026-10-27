@@ -35,7 +35,7 @@ const features = [
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" /></svg>
     ),
     title: "AI Gateway Proxy",
-    desc: "An OpenAI-compatible proxy server that sits between your agent and LLM providers. Point your existing OpenAI client to SteerPlane — every call is automatically monitored, rate-limited, and cost-tracked with zero code changes.",
+    desc: "An OpenAI-compatible proxy server that sits between your agent and LLM providers. Point your existing OpenAI client to SteerPlane and every call is automatically monitored, rate-limited, and cost-tracked with zero code changes.",
   },
   {
     icon: (
@@ -49,14 +49,14 @@ const features = [
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" /></svg>
     ),
     title: "Infinite Loop Termination",
-    desc: "Our sliding-window pattern detector identifies repeating agent action sequences in real time. The moment a loop is confirmed, the run is gracefully terminated — before it drains your API budget on redundant calls.",
+    desc: "Our sliding-window pattern detector identifies repeating agent action sequences in real time. The moment a loop is confirmed, the run is gracefully terminated before it drains your API budget on redundant calls.",
   },
   {
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
     ),
     title: "Hard Cost Ceiling",
-    desc: "Define per-run and monthly USD cost limits. Every step's token cost is tracked cumulatively across 25+ models with built-in pricing. Kill mode terminates automatically the moment a ceiling is breached — deterministic, no LLM judging another LLM.",
+    desc: "Define per-run and monthly USD cost limits. Every step's token cost is tracked cumulatively across 106 models with built-in pricing. Kill mode terminates automatically the moment a ceiling is breached. It is deterministic, with no LLM judging another LLM.",
   },
   {
     icon: (
@@ -90,7 +90,7 @@ const features = [
 
 /* ─── How It Works ─── */
 const howSteps = [
-  { num: 1, title: "Install SDK", desc: "pip install steerplane — one dependency, zero config required." },
+  { num: 1, title: "Install SDK", desc: "pip install steerplane. One dependency, zero config required." },
   { num: 2, title: "Point to Gateway", desc: "Set your OpenAI client's base_url to SteerPlane. Or use the @guard decorator directly." },
   { num: 3, title: "Set Policies", desc: "Define cost limits, rate limits, and allowed/denied actions." },
   { num: 4, title: "Agent Runs", desc: "Your agent executes normally. SteerPlane intercepts every LLM call and action." },
@@ -176,7 +176,7 @@ export default function Home() {
         >
           The safety layer for the AGI era. Runtime guardrails for autonomous AI agents. It intercepts every LLM call
           through an OpenAI-compatible gateway, enforces safety policies, detects infinite loops,
-          tracks token costs across 25+ models, and gives you complete observability — without
+          tracks token costs across 106 models, and gives you complete observability, without
           modifying a single line of agent code.
         </motion.p>
 
@@ -217,7 +217,7 @@ export default function Home() {
             Autonomous agents can call APIs, execute code, browse the web, and make real-world
             decisions. But without guardrails, a single misconfigured agent can enter an infinite
             loop, burn through thousands of dollars in API credits, or take unintended destructive
-            actions — all while the developer has zero visibility into what&apos;s happening.
+            actions, all while the developer has zero visibility into what&apos;s happening.
           </p>
         </motion.div>
 
@@ -434,7 +434,7 @@ export default function Home() {
           <h2 className="cta-title">Ready to secure your agents?</h2>
           <p className="cta-desc">
             SteerPlane is open-source and free. Point your OpenAI client to the gateway
-            or add a single decorator — start monitoring your AI agents in under 5 minutes.
+            or add a single decorator and start monitoring your AI agents in under 5 minutes.
           </p>
           <motion.div style={{ display: "flex", gap: 14, justifyContent: "center" }}>
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>

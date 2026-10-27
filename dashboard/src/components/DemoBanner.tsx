@@ -42,7 +42,7 @@ export default function DemoBanner() {
                 }}
             />
             <span>
-                <strong style={{ color: "#fff" }}>Live demo</strong> — sample data, read-only. To
+                <strong style={{ color: "#fff" }}>Live demo</strong>: sample data, read-only. To
                 monitor and control your <em>own</em> agents, run SteerPlane in your terminal.
             </span>
             <a
