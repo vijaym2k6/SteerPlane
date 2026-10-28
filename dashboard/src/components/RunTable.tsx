@@ -4,6 +4,7 @@ import { Run } from "@/services/api";
 import StatusBadge from "./StatusBadge";
 import CostBadge from "./CostBadge";
 import Link from "next/link";
+import { parseApiDate } from "@/services/time";
 
 interface RunTableProps {
     runs: Run[];
@@ -11,7 +12,7 @@ interface RunTableProps {
 
 export default function RunTable({ runs }: RunTableProps) {
     const formatTime = (iso: string) => {
-        const d = new Date(iso);
+        const d = parseApiDate(iso);
         return d.toLocaleString("en-US", {
             month: "short",
             day: "numeric",
@@ -23,7 +24,7 @@ export default function RunTable({ runs }: RunTableProps) {
 
     const formatDuration = (start: string, end: string | null) => {
         if (!end) return "-";
-        const ms = new Date(end).getTime() - new Date(start).getTime();
+        const ms = parseApiDate(end).getTime() - parseApiDate(start).getTime();
         if (ms < 1000) return `${ms}ms`;
         if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
         return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;

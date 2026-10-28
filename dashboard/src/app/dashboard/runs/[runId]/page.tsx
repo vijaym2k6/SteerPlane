@@ -8,6 +8,7 @@ import StepTimeline from "@/components/StepTimeline";
 import StatusBadge from "@/components/StatusBadge";
 import CostBadge from "@/components/CostBadge";
 import Link from "next/link";
+import { parseApiDate } from "@/services/time";
 
 const stagger = {
     hidden: {},
@@ -74,13 +75,13 @@ export default function RunDetailPage() {
     }
 
     const formatTime = (iso: string) =>
-        new Date(iso).toLocaleString("en-US", {
+        parseApiDate(iso).toLocaleString("en-US", {
             month: "short", day: "numeric", year: "numeric",
             hour: "2-digit", minute: "2-digit", second: "2-digit",
         });
 
     const duration = run.end_time
-        ? ((new Date(run.end_time).getTime() - new Date(run.start_time).getTime()) / 1000).toFixed(1) + "s"
+        ? ((parseApiDate(run.end_time).getTime() - parseApiDate(run.start_time).getTime()) / 1000).toFixed(1) + "s"
         : "Running...";
 
     const stats = [

@@ -13,6 +13,7 @@ import {
 } from "../../services/api";
 import { ADMIN_TOKEN_EVENT } from "@/services/admin-auth";
 import { SUPPORTED_MODELS_URL, checkModelList } from "@/services/model-names";
+import { parseApiDate } from "@/services/time";
 
 // Used in the copy-paste snippets, so a hosted dashboard shows its own API address.
 const GATEWAY_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/gateway/v1`;
@@ -335,7 +336,7 @@ function KeyCard({
             <div className="key-card-footer">
                 <span className="key-last-used">
                     {apiKey.last_used_at
-                        ? `Last used: ${new Date(apiKey.last_used_at).toLocaleString()}`
+                        ? `Last used: ${parseApiDate(apiKey.last_used_at).toLocaleString()}`
                         : "Never used"}
                 </span>
                 <div className="key-card-actions">
