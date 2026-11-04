@@ -30,7 +30,8 @@ config.set_main_option("sqlalchemy.url", database_url)
 
 # Setup logging
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Keep uvicorn's loggers: the API runs migrations at startup, in the same process.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 

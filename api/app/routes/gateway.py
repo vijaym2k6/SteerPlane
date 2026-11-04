@@ -166,20 +166,22 @@ async def chat_completions(request: Request, db: Session = Depends(get_db)):
         proxy_body = body
 
     try:
+        if is_streaming:
+            # Not `async with`: the stream outlives this call, and closing the client
+            # on return would cut it before the first chunk. _handle_streaming owns it.
+            return await _handle_streaming(
+                client=httpx.AsyncClient(timeout=120.0),
+                target_url=target_url,
+                headers=forward_headers,
+                body=proxy_body,
+                svc=svc,
+                api_key=api_key,
+                session=session,
+                model=model,
+                start_time=start_time,
+                provider=provider,
+            )
         async with httpx.AsyncClient(timeout=120.0) as client:
-            if is_streaming:
-                return await _handle_streaming(
-                    client=client,
-                    target_url=target_url,
-                    headers=forward_headers,
-                    body=proxy_body,
-                    svc=svc,
-                    api_key=api_key,
-                    session=session,
-                    model=model,
-                    start_time=start_time,
-                    provider=provider,
-                )
             resp = await client.post(
                 target_url,
                 headers=forward_headers,
@@ -329,11 +331,16 @@ async def _handle_streaming(
         headers=headers,
         json=body,
     )
-    resp = await client.send(req, stream=True)
+    try:
+        resp = await client.send(req, stream=True)
+    except BaseException:
+        await client.aclose()
+        raise
 
     if resp.status_code != 200:
         content = await resp.aread()
         await resp.aclose()
+        await client.aclose()
         return JSONResponse(
             status_code=resp.status_code,
             content={"error": content.decode()},
@@ -449,9 +456,9 @@ async def _handle_streaming(
                 yield f"{line}\n\n"
 
         finally:
-            await resp.aclose()
-
-            # Log the completed (or terminated) stream
+            # Log the completed (or terminated) stream. Before the awaits below: a
+            # client that disconnects cancels this task at the first await, and
+            # that spend must still count against the limit.
             latency_ms = (time.time() - start_time) * 1000
             normalized = normalize_model_name(model)
             cost = calculate_cost(
@@ -477,6 +484,11 @@ async def _handle_streaming(
                 status,
                 error_msg,
             )
+
+            try:
+                await resp.aclose()
+            finally:
+                await client.aclose()
 
     return StreamingResponse(
         stream_generator(),

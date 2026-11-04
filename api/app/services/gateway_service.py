@@ -43,9 +43,12 @@ def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
 def normalize_model_name(model: str) -> str:
     """Normalize model names for pricing lookup."""
     normalized = model.lower().strip()
-    for prefix in sorted(MODEL_PRICING, key=len, reverse=True):
-        if normalized.startswith(prefix):
-            return prefix
+    prefixes = sorted(MODEL_PRICING, key=len, reverse=True)
+    # A routed name such as "openai/gpt-4o-mini" is priced by its last segment.
+    for name in (normalized, normalized.rsplit("/", 1)[-1]):
+        for prefix in prefixes:
+            if prefix != "default" and name.startswith(prefix):
+                return prefix
     return normalized
 
 

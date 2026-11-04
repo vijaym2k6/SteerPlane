@@ -31,7 +31,7 @@ class APIKey(Base):
     id = Column(String(50), primary_key=True, default=lambda: f"key_{uuid.uuid4().hex[:12]}")
     name = Column(String(200), nullable=False)
     key_hash = Column(String(64), nullable=False, unique=True, index=True)
-    key_prefix = Column(String(16), nullable=False)  # e.g. "sk_sp_a1b2c3..."
+    key_prefix = Column(String(32), nullable=False)  # e.g. "sk_sp_a1b2c3..."
 
     # Limits
     max_cost_usd = Column(Float, nullable=False, default=50.0)  # Per-session cost ceiling
