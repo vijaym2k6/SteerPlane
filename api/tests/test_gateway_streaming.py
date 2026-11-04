@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 import httpx
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from api.app.db.base import Base
 from api.app.models.api_key import APIKey
@@ -192,3 +193,64 @@ def test_streaming_mid_stream_cost_kill_injects_termination_event():
     step = _logged_llm_step(db, session.run_id)
     assert step is not None
     assert step.status == "terminated"
+
+
+def test_the_route_keeps_the_upstream_client_open_for_the_whole_stream(monkeypatch):
+    """The route used to return from inside `async with client`, which closed the
+    client before the first chunk. Every real stream failed with httpx.ReadError,
+    while tests that read the body inside their own `async with` passed."""
+    from fastapi.testclient import TestClient
+
+    from api.app.db.database import get_db
+    from api.app.main import app
+    from api.app.models.api_key import hash_api_key
+
+    # One shared connection: TestClient runs the app on another thread, and a new
+    # connection to an in-memory SQLite database is a new, empty database.
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    Base.metadata.create_all(bind=engine)
+    db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
+    key = _make_api_key()
+    key.key_hash = hash_api_key("sk_sp_route_test")
+    db.add(key)
+    db.commit()
+
+    seen = {}
+    created = []
+    real_client = httpx.AsyncClient
+
+    class Body(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            seen["closed_during_stream"] = created[-1].is_closed
+            yield b'data: {"choices":[{"delta":{"content":"hi"}}]}\n\n'
+            yield b"data: [DONE]\n\n"
+
+    def make_client(**kwargs):
+        def handler(_request):
+            return httpx.Response(200, stream=Body())
+
+        client = real_client(transport=httpx.MockTransport(handler), **kwargs)
+        created.append(client)
+        return client
+
+    monkeypatch.setattr(httpx, "AsyncClient", make_client)
+    app.dependency_overrides[get_db] = lambda: db
+    try:
+        response = TestClient(app).post(
+            "/gateway/v1/chat/completions",
+            headers={"Authorization": "Bearer sk_sp_route_test", "X-LLM-API-Key": "sk-upstream"},
+            json={
+                "model": "gpt-4o-mini",
+                "stream": True,
+                "messages": [{"role": "user", "content": "hello"}],
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200, response.text
+    assert "[DONE]" in response.text
+    assert seen["closed_during_stream"] is False
+    assert created[-1].is_closed, "the stream's client must close when the stream ends"
