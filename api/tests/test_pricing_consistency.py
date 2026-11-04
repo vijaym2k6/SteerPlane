@@ -83,3 +83,11 @@ def test_gateway_resolves_canonical_cost(model, input_tokens, output_tokens):
     gateway = gw_cost(gw_norm(model), input_tokens, output_tokens)
     expected = _canonical_cost(canonical, gw_norm(model), input_tokens, output_tokens)
     assert gateway == pytest.approx(expected, abs=1e-9)
+
+
+def test_gateway_prices_a_routed_model_name_by_its_last_segment():
+    from api.app.services.gateway_service import normalize_model_name
+
+    assert normalize_model_name("openai/gpt-4o-mini") == "gpt-4o-mini"
+    assert normalize_model_name("gpt-4o-mini-2024-07-18") == "gpt-4o-mini"
+    assert normalize_model_name("not-a-real-model") == "not-a-real-model"

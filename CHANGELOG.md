@@ -3,6 +3,16 @@
 All notable changes to SteerPlane are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- Gateway streaming failed on every real request: the client talking to the model provider closed
+  before the first chunk. Non-streaming calls were not affected.
+- PostgreSQL: creating an API key returned 500, because the key prefix was too long for its column.
+  This includes `docker-compose.hosted.yml`. Run migrations to pick up the fix.
+- The API's request and error logs disappeared after startup.
+- The gateway charged routed model names such as `openai/gpt-4o-mini` at the default rate.
+
 ## [1.1.2]
 
 Pricing fixes. Backward compatible with 1.1.1: every existing table entry is unchanged.
