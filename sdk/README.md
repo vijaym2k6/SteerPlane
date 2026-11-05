@@ -68,6 +68,13 @@ with sp.run(max_cost_usd=10.0, max_steps=50) as run:
     run.log_step("generate_response", tokens=1240, cost=0.008, latency_ms=320)
 ```
 
+## What's New in v1.1.3
+
+- **Framework integrations now stop runs.** LangChain, OpenAI Agents SDK, CrewAI and AutoGen check limits and policy rules before each model call and tool call. Before this release, with the setup the docs showed, they recorded calls but did not stop a run.
+- **Real token usage.** Cost comes from what the model reports, not a character estimate.
+- **Routed names priced correctly**: `openai/gpt-4o-mini` uses the `gpt-4o-mini` price.
+- **Changes you may notice**: loop detection is off by default in the integrations, CrewAI needs 1.15.35 or newer, and the `autogen` extra now installs `ag2` before 1.0.
+
 ## What's New in v1.1.2
 
 - Built-in pricing now covers 106 models. Adds Mistral's current models by their API ids
@@ -135,28 +142,34 @@ Native support for 4 frameworks — all use lazy imports, so framework dependenc
 
 **LangChain:**
 ```python
-from steerplane.integrations import SteerPlaneLangChainHandler
-handler = SteerPlaneLangChainHandler(agent_name="lc_bot", max_cost_usd=5.0)
-llm = ChatOpenAI(model="gpt-4o-mini", callbacks=[handler])
+from steerplane.integrations import SteerPlaneCallbackHandler
+handler = SteerPlaneCallbackHandler(agent_name="lc_bot", max_cost_usd=5.0)
+result = agent.invoke(inputs, config={"callbacks": [handler]})
+handler.finish()
 ```
 
 **OpenAI Agents SDK:**
 ```python
 from steerplane.integrations import SteerPlaneAgentHooks
 hooks = SteerPlaneAgentHooks(agent_name="openai_agent", max_cost_usd=10.0)
+result = await hooks.run(agent, "Hello!")
 ```
 
 **CrewAI:**
 ```python
 from steerplane.integrations import SteerPlaneCrewMonitor
 monitor = SteerPlaneCrewMonitor(agent_name="crew_bot", max_cost_usd=15.0)
+result = monitor.kickoff(crew)
 ```
 
 **AutoGen:**
 ```python
 from steerplane.integrations import SteerPlaneAutoGenMonitor
 monitor = SteerPlaneAutoGenMonitor(agent_name="autogen_bot", max_cost_usd=10.0)
+result = monitor.initiate_chat(user_proxy, assistant, message="Hello!")
 ```
+
+Each counts every model call and tool call as one step, and refuses a call that would go past a limit before it starts. They only see calls they are passed to, and loop detection is off by default in them. See the [SDK usage guide](https://github.com/vijaym2k6/SteerPlane/blob/main/docs/sdk-usage.md#framework-integrations) for what they don't cover. To limit every call whatever the agent structure, use the gateway.
 
 ## All Features
 

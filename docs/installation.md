@@ -12,7 +12,10 @@ pip install steerplane
 
 ```bash
 pip install steerplane[cli]          # CLI tool (steerplane command)
-pip install steerplane[langchain]    # LangChain callback handler
+pip install "steerplane[langchain]"       # LangChain callback handler
+pip install "steerplane[openai-agents]"   # OpenAI Agents SDK
+pip install "steerplane[crewai]"          # CrewAI
+pip install "steerplane[autogen]"         # AutoGen (AG2)
 pip install steerplane[all]          # CLI + YAML config + LangChain
 ```
 
@@ -32,8 +35,9 @@ Optional dependencies:
 - `click` — CLI tool
 - `pyyaml` — Config file support
 - `langchain-core` — LangChain integration
-- `crewai` — CrewAI integration (auto-detected, no extra needed)
-- `pyautogen` — AutoGen integration (auto-detected, no extra needed)
+- `openai-agents` — OpenAI Agents SDK integration
+- `crewai` 1.15.35 or newer — CrewAI integration
+- `ag2` before 1.0 — AutoGen integration (AG2's classic API)
 
 ### TypeScript SDK
 

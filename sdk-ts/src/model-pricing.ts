@@ -121,14 +121,20 @@ export const MODEL_PRICING: Record<string, { input: number; output: number }> = 
 
 const PER_MILLION = 1_000_000;
 
-/** Resolve a model name to its pricing key by longest matching prefix. */
+/**
+ * Resolve a model name to its pricing key by longest matching prefix.
+ * A routed name such as `openai/gpt-4o-mini` is priced by its last segment.
+ */
 export function normalizeModelName(model: string): string {
   const normalized = (model ?? "").toLowerCase().trim();
   const keys = Object.keys(MODEL_PRICING)
     .filter((k) => k !== "default")
     .sort((a, b) => b.length - a.length);
-  for (const key of keys) {
-    if (normalized.startsWith(key)) return key;
+  const lastSegment = normalized.slice(normalized.lastIndexOf("/") + 1);
+  for (const name of [normalized, lastSegment]) {
+    for (const key of keys) {
+      if (name.startsWith(key)) return key;
+    }
   }
   return normalized;
 }

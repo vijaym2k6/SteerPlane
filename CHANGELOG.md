@@ -3,15 +3,45 @@
 All notable changes to SteerPlane are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.1.3]
+
+The framework integrations now stop runs. Before this release, with the setup the docs showed, they
+recorded calls but did not stop a run.
 
 ### Fixed
+- **LangChain, OpenAI Agents SDK, CrewAI and AutoGen integrations.** Each now checks the cost, step
+  and runtime limits and the policy rules before every model call and tool call, through the
+  framework's own callbacks, and a refusal ends the run. Tested by running each framework against a
+  server that counts requests, and with a real model through OpenRouter.
+- Integrations charge the token usage the model reports, at the SDK's canonical prices. Their old
+  character estimates and separate price tables are gone.
+- Policy rules in the integrations match the tool's name, and no longer apply to model calls.
+- Routed model names such as `openai/gpt-4o-mini` are priced by their last segment in the Python and
+  TypeScript SDKs, as the gateway does.
 - Gateway streaming failed on every real request: the client talking to the model provider closed
   before the first chunk. Non-streaming calls were not affected.
 - PostgreSQL: creating an API key returned 500, because the key prefix was too long for its column.
   This includes `docker-compose.hosted.yml`. Run migrations to pick up the fix.
 - The API's request and error logs disappeared after startup.
 - The gateway charged routed model names such as `openai/gpt-4o-mini` at the default rate.
+
+### Changed
+- **Loop detection is off by default in the four integrations.** It matches on action names only, so
+  now that a stop really stops the run, it would end legitimate runs that call the same tool over a
+  list. Pass `detect_loops=True` to turn it on. `guard` and `RunManager` are unchanged.
+- **LangChain:** a refusal now stops the run by default. Pass `enforce=False` to record only.
+- **OpenAI Agents SDK:** pass `hooks=hooks.run_hooks` to `Runner.run`. Calling the Runner without them
+  records nothing.
+- **CrewAI:** needs 1.15.35 or newer. `step_callback` is kept for existing setups but records nothing,
+  because CrewAI's call hooks do the counting. Use `monitor.kickoff(crew)`.
+- **AutoGen:** targets AG2's classic API. The `autogen` extra now installs `ag2` before 1.0. The newer
+  `autogen-agentchat` package is a different API and is not supported.
+- Added an `openai-agents` extra.
+
+### Known limits
+- An integration only sees the calls it is passed to. See "What the integrations don't cover" in the
+  README. To limit every call whatever the agent structure, use the gateway.
+- Tool calls a model asks for together can pass the step limit by up to the size of the batch.
 
 ## [1.1.2]
 
@@ -211,6 +241,7 @@ READMEs and `docs/` for the full breakdown.
 - Config file support (`.steerplane.yml`) with auto-discovery.
 - Framework integrations: LangChain, OpenAI Agents SDK, CrewAI, AutoGen.
 
+[1.1.3]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.3
 [1.1.2]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.2
 [1.1.1]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.1
 [1.1.0]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.0

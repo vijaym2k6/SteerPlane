@@ -101,6 +101,10 @@ const runAgent = guard(async () => { await agent.run(); }, {
 `detectLoops` is accepted by `guard()`, `SteerPlane.run()`, `createRun()` and
 `new RunManager()`.
 
+## What's New in v1.1.3
+
+- **Routed names priced correctly**: `openai/gpt-4o-mini` uses the `gpt-4o-mini` price.
+
 ## What's New in v1.1.2
 
 - Built-in pricing now covers 106 models. Adds Mistral's current models by their API ids

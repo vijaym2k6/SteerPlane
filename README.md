@@ -88,7 +88,7 @@ def run_agent():
 | 🖥️ | **Real-Time Dashboard** | Next.js dashboard with auto-refresh, animated timelines, cost breakdowns, and policy management |
 | 🔧 | **CLI Tool** | `steerplane runs list`, `steerplane status`, `steerplane keys create` — manage everything from your terminal |
 | 📄 | **Config File** | `.steerplane.yml` auto-discovery — set defaults without hardcoding limits in source code |
-| 🔗 | **4 Framework Integrations** | LangChain, OpenAI Agents SDK, CrewAI, AutoGen — zero-config drop-in handlers |
+| 🔗 | **4 Framework Integrations** | LangChain, OpenAI Agents SDK, CrewAI, AutoGen. Limits are checked before each model call and tool call, through each framework's own callbacks |
 | 🐳 | **Docker Compose** | One command brings up API + Dashboard + PostgreSQL |
 | 🔌 | **Graceful Degradation** | If the API goes down, the SDK enforces all limits locally. Agents are never unprotected |
 | 🧪 | **CI/CD** | GitHub Actions pipeline — lint, test, build Docker on every push |
@@ -261,6 +261,8 @@ alerts:
 
 ## Framework Integrations
 
+Each integration counts every model call and every tool call as one step. A call that would go past a limit is refused before it starts, and the refusal ends the run with a SteerPlane error. Cost comes from the token usage the model reports. Policy rules match the tool's name.
+
 ### LangChain
 
 ```python
@@ -272,8 +274,8 @@ handler = SteerPlaneCallbackHandler(
     max_steps=30,
 )
 
-llm = ChatOpenAI(model="gpt-4o", callbacks=[handler])
-agent.run("Analyze this data", callbacks=[handler])
+# Pass it on the call, so it reaches both the model and the tools
+result = agent.invoke(inputs, config={"callbacks": [handler]})
 handler.finish()
 ```
 
@@ -288,12 +290,12 @@ hooks = SteerPlaneAgentHooks(
     max_steps=100,
 )
 
-# Convenience wrapper
+# Let SteerPlane call the Runner
 result = await hooks.run(agent, "Hello!")
 
-# Or manual lifecycle
+# Or call the Runner yourself and pass the hooks
 hooks.start()
-result = await Runner.run(agent, "Hello!")
+result = await Runner.run(agent, "Hello!", hooks=hooks.run_hooks)
 hooks.finish()
 ```
 
@@ -308,14 +310,12 @@ monitor = SteerPlaneCrewMonitor(
     max_steps=200,
 )
 
-crew = Crew(
-    agents=[researcher, writer],
-    tasks=[research_task, write_task],
-    step_callback=monitor.step_callback,
-)
+crew = Crew(agents=[researcher, writer], tasks=[research_task, write_task])
 
 result = monitor.kickoff(crew)
 ```
+
+Needs CrewAI 1.15.35 or newer. CrewAI's hooks apply to the whole process, so run monitored crews one at a time.
 
 ### AutoGen
 
@@ -331,12 +331,28 @@ monitor = SteerPlaneAutoGenMonitor(
 result = monitor.initiate_chat(user_proxy, assistant, message="Hello!")
 ```
 
+This uses AG2's classic API (`ag2` before 1.0). The newer `autogen-agentchat` package is a different API and is not supported.
+
+### What the integrations don't cover
+
+- **Calls they aren't passed to.** A LangChain handler set only on the model doesn't see tools. An agent used through `Agent.as_tool()` in the OpenAI Agents SDK is a separate run and isn't counted. An AG2 group chat manager's own speaker selection calls aren't counted.
+- **Models that report no token usage.** Those calls cost $0 against the cost limit. The step limit still applies.
+- **Parallel tool calls.** Tool calls the model asks for together can all start before the first one is recorded, so a batch can pass the step limit by up to its own size. A denied tool never runs.
+- **The call that crosses the cost limit.** A model call's cost is known only when it returns, so that call has already been paid for. The run stops there.
+
+To limit every call whatever the agent structure, use the [Gateway Proxy](#gateway-proxy-zero-code-mode).
+
+**Loop detection is off by default in these integrations.** It matches on action names only, so with it on, a run calling the same tool over a list is stopped as a loop. Pass `detect_loops=True` to turn it on. One handler or monitor is one run, so create a new one for each run.
+
 Install only the integration you need:
 ```bash
-pip install steerplane[langchain]   # LangChain
-pip install steerplane[cli]         # CLI tool
-pip install steerplane[yaml]        # Config file support
-pip install steerplane[all]         # Everything
+pip install "steerplane[langchain]"       # LangChain
+pip install "steerplane[openai-agents]"   # OpenAI Agents SDK
+pip install "steerplane[crewai]"          # CrewAI
+pip install "steerplane[autogen]"         # AutoGen (AG2)
+pip install "steerplane[cli]"             # CLI tool
+pip install "steerplane[yaml]"            # Config file support
+pip install "steerplane[all]"             # CLI, config file, LangChain
 ```
 
 ---
@@ -661,7 +677,7 @@ MIT — see [LICENSE](LICENSE) for details.
 
 <p align="center">
   <img src="assets/logo.jpg" alt="SteerPlane" width="48" /><br>
-  <b>SteerPlane v1.1.2</b><br>
+  <b>SteerPlane v1.1.3</b><br>
   <a href="https://steerplane.com">steerplane.com</a> · <a href="PATENTS.md">Patent Pending — IN 202641071111 A1</a><br>
   <em>"Ship agents. Not incidents."</em>
 </p>
