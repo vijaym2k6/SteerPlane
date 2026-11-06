@@ -148,7 +148,7 @@ monitor = SteerPlaneCrewMonitor(agent_name="crew_bot", max_cost_usd=15.0)
 result = monitor.kickoff(crew, inputs={"topic": "AI Safety"})
 ```
 
-Needs CrewAI 1.15.35 or newer. If you call `crew.kickoff()` yourself, put `monitor.start()` before it and `monitor.finish()` after it. CrewAI then raises its own "blocked" error, and the reason is in `monitor.stop_error`. CrewAI's hooks apply to the whole process, so run monitored crews one at a time.
+`await monitor.kickoff_async(crew)` is the async version. Needs CrewAI 1.15.35 or newer. If you call `crew.kickoff()` yourself, put `monitor.start()` before it and `monitor.finish()` after it. CrewAI then raises its own "blocked" error, and the reason is in `monitor.stop_error`. CrewAI's hooks apply to the whole process, so run monitored crews one at a time.
 
 ### AutoGen
 

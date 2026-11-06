@@ -44,6 +44,7 @@ class CountingServer:
         self.tool_name = None
         self.tool_calls_per_turn = 1
         self.text_mode = False
+        self.empty_turns = set()
         self._lock = threading.Lock()
         owner = self
 
@@ -117,6 +118,8 @@ class CountingServer:
         }
 
     def reply(self, turn, body):
+        if turn in self.empty_turns:
+            return {"role": "assistant", "content": ""}, "stop"
         if self.text_mode:
             if turn > self.tool_turns:
                 return {"role": "assistant", "content": "Final Answer: done"}, "stop"
@@ -506,6 +509,56 @@ class TestCrewAI:
             monitor.finish()
         assert isinstance(monitor.stop_error, StepLimitExceeded)
         assert server.requests == 2
+
+    def test_crewai_retry_of_an_empty_answer_counts_as_a_step(self, server):
+        adapter = CrewAIAdapter()
+        tools = Tools()
+        # CrewAI retries an empty answer once inside the same model call.
+        server.empty_turns = {2}
+        error, run = adapter.run(server, tools, max_steps=4)
+        assert isinstance(error, StepLimitExceeded)
+        assert server.requests == 3
+        assert len(tools.executed) == 1
+        model_steps = [a for a in run.telemetry.action_history if a.startswith("llm")]
+        assert len(model_steps) == server.requests
+
+    def test_kickoff_async_raises_the_steerplane_error(self, server):
+        adapter = CrewAIAdapter()
+        from crewai.hooks import get_before_llm_call_hooks
+        from steerplane.integrations.crewai import SteerPlaneCrewMonitor
+
+        tools = Tools()
+        before = len(get_before_llm_call_hooks())
+        monitor = SteerPlaneCrewMonitor(model=MODEL, max_steps=4, log_to_console=False)
+        with pytest.raises(StepLimitExceeded):
+            asyncio.run(monitor.kickoff_async(adapter._crew(server, tools)))
+        assert server.requests == 2
+        assert len(tools.executed) == 2
+        assert len(get_before_llm_call_hooks()) == before
+
+    def test_kickoff_async_denied_tool_never_runs(self, server):
+        adapter = CrewAIAdapter()
+        from steerplane.integrations.crewai import SteerPlaneCrewMonitor
+
+        tools = Tools()
+        server.tool_name = "delete_everything"
+        monitor = SteerPlaneCrewMonitor(
+            model=MODEL, denied_actions=["delete_everything"], log_to_console=False
+        )
+        with pytest.raises(PolicyViolationError):
+            asyncio.run(monitor.kickoff_async(adapter._crew(server, tools)))
+        assert tools.executed == []
+
+    def test_kickoff_async_clean_run(self, server):
+        adapter = CrewAIAdapter()
+        from steerplane.integrations.crewai import SteerPlaneCrewMonitor
+
+        tools = Tools()
+        server.tool_turns = 2
+        monitor = SteerPlaneCrewMonitor(model=MODEL, max_steps=100, log_to_console=False)
+        asyncio.run(monitor.kickoff_async(adapter._crew(server, tools)))
+        assert len(tools.executed) == 2
+        assert monitor.run_manager.telemetry.step_count == 5
 
     def test_hooks_are_removed_after_a_stop(self, server):
         adapter = CrewAIAdapter()

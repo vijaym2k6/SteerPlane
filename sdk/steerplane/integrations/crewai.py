@@ -47,15 +47,16 @@ def _model_name(llm: Any, default: str) -> str:
     return str(getattr(llm, "model", "") or default)
 
 
-def _usage_totals(llm: Any) -> tuple[int, int]:
-    """Prompt and completion tokens this LLM object has used so far."""
+def _usage_totals(llm: Any) -> tuple[int, int, int]:
+    """Prompt tokens, completion tokens and requests this LLM object has used so far."""
     getter = getattr(llm, "get_token_usage_summary", None)
     if not callable(getter):
-        return 0, 0
+        return 0, 0, 0
     usage = getter()
     return (
         int(getattr(usage, "prompt_tokens", 0) or 0),
         int(getattr(usage, "completion_tokens", 0) or 0),
+        int(getattr(usage, "successful_requests", 0) or 0),
     )
 
 
@@ -122,7 +123,7 @@ class SteerPlaneCrewMonitor:
         self._task_count = 0
         self._crew: Any = None
         self._hooks_on = False
-        self._usage_seen: dict[int, tuple[int, int]] = {}
+        self._usage_seen: dict[int, tuple[int, int, int]] = {}
         self._pending_llm: Optional[tuple[Any]] = None
         self._lock = threading.RLock()
         self.stop_error: Optional[SteerPlaneError] = None
@@ -214,7 +215,7 @@ class SteerPlaneCrewMonitor:
             if pending is None:
                 return
             llm = pending[0]
-            before = self._usage_seen.get(id(llm), (0, 0))
+            before = self._usage_seen.get(id(llm), (0, 0, 0))
             after = _usage_totals(llm)
             self._usage_seen[id(llm)] = after
             model = _model_name(llm, self._model)
@@ -225,6 +226,15 @@ class SteerPlaneCrewMonitor:
                 model=model,
                 check_policy=False,
             )
+            # CrewAI retries an empty answer once inside the same call, without
+            # running the before hook again. Count each extra request as a step.
+            for _ in range(after[2] - before[2] - 1):
+                self._run_manager.log_step(
+                    action=f"llm:{model}",
+                    model=model,
+                    check_policy=False,
+                    metadata={"retry_of_empty_answer": True},
+                )
 
     def _before_llm_call(self, context: Any) -> Optional[bool]:
         if self._is_other_crew(context):
@@ -307,22 +317,46 @@ class SteerPlaneCrewMonitor:
         self.start()
         try:
             result = crew.kickoff(**kwargs)
-        except SteerPlaneError:
-            self.finish()
-            raise
         except Exception as e:
-            self._unregister_hooks()
-            if self.stop_error is not None:
-                self.finish()
-                raise self.stop_error from e
-            if self._started:
-                self._run_manager.end(status="failed", error=str(e))
-                self._started = False
+            self._after_failure(e)
             raise
+        return self._after_success(result)
+
+    async def kickoff_async(self, crew: Any, **kwargs) -> Any:
+        """
+        Async version of ``kickoff``. Raises the SteerPlane error if a limit stopped
+        the crew.
+
+        Usage:
+            result = await monitor.kickoff_async(crew)
+        """
+        self._crew = crew
+        self.start()
+        try:
+            result = await crew.kickoff_async(**kwargs)
+        except Exception as e:
+            self._after_failure(e)
+            raise
+        return self._after_success(result)
+
+    def _after_success(self, result: Any) -> Any:
         self.finish()
         if self.stop_error is not None:
             raise self.stop_error
         return result
+
+    def _after_failure(self, error: Exception) -> None:
+        """End the run after the crew raised. Raises the SteerPlane error behind it, if any."""
+        if isinstance(error, SteerPlaneError):
+            self.finish()
+            return
+        self._unregister_hooks()
+        if self.stop_error is not None:
+            self.finish()
+            raise self.stop_error from error
+        if self._started:
+            self._run_manager.end(status="failed", error=str(error))
+            self._started = False
 
     def __enter__(self):
         self.start()
