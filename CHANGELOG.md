@@ -32,7 +32,7 @@ recorded calls but did not stop a run.
 - **LangChain:** a refusal now stops the run by default. Pass `enforce=False` to record only.
 - **OpenAI Agents SDK:** pass `hooks=hooks.run_hooks` to `Runner.run`. Calling the Runner without them
   records nothing.
-- **CrewAI:** needs 1.15.35 or newer. `step_callback` is kept for existing setups but records nothing,
+- **CrewAI:** needs 1.15.35 or newer. Adds `monitor.kickoff_async(crew)`. When CrewAI retries an empty model answer inside one call, the retry counts as a step too. `step_callback` is kept for existing setups but records nothing,
   because CrewAI's call hooks do the counting. Use `monitor.kickoff(crew)`.
 - **AutoGen:** targets AG2's classic API. The `autogen` extra now installs `ag2` before 1.0. The newer
   `autogen-agentchat` package is a different API and is not supported.

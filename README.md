@@ -315,7 +315,7 @@ crew = Crew(agents=[researcher, writer], tasks=[research_task, write_task])
 result = monitor.kickoff(crew)
 ```
 
-Needs CrewAI 1.15.35 or newer. CrewAI's hooks apply to the whole process, so run monitored crews one at a time.
+`await monitor.kickoff_async(crew)` is the async version. Needs CrewAI 1.15.35 or newer. CrewAI's hooks apply to the whole process, so run monitored crews one at a time.
 
 ### AutoGen
 
