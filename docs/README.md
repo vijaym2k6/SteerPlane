@@ -1,6 +1,6 @@
 # SteerPlane Documentation
 
-Welcome to the SteerPlane v1.1.2 documentation. **The safety layer for the AGI era.** Runtime guardrails for autonomous AI agents. SteerPlane provides safety guardrails, cost control, loop detection, SSE streaming enforcement, and full observability.
+Welcome to the SteerPlane v1.1.3 documentation. **The safety layer for the AGI era.** Runtime guardrails for autonomous AI agents. SteerPlane provides safety guardrails, cost control, loop detection, SSE streaming enforcement, and full observability.
 
 ## Documentation Pages
 
@@ -28,6 +28,13 @@ Welcome to the SteerPlane v1.1.2 documentation. **The safety layer for the AGI e
                                          │   Dashboard   │
                                          └───────────────┘
 ```
+
+## What's New in v1.1.3
+
+- **Framework integrations now stop runs.** LangChain, OpenAI Agents SDK, CrewAI and AutoGen check limits and policy rules before each model call and tool call. Before this release, with the setup the docs showed, they recorded calls but did not stop a run.
+- **Real token usage.** Cost comes from what the model reports, not a character estimate.
+- **Routed names priced correctly**: `openai/gpt-4o-mini` uses the `gpt-4o-mini` price.
+- **Changes you may notice**: loop detection is off by default in the integrations, CrewAI needs 1.15.35 or newer, and the `autogen` extra now installs `ag2` before 1.0.
 
 ## What's New in v1.1.2
 

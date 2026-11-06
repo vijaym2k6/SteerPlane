@@ -140,6 +140,111 @@ class RunManager:
             max_steps=self.max_steps,
         )
 
+    @property
+    def is_terminated(self) -> bool:
+        """True once a limit or policy rule has ended this run."""
+        return self._terminated
+
+    def check_before_step(
+        self,
+        action: str | None = None,
+        metadata: dict | None = None,
+    ) -> None:
+        """
+        Raise if the next step must not start. Records nothing.
+
+        Framework integrations call this from a framework's "about to start"
+        callback, so a run that has used up its budget is refused before the
+        model call or tool call happens rather than after it.
+
+        Args:
+            action: If given, checked against the policy rules. Rate limits count
+                this check, so pass ``check_policy=False`` to ``log_step`` for the
+                same action afterwards.
+            metadata: Passed to the policy approval callback.
+        """
+        if self._terminated:
+            raise RunTerminatedError(self.run_id, self._termination_reason or "Run terminated")
+
+        if action:
+            self._check_policy(action, metadata)
+
+        # Alert mode pauses for approval in log_step, once the limit has been met.
+        if self._uses_alert_mode():
+            return
+
+        blocked = action or "next step"
+        next_step = self.telemetry.step_count + 1
+        if next_step > self.max_steps:
+            self._terminate(
+                "step_limit_exceeded",
+                details={
+                    "error_type": "step_limit_exceeded",
+                    "blocked_action": blocked,
+                    "current_steps": next_step,
+                    "max_steps": self.max_steps,
+                    "total_cost_at_termination": self.cost_tracker.total_cost,
+                    "message": f"Step limit reached: {self.max_steps}. Refused '{blocked}' before it started.",
+                },
+            )
+            raise StepLimitExceeded(next_step, self.max_steps)
+
+        elapsed = time.time() - self.start_time
+        if elapsed > self.max_runtime_sec:
+            reason = (
+                f"Runtime exceeded: {format_duration(elapsed)} > "
+                f"{format_duration(self.max_runtime_sec)}"
+            )
+            self._terminate(
+                "runtime_limit_exceeded",
+                details={
+                    "error_type": "runtime_limit_exceeded",
+                    "blocked_action": blocked,
+                    "elapsed_seconds": round(elapsed, 1),
+                    "max_runtime_seconds": self.max_runtime_sec,
+                    "total_cost_at_termination": self.cost_tracker.total_cost,
+                    "message": f"{reason}. Refused '{blocked}' before it started.",
+                },
+            )
+            raise RunTerminatedError(self.run_id, reason)
+
+        total_cost = self.cost_tracker.total_cost
+        max_cost = self.cost_tracker.max_cost_usd
+        if total_cost >= max_cost:
+            self._terminate(
+                "cost_limit_exceeded",
+                details={
+                    "error_type": "cost_limit_exceeded",
+                    "blocked_action": blocked,
+                    "current_cost": total_cost,
+                    "max_cost": max_cost,
+                    "step_number": self.telemetry.step_count,
+                    "message": f"Cost limit reached: ${total_cost:.4f} of ${max_cost:.2f}. Refused '{blocked}' before it started.",
+                },
+            )
+            raise CostLimitExceeded(total_cost, max_cost)
+
+    def _check_policy(self, action: str, metadata: dict | None = None) -> None:
+        """Check an action against the policy rules, ending the run if it is refused."""
+        if not (self.policy and self.policy.has_rules):
+            return
+        try:
+            self.policy.check(action, metadata)
+        except PolicyViolationError as e:
+            self._terminate(
+                "policy_violation",
+                details={
+                    "error_type": "policy_violation",
+                    "blocked_action": action,
+                    "rule_matched": e.rule,
+                    "reason": e.reason,
+                    "step_number": self.telemetry.step_count + 1,
+                    "total_cost_at_termination": self.cost_tracker.total_cost,
+                    "message": str(e),
+                },
+            )
+            raise
+
     def log_step(
         self,
         action: str,
@@ -152,6 +257,7 @@ class RunManager:
         error: str | None = None,
         metadata: dict | None = None,
         model: str | None = None,
+        check_policy: bool = True,
     ) -> StepEvent:
         """
         Log a step and run all guard checks.
@@ -167,6 +273,8 @@ class RunManager:
             error: Error message if failed.
             metadata: Additional data.
             model: Model name for cost calculation.
+            check_policy: Set False if this action already went through
+                ``check_before_step``, or if policy rules do not apply to it.
 
         Returns:
             The logged StepEvent.
@@ -182,23 +290,8 @@ class RunManager:
             raise RunTerminatedError(self.run_id, self._termination_reason or "Run terminated")
 
         # Policy check (run first — block before incurring cost)
-        if self.policy and self.policy.has_rules:
-            try:
-                self.policy.check(action, metadata)
-            except PolicyViolationError as e:
-                self._terminate(
-                    "policy_violation",
-                    details={
-                        "error_type": "policy_violation",
-                        "blocked_action": action,
-                        "rule_matched": e.rule,
-                        "reason": e.reason,
-                        "step_number": self.telemetry.step_count + 1,
-                        "total_cost_at_termination": self.cost_tracker.total_cost,
-                        "message": str(e),
-                    },
-                )
-                raise
+        if check_policy:
+            self._check_policy(action, metadata)
 
         # Check step limit
         step_number = self.telemetry.step_count + 1

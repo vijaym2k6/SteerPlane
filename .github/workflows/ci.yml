@@ -4,9 +4,10 @@
 # Runs on every push and pull request:
 #   1. Lint Python (ruff)
 #   2. Test Python SDK (pytest)
-#   3. Test API server (pytest)
-#   4. Test TypeScript SDK
-#   5. Build Docker images
+#   3. Test framework integrations (pytest, one job per framework)
+#   4. Test API server (pytest)
+#   5. Test TypeScript SDK
+#   6. Build Docker images
 ###############################################################################
 
 name: CI
@@ -64,6 +65,42 @@ jobs:
       - name: Run SDK tests
         working-directory: sdk
         run: pytest tests/ -v --tb=short
+
+  # ─── Framework Integration Tests ───────────────────────────────────────
+  # Runs each framework for real against a local server that counts requests.
+  # Versions are pinned so a framework release can't fail CI on an unchanged
+  # tree. Bump them on purpose, and re-run the tests when you do.
+  test-frameworks:
+    name: Test integration (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: LangChain
+            packages: langchain==1.4.9 langchain-openai==1.7.4 langgraph==1.2.20
+          - name: OpenAI Agents SDK
+            packages: openai-agents==0.24.0
+          - name: CrewAI
+            packages: crewai==1.15.35
+          - name: AutoGen
+            packages: ag2[openai]==0.14.0
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install SDK + framework
+        working-directory: sdk
+        run: pip install -e ".[dev]" ${{ matrix.packages }}
+
+      - name: Run integration tests
+        working-directory: sdk
+        run: pytest tests/test_framework_integrations.py -v --tb=short
 
   # ─── API Server Tests ──────────────────────────────────────────────────
   test-api:

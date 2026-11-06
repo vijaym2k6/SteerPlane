@@ -122,9 +122,9 @@ class TestIntegrationsPassSwitch:
     def test_crewai_monitor(self):
         from steerplane.integrations.crewai import SteerPlaneCrewMonitor
 
-        assert SteerPlaneCrewMonitor(log_to_console=False).run_manager.detect_loops is True
-        monitor = SteerPlaneCrewMonitor(detect_loops=False, log_to_console=False)
-        assert monitor.run_manager.detect_loops is False
+        assert SteerPlaneCrewMonitor(log_to_console=False).run_manager.detect_loops is False
+        monitor = SteerPlaneCrewMonitor(detect_loops=True, log_to_console=False)
+        assert monitor.run_manager.detect_loops is True
 
     def test_autogen_monitor(self):
         from steerplane.integrations.autogen import SteerPlaneAutoGenMonitor

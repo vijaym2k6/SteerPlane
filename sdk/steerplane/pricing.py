@@ -41,11 +41,16 @@ MODEL_PRICING: dict[str, dict[str, float]] = load_pricing()
 
 
 def normalize_model_name(model: str) -> str:
-    """Resolve a model name to its pricing key by longest matching prefix."""
+    """Resolve a model name to its pricing key by longest matching prefix.
+
+    A routed name such as ``openai/gpt-4o-mini`` is priced by its last segment.
+    """
     normalized = (model or "").lower().strip()
-    for prefix in sorted(MODEL_PRICING, key=len, reverse=True):
-        if prefix != "default" and normalized.startswith(prefix):
-            return prefix
+    prefixes = sorted(MODEL_PRICING, key=len, reverse=True)
+    for name in (normalized, normalized.rsplit("/", 1)[-1]):
+        for prefix in prefixes:
+            if prefix != "default" and name.startswith(prefix):
+                return prefix
     return normalized
 
 
