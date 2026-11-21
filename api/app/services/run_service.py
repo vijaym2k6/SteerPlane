@@ -84,8 +84,8 @@ class RunService:
         self,
         run_id: str,
         status: str = "completed",
-        total_cost: float = 0.0,
-        total_steps: int = 0,
+        total_cost: Optional[float] = None,
+        total_steps: Optional[int] = None,
         error: Optional[str] = None,
         error_details: Optional[dict] = None,
     ) -> Optional[Run]:
@@ -98,8 +98,12 @@ class RunService:
 
         run.status = status
         run.end_time = datetime.now(timezone.utc)
-        run.total_cost = total_cost
-        run.total_steps = total_steps
+        # None keeps what the logged steps already added up to. `steerplane runs
+        # kill` sends no totals, and must not wipe a live run's cost to zero.
+        if total_cost is not None:
+            run.total_cost = total_cost
+        if total_steps is not None:
+            run.total_steps = total_steps
         if error:
             run.error = error
         if error_details:

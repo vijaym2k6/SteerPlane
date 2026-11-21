@@ -34,8 +34,12 @@ class LogStepRequest(BaseModel):
 class EndRunRequest(BaseModel):
     run_id: str = Field(..., description="Run ID to end")
     status: str = Field(default="completed", description="Final run status")
-    total_cost: float = Field(default=0.0, description="Total run cost")
-    total_steps: int = Field(default=0, description="Total steps executed")
+    total_cost: Optional[float] = Field(
+        default=None, description="Total run cost. Omit to keep the total recorded from steps."
+    )
+    total_steps: Optional[int] = Field(
+        default=None, description="Total steps executed. Omit to keep the recorded count."
+    )
     error: Optional[str] = Field(default=None, description="Error if failed/terminated")
     error_details: Optional[dict] = Field(
         default=None,

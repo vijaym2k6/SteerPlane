@@ -58,6 +58,18 @@ class SteerPlaneClient:
                 f"Running in offline mode (guards still active, no dashboard data)."
             )
             return None
+        except requests.HTTPError as e:
+            # 409 on a step means the run was ended from outside (for example
+            # `steerplane runs kill`). Tell the caller instead of hiding it.
+            resp = e.response
+            if resp is not None and resp.status_code == 409 and path == "/runs/step":
+                try:
+                    detail = resp.json().get("detail")
+                except ValueError:
+                    detail = None
+                return {"terminated": True, "detail": detail or "Run terminated"}
+            logger.warning(f"[WARN] API request failed: {e}")
+            return None
         except requests.RequestException as e:
             logger.warning(f"[WARN] API request failed: {e}")
             return None

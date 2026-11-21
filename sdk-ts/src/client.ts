@@ -47,6 +47,16 @@ export class SteerPlaneClient {
       clearTimeout(timeout);
 
       if (!response.ok) {
+        // 409 on a step: the run was ended from outside (e.g. `steerplane runs kill`).
+        if (response.status === 409 && path === "/runs/step") {
+          let detail: unknown = null;
+          try {
+            detail = ((await response.json()) as { detail?: unknown }).detail;
+          } catch {
+            detail = null;
+          }
+          return { terminated: true, detail: String(detail ?? "Run terminated") } as T;
+        }
         console.warn(`⚠️  SteerPlane API returned ${response.status}: ${url}`);
         return null;
       }

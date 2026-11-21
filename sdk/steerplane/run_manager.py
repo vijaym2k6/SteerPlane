@@ -398,7 +398,7 @@ class RunManager:
             )
 
         # Report to API
-        self.client.log_step(
+        api_result = self.client.log_step(
             run_id=self.run_id,
             step_number=event.step_number,
             action=action,
@@ -409,6 +409,26 @@ class RunManager:
             error=error,
             metadata=metadata,
         )
+
+        # Ended from outside (`steerplane runs kill` or the API). Count this
+        # step's cost so the final totals stay right, then stop.
+        if isinstance(api_result, dict) and api_result.get("terminated"):
+            try:
+                self.cost_tracker.add_step(step_cost)
+            except CostLimitExceeded:
+                pass
+            reason = str(api_result.get("detail") or "Run terminated from the server")
+            self._terminate(
+                "terminated_from_server",
+                details={
+                    "error_type": "terminated_from_server",
+                    "blocked_action": action,
+                    "current_steps": event.step_number,
+                    "total_cost_at_termination": self.cost_tracker.total_cost,
+                    "message": reason,
+                },
+            )
+            raise RunTerminatedError(self.run_id, reason)
 
         # === GUARD CHECKS ===
 
