@@ -93,6 +93,8 @@ export class RunManager {
   public stepCount: number = 0;
 
   private terminated: boolean = false;
+  /** Set when the API reports this run was ended from outside. */
+  private remoteTerminationReason: string | null = null;
   private terminationReason: string | null = null;
 
   constructor(opts: RunManagerOptions = {}) {
@@ -157,6 +159,13 @@ export class RunManager {
         this.runId,
         this.terminationReason ?? "Run terminated"
       );
+    }
+
+    // Ended from outside (`steerplane runs kill`), reported on an earlier step.
+    if (this.remoteTerminationReason) {
+      const reason = this.remoteTerminationReason;
+      await this.terminate(reason);
+      throw new RunTerminatedError(this.runId, reason);
     }
 
     // 0. Policy check (before any counters are updated)
@@ -246,8 +255,9 @@ export class RunManager {
       );
     }
 
-    // Report to API (don't await — fire and forget for performance)
-    this.client.logStep({
+    // Report to API (don't await — fire and forget for performance).
+    // If the API says the run was ended from outside, the next step stops.
+    void this.client.logStep({
       runId: this.runId,
       stepNumber: this.stepCount,
       action: opts.action,
@@ -257,6 +267,11 @@ export class RunManager {
       status: opts.status ?? "completed",
       error: opts.error,
       metadata: opts.metadata,
+    }).then((res) => {
+      const r = res as { terminated?: boolean; detail?: string } | null;
+      if (r && r.terminated) {
+        this.remoteTerminationReason = r.detail ?? "Run terminated from the server";
+      }
     });
 
     // === GUARD CHECKS ===

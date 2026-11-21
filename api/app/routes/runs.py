@@ -81,6 +81,13 @@ def log_step(
         error=req.error,
         metadata=req.metadata,
     )
+    # A run ended from outside (e.g. `steerplane runs kill`) is told so on its
+    # next step: the step is still recorded, and the SDK stops on the 409.
+    if run.status == "terminated":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Run {req.run_id} was terminated: {run.error or 'no reason given'}",
+        )
     return StatusResponse(status="ok", message=f"Step {req.step_number} logged")
 
 

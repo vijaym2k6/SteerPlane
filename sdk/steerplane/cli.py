@@ -198,7 +198,7 @@ def runs_inspect(run_id):
 @click.option("--reason", "-r", default="Killed via CLI", help="Termination reason")
 @click.confirmation_option(prompt="Are you sure you want to kill this run?")
 def runs_kill(run_id, reason):
-    """Force-terminate a live run."""
+    """Terminate a live run. A connected SDK run stops at its next logged step."""
     _post("/runs/end", {"run_id": run_id, "status": "terminated", "error": reason})
     click.echo(click.style(f"[OK] Run {run_id} terminated", fg="green"))
 
