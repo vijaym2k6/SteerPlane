@@ -101,6 +101,10 @@ const runAgent = guard(async () => { await agent.run(); }, {
 `detectLoops` is accepted by `guard()`, `SteerPlane.run()`, `createRun()` and
 `new RunManager()`.
 
+## What's New in v1.1.4
+
+- **`steerplane runs kill` now stops a live run.** The TypeScript SDK sends steps without waiting, so the run stops one step after the server sees the kill, with `RunTerminatedError`.
+
 ## What's New in v1.1.3
 
 - **Routed names priced correctly**: `openai/gpt-4o-mini` uses the `gpt-4o-mini` price.

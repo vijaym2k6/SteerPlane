@@ -3,6 +3,21 @@
 All notable changes to SteerPlane are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.4]
+
+`steerplane runs kill` now stops a live run.
+
+### Fixed
+- **Killing a run did not stop it.** The kill only changed the run's status on the server. The agent
+  kept running, and the run's cost and step totals were reset to 0. Now `/runs/step` returns 409 once
+  a run is terminated. The Python SDK stops at the next logged step and raises `RunTerminatedError`.
+  The TypeScript SDK sends steps without waiting, so it stops one step later.
+- `/runs/end` keeps the cost and step totals already recorded when the request does not send them.
+
+### Added
+- Tests for the kill, and for step, cost and deny limits holding when the API goes down mid-run or is
+  down from the start.
+
 ## [1.1.3]
 
 The framework integrations now stop runs. Before this release, with the setup the docs showed, they
@@ -241,6 +256,7 @@ READMEs and `docs/` for the full breakdown.
 - Config file support (`.steerplane.yml`) with auto-discovery.
 - Framework integrations: LangChain, OpenAI Agents SDK, CrewAI, AutoGen.
 
+[1.1.4]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.4
 [1.1.3]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.3
 [1.1.2]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.2
 [1.1.1]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.1

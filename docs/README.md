@@ -1,6 +1,6 @@
 # SteerPlane Documentation
 
-Welcome to the SteerPlane v1.1.3 documentation. **The safety layer for the AGI era.** Runtime guardrails for autonomous AI agents. SteerPlane provides safety guardrails, cost control, loop detection, SSE streaming enforcement, and full observability.
+Welcome to the SteerPlane v1.1.4 documentation. **The safety layer for the AGI era.** Runtime guardrails for autonomous AI agents. SteerPlane provides safety guardrails, cost control, loop detection, SSE streaming enforcement, and full observability.
 
 ## Documentation Pages
 
@@ -28,6 +28,10 @@ Welcome to the SteerPlane v1.1.3 documentation. **The safety layer for the AGI e
                                          │   Dashboard   │
                                          └───────────────┘
 ```
+
+## What's New in v1.1.4
+
+- **`steerplane runs kill` now stops a live run.** The run stops at its next logged step and raises `RunTerminatedError`. Before, the kill only changed the status on the server, the agent kept running, and the run's cost and step totals were reset to 0. Those totals are now kept.
 
 ## What's New in v1.1.3
 

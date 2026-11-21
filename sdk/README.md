@@ -68,6 +68,10 @@ with sp.run(max_cost_usd=10.0, max_steps=50) as run:
     run.log_step("generate_response", tokens=1240, cost=0.008, latency_ms=320)
 ```
 
+## What's New in v1.1.4
+
+- **`steerplane runs kill` now stops a live run.** The run stops at its next logged step and raises `RunTerminatedError`. Before, the kill only changed the status on the server, the agent kept running, and the run's cost and step totals were reset to 0. Those totals are now kept.
+
 ## What's New in v1.1.3
 
 - **Framework integrations now stop runs.** LangChain, OpenAI Agents SDK, CrewAI and AutoGen check limits and policy rules before each model call and tool call. Before this release, with the setup the docs showed, they recorded calls but did not stop a run.
