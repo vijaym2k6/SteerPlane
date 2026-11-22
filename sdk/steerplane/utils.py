@@ -41,6 +41,21 @@ def format_cost(cost: float) -> str:
         return f"${cost:.2f}"
 
 
+def format_limit(limit: float) -> str:
+    """Format a dollar limit so a small one stays readable.
+
+    Limits of $1 or more keep two decimals ("$5.00"). A smaller limit gets more, so a
+    $0.001 ceiling reads "$0.0010" instead of rounding to "$0.00".
+    """
+    if limit >= 1.0 or limit <= 0:
+        return f"${limit:.2f}"
+    if limit >= 0.0001:
+        return f"${limit:.4f}"
+    if limit >= 0.000001:
+        return f"${limit:.6f}"
+    return f"${limit:.1e}"
+
+
 def format_duration(seconds: float) -> str:
     """Format a duration in seconds for display."""
     if seconds < 1:

@@ -9,7 +9,7 @@ import { SteerPlaneClient } from "./client.js";
 import { LoopDetector } from "./loop-detector.js";
 import { CostTracker, type StepCost } from "./cost-tracker.js";
 import { PolicyEngine, type PolicyEngineOptions } from "./policy-engine.js";
-import { generateRunId, formatCost, formatDuration } from "./utils.js";
+import { generateRunId, formatCost, formatDuration, formatLimit } from "./utils.js";
 import {
   LoopDetectedError,
   CostLimitExceeded,
@@ -290,7 +290,7 @@ export class RunManager {
             unit: "usd",
             message:
               `Run '${this.agentName}' exceeded its cost limit ` +
-              `($${err.currentCost.toFixed(4)} > $${err.maxCost.toFixed(2)}). ` +
+              `($${err.currentCost.toFixed(4)} > ${formatLimit(err.maxCost)}). ` +
               `Approve to extend and continue or let it terminate.`,
             metadata: {
               blocked_action: opts.action,
@@ -393,7 +393,7 @@ export class RunManager {
         unit: "usd",
         message:
           `Run '${this.agentName}' has crossed ${Math.round(this.alertThreshold * 100)}% ` +
-          `of its cost budget ($${this.costTracker.totalCost.toFixed(4)}/$${this.costTracker.maxCostUsd.toFixed(2)}). ` +
+          `of its cost budget ($${this.costTracker.totalCost.toFixed(4)}/${formatLimit(this.costTracker.maxCostUsd)}). ` +
           `Approve to continue or let it terminate on timeout.`,
         metadata: {
           blocked_action: action,

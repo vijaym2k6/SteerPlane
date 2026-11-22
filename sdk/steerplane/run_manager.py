@@ -13,7 +13,7 @@ from .client import SteerPlaneClient
 from .telemetry import TelemetryCollector, StepEvent
 from .loop_detector import LoopDetector
 from .cost_tracker import CostTracker
-from .utils import generate_run_id, format_cost, format_duration
+from .utils import generate_run_id, format_cost, format_duration, format_limit
 from .policy_engine import PolicyEngine
 from .runtime_context import reset_active_run, set_active_run
 from .exceptions import (
@@ -219,7 +219,7 @@ class RunManager:
                     "current_cost": total_cost,
                     "max_cost": max_cost,
                     "step_number": self.telemetry.step_count,
-                    "message": f"Cost limit reached: ${total_cost:.4f} of ${max_cost:.2f}. Refused '{blocked}' before it started.",
+                    "message": f"Cost limit reached: ${total_cost:.4f} of {format_limit(max_cost)}. Refused '{blocked}' before it started.",
                 },
             )
             raise CostLimitExceeded(total_cost, max_cost)
@@ -445,7 +445,7 @@ class RunManager:
                     unit="usd",
                     message=(
                         f"Run '{self.agent_name}' exceeded its cost limit "
-                        f"(${e.current_cost:.4f} > ${e.max_cost:.2f}). "
+                        f"(${e.current_cost:.4f} > {format_limit(e.max_cost)}). "
                         "Approve to extend and continue or let it terminate."
                     ),
                     metadata={
@@ -464,7 +464,7 @@ class RunManager:
                         "current_cost": e.current_cost,
                         "max_cost": e.max_cost,
                         "step_number": event.step_number,
-                        "message": f"Cost limit exceeded: ${e.current_cost:.4f} > ${e.max_cost:.2f}. Last action was '{action}'.",
+                        "message": f"Cost limit exceeded: ${e.current_cost:.4f} > {format_limit(e.max_cost)}. Last action was '{action}'.",
                     },
                 )
                 raise
@@ -566,7 +566,7 @@ class RunManager:
                     message=(
                         f"Run '{self.agent_name}' has crossed "
                         f"{int(self.alert_threshold * 100)}% of its cost budget "
-                        f"(${current_cost:.4f}/${self.cost_tracker.max_cost_usd:.2f}). "
+                        f"(${current_cost:.4f}/{format_limit(self.cost_tracker.max_cost_usd)}). "
                         "Approve to continue or let it terminate on timeout."
                     ),
                     metadata={

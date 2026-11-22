@@ -22,6 +22,17 @@ from ..models.step import Step
 from .state_store import StateStore, build_state_store
 
 
+def format_usd_limit(limit: float) -> str:
+    """Two decimals for $1 or more; more for a small limit, so $0.001 is not shown as $0.00."""
+    if limit >= 1.0 or limit <= 0:
+        return f"${limit:.2f}"
+    if limit >= 0.0001:
+        return f"${limit:.4f}"
+    if limit >= 0.000001:
+        return f"${limit:.6f}"
+    return f"${limit:.1e}"
+
+
 # Canonical per-1M USD pricing, loaded from model_pricing.json. This file is kept
 # byte-identical to the SDK's copy (sdk/steerplane/model_pricing.json) and the TS
 # mirror; api/tests/test_pricing_consistency.py fails if they drift.
@@ -360,7 +371,7 @@ class GatewayService:
         if session_cost >= session_limit:
             return (
                 False,
-                f"Session cost limit exceeded: ${session_cost:.4f} >= ${session_limit:.2f}",
+                f"Session cost limit exceeded: ${session_cost:.4f} >= {format_usd_limit(session_limit)}",
                 session_limit,
             )
 
@@ -368,7 +379,7 @@ class GatewayService:
         if monthly_cost >= api_key.max_cost_monthly:
             return (
                 False,
-                f"Monthly budget exceeded: ${monthly_cost:.4f} >= ${api_key.max_cost_monthly:.2f}",
+                f"Monthly budget exceeded: ${monthly_cost:.4f} >= {format_usd_limit(api_key.max_cost_monthly)}",
                 session_limit,
             )
 

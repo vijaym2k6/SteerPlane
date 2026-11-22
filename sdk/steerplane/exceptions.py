@@ -4,6 +4,8 @@ SteerPlane SDK — Custom Exceptions
 All errors raised by the SteerPlane guard system.
 """
 
+from .utils import format_limit
+
 
 class SteerPlaneError(Exception):
     """Base exception for all SteerPlane errors."""
@@ -31,7 +33,7 @@ class CostLimitExceeded(SteerPlaneError):
         self.max_cost = max_cost
         super().__init__(
             f"[COST] Cost limit exceeded! Current: ${current_cost:.4f}, "
-            f"Limit: ${max_cost:.2f}. Run terminated."
+            f"Limit: {format_limit(max_cost)}. Run terminated."
         )
 
 

@@ -189,6 +189,7 @@ def test_streaming_mid_stream_cost_kill_injects_termination_event():
 
     assert "steerplane_enforcement" in body
     assert "cost_limit_exceeded" in body
+    assert "exceeded ceiling $1.0e-09" in body  # a tiny limit is not shown as $0.00
 
     step = _logged_llm_step(db, session.run_id)
     assert step is not None
