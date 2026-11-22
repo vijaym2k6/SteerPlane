@@ -101,6 +101,10 @@ const runAgent = guard(async () => { await agent.run(); }, {
 `detectLoops` is accepted by `guard()`, `SteerPlane.run()`, `createRun()` and
 `new RunManager()`.
 
+## What's New in v1.1.5
+
+- **Small cost limits are shown properly.** A $0.001 ceiling used to print as "Limit: $0.00". It now prints "$0.0010". Limits of $1 or more print as before.
+
 ## What's New in v1.1.4
 
 - **`steerplane runs kill` now stops a live run.** The TypeScript SDK sends steps without waiting, so the run stops one step after the server sees the kill, with `RunTerminatedError`.

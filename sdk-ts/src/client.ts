@@ -27,7 +27,7 @@ export class SteerPlaneClient {
     const url = `${this.apiUrl}${path}`;
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "User-Agent": "SteerPlane-SDK-TS/1.1.4",
+      "User-Agent": "SteerPlane-SDK-TS/1.1.5",
     };
     if (this.apiKey) {
       headers["Authorization"] = `Bearer ${this.apiKey}`;

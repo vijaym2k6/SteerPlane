@@ -3,6 +3,21 @@
 All notable changes to SteerPlane are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.5]
+
+Small cost limits are readable in messages.
+
+### Fixed
+- **Cost limits under $1 were rounded to $0.00 in messages.** A run with a $0.001 ceiling stopped
+  with "Current: $0.0011, Limit: $0.00". Limits of $1 or more still print with two decimals. A
+  smaller limit gets 4 decimals, or 6 below $0.0001, and a limit too small for that is shown in
+  short scientific form, so a limit above zero never reads as zero. This covers the cost errors and
+  messages in the Python and TypeScript SDKs and the gateway's session, monthly and mid-stream
+  messages.
+
+### Added
+- `format_limit` in the Python SDK and `formatLimit` in the TypeScript SDK.
+
 ## [1.1.4]
 
 `steerplane runs kill` now stops a live run.
@@ -256,6 +271,7 @@ READMEs and `docs/` for the full breakdown.
 - Config file support (`.steerplane.yml`) with auto-discovery.
 - Framework integrations: LangChain, OpenAI Agents SDK, CrewAI, AutoGen.
 
+[1.1.5]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.5
 [1.1.4]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.4
 [1.1.3]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.3
 [1.1.2]: https://github.com/vijaym2k6/SteerPlane/releases/tag/v1.1.2
