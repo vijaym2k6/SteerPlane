@@ -4,6 +4,8 @@
  * All errors raised by the SteerPlane guard system.
  */
 
+import { formatLimit } from "./utils.js";
+
 export class SteerPlaneError extends Error {
   constructor(message: string) {
     super(message);
@@ -33,7 +35,7 @@ export class CostLimitExceeded extends SteerPlaneError {
   constructor(currentCost: number, maxCost: number) {
     super(
       `[COST] Cost limit exceeded! Current: $${currentCost.toFixed(4)}, ` +
-        `Limit: $${maxCost.toFixed(2)}. Run terminated.`
+        `Limit: ${formatLimit(maxCost)}. Run terminated.`
     );
     this.name = "CostLimitExceeded";
     this.currentCost = currentCost;

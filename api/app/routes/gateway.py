@@ -16,6 +16,7 @@ from ..services.gateway_service import (
     GatewaySession,
     MODEL_PRICING,
     calculate_cost,
+    format_usd_limit,
     normalize_model_name,
 )
 
@@ -440,7 +441,7 @@ async def _handle_streaming(
                             "type": "steerplane_enforcement",
                             "message": (
                                 f"Stream terminated: session cost ${total_session_cost:.4f} "
-                                f"exceeded ceiling ${cost_limit:.2f}"
+                                f"exceeded ceiling {format_usd_limit(cost_limit)}"
                             ),
                             "code": "cost_limit_exceeded",
                             "session_id": session.session_id,

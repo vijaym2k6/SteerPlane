@@ -55,7 +55,7 @@ export type {
 export { SteerPlaneClient } from "./client.js";
 
 // Utilities
-export { generateRunId, formatCost, formatDuration } from "./utils.js";
+export { generateRunId, formatCost, formatDuration, formatLimit } from "./utils.js";
 
 // Errors
 export {
