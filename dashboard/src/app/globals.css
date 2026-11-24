@@ -2956,3 +2956,17 @@ select.form-input option {
 @media (prefers-reduced-motion: reduce) {
   .navbar-shell { transition: none; }
 }
+
+/* Dashboard: page links stay centred inside the pill too, with the logo on the
+   left and the account and status controls on the right. */
+@media (min-width: 1100px) {
+  .navbar-shell .navbar { position: relative; }
+  .navbar-shell .navbar-nav,
+  .navbar-shell.scrolled .navbar-nav {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .navbar-shell .navbar-right,
+  .navbar-shell.scrolled .navbar-right { margin-left: auto; padding-left: 0; border-left-color: transparent; }
+}
