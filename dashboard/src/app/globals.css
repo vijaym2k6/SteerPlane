@@ -2858,3 +2858,15 @@ select.form-input option {
 .model-warning code { color: #fde68a; font-family: var(--font-mono); }
 .model-warning a { color: #93c5fd; font-weight: 600; }
 .model-warning a:hover { text-decoration: underline; }
+
+/* ─── Big STEERPLANE wordmark at the bottom of every page ─── */
+.sp-wordmark-wrap {
+  width: 100%;
+  max-width: 1200px;
+  margin: clamp(48px, 8vw, 112px) auto 0;
+  padding: 0 40px clamp(40px, 7vw, 96px);
+}
+.sp-wordmark { width: 100%; user-select: none; }
+@media (max-width: 640px) {
+  .sp-wordmark-wrap { padding: 0 16px 20px; margin-top: 32px; }
+}

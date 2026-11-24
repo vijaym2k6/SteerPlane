@@ -3,6 +3,8 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import DemoBanner from '@/components/DemoBanner';
 import DemoNotice from '@/components/DemoNotice';
+import SmoothScroll from '@/components/SmoothScroll';
+import Wordmark from '@/components/Wordmark';
 
 export const metadata: Metadata = {
   title: 'SteerPlane: The Safety Layer for the AGI Era',
@@ -17,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
+        <SmoothScroll />
         {/* Premium neural network / abstract tech background video */}
         <div className="bg-video-container">
           <video autoPlay loop muted playsInline className="bg-video">
@@ -37,6 +40,10 @@ export default function RootLayout({
             <DemoNotice />
             {children}
           </main>
+
+          <div className="sp-wordmark-wrap">
+            <Wordmark />
+          </div>
         </div>
       </body>
     </html>
