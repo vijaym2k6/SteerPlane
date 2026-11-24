@@ -18,7 +18,7 @@ import { useEffect, useRef } from "react";
 const TEXT = "STEERPLANE";
 const FONT = "Orbitron";
 // Letters are drawn taller than the font's own shape, for a big poster-style word.
-const STRETCH = 1.75;
+const STRETCH = 1.2;
 // Top to bottom: light sky blue to deep brand blue.
 const STOPS: [number, [number, number, number]][] = [
     [0, [191, 219, 254]],
@@ -66,11 +66,15 @@ export default function Wordmark({ className = "" }: { className?: string }) {
         let cell = 6;
         let size = 5;
         let W = 0;
+        let dpr = 1;
         let H = 0;
         let visible = false;
         let frame = 0;
         let alive = true;
         const pointer = { x: -9999, y: -9999, active: false };
+        // Shown progress eases toward the scroll position, so the squares
+        // drift in over about two and a half seconds instead of snapping with the scroll.
+        let shown = reduce ? 1 : 0;
 
         // Seeded random, so the float-in pattern is the same on every visit.
         let seed = 7;
@@ -81,7 +85,7 @@ export default function Wordmark({ className = "" }: { className?: string }) {
 
         const build = () => {
             W = Math.max(1, wrap.clientWidth);
-            cell = Math.max(3, Math.round(W / 125));
+            cell = Math.max(3, Math.round(W / 140));
             size = Math.max(2, Math.round(cell * 0.8));
 
             // Lay the word out on a hidden canvas at full width, then sample it.
@@ -151,27 +155,39 @@ export default function Wordmark({ className = "" }: { className?: string }) {
                 }
             }
 
-            const dpr = Math.min(2, window.devicePixelRatio || 1);
+            dpr = Math.min(2, window.devicePixelRatio || 1);
             canvas.width = Math.round(W * dpr);
             canvas.height = Math.round(H * dpr);
-            canvas.style.height = `${H}px`;
+            canvas.style.height = `${canvas.height / dpr}px`;
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         };
 
         // 0 = scattered above, 1 = settled. Driven by scroll position.
         const progress = () => {
             if (reduce) return 1;
-            // Settled once the whole word is on screen. It sits at the very
-            // bottom of the page, so it must finish without any extra scroll.
-            const r = wrap.getBoundingClientRect();
+            // Fully formed only at the very bottom of the page. While part of the
+            // word is still below the screen edge it is partly scattered, so the
+            // outro starts as soon as you scroll back up.
+            const r = canvas.getBoundingClientRect();
             const vh = window.innerHeight;
-            return clamp((vh - r.top) / (r.height * 0.8));
+            const gap = Math.max(0, document.documentElement.scrollHeight - (r.bottom + window.scrollY));
+            return clamp((vh - r.top - r.height * 0.35) / (r.height * 0.65 + gap));
         };
 
         const draw = () => {
-            const p = progress();
+            // Intro (settling) is slow; outro (lifting off when you scroll back
+            // up) is quicker, so it plays while the word is still on screen.
+            const target = progress();
+            shown += (target - shown) * (target > shown ? 0.024 : 0.07);
+            if (Math.abs(target - shown) < 0.001) shown = target;
+            const p = shown;
             const R = cell * 10;
-            ctx.clearRect(0, 0, W, H);
+            // Clear every device pixel. With screen scaling (125%, 150%) the canvas
+            // is a fraction of a pixel taller than H, and a partial clear leaves
+            // a strip at the bottom where pushed squares pile up into a line.
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             for (const d of dots) {
                 const local = easeOut(clamp((p - d.delay * 0.6) / 0.55));
                 if (local <= 0.001) continue;
@@ -194,9 +210,15 @@ export default function Wordmark({ className = "" }: { className?: string }) {
                 d.ox += (tx - d.ox) * 0.16;
                 d.oy += (ty - d.oy) * 0.16;
                 d.glow += (tg - d.glow) * 0.12;
+                // Clear tiny leftovers, or a square sits a fraction of a pixel off
+                // after the pointer leaves and leaves a faint line under the word.
+                if (Math.abs(d.ox) < 0.05) d.ox = 0;
+                if (Math.abs(d.oy) < 0.05) d.oy = 0;
+                if (d.glow < 0.01) d.glow = 0;
 
-                const x = d.fx + (d.hx - d.fx) * local + d.ox;
-                const y = d.fy + (d.hy - d.fy) * local + d.oy;
+                // Snapped to whole device pixels so every square stays crisp.
+                const x = Math.round((d.fx + (d.hx - d.fx) * local + d.ox) * dpr) / dpr;
+                const y = Math.round((d.fy + (d.hy - d.fy) * local + d.oy) * dpr) / dpr;
                 ctx.globalAlpha = local;
                 ctx.fillStyle = d.color;
                 ctx.fillRect(x, y, size, size);
@@ -222,6 +244,8 @@ export default function Wordmark({ className = "" }: { className?: string }) {
         const io = new IntersectionObserver(
             ([e]) => {
                 visible = e.isIntersecting;
+                // Fully off screen: start from scattered, so the intro plays again next time.
+                if (!visible && !reduce) shown = 0;
                 if (reduce) draw();
                 else start();
             },
