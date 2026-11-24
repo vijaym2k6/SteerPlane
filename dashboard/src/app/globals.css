@@ -2919,3 +2919,40 @@ select.form-input option {
 @media (prefers-reduced-motion: reduce) {
   .navbar-shell, .navbar-shell .navbar { transition: none; }
 }
+
+/* ─── Header layout and motion: identical to steerplane.com ─── */
+/* Logo left, everything else grouped right. */
+.navbar-shell .navbar { display: flex; align-items: center; gap: 8px; }
+.navbar-shell .navbar-brand { margin-right: auto; }
+.navbar-shell .navbar-nav { gap: 2px; }
+/* A thin divider separates page links from the account and status controls. */
+.navbar-shell .navbar-right {
+  gap: 8px;
+  margin-left: 14px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border-color);
+}
+/* At the very top the page links sit in the exact middle of the bar; once the
+   bar shrinks into the pill they join the right-hand group. */
+@media (min-width: 1280px) {
+  .navbar-shell .navbar { position: relative; }
+  .navbar-shell:not(.scrolled) .navbar-nav {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .navbar-shell:not(.scrolled) .navbar-right { border-left-color: transparent; }
+}
+/* The bar is 76px tall and the pill is 12px down plus 60px tall. Keep the space
+   the header takes the same in both states, so the page never jumps. */
+.navbar-shell { transition: padding 0.35s cubic-bezier(0.22, 1, 0.36, 1), margin 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+.navbar-shell.scrolled { margin-bottom: 4px; }
+@media (max-width: 960px) {
+  .navbar-shell .navbar { flex-wrap: wrap; }
+  .navbar-shell .navbar-right { margin-left: 0; padding-left: 0; border-left: 0; }
+  .navbar-shell .navbar-nav { order: 3; flex-basis: 100%; }
+  .navbar-shell.scrolled { margin-bottom: -12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .navbar-shell { transition: none; }
+}
