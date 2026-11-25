@@ -15,7 +15,7 @@ from .db.url import mask_database_password
 from .routes.runs import router as runs_router
 from .routes.telemetry import router as telemetry_router
 from .routes.policies import router as policies_router
-from .routes.gateway import router as gateway_router
+from .routes.gateway import build_upstream_client, router as gateway_router
 from .routes.api_keys import router as api_keys_router
 
 
@@ -34,7 +34,13 @@ async def lifespan(app: FastAPI):
         print(f"   {settings.ADMIN_TOKEN_HEADER}: {settings.ADMIN_TOKEN}\n")
     else:
         print(f"   Admin auth: enabled via {settings.ADMIN_TOKEN_HEADER}\n")
-    yield
+    # One pooled client for every gateway call, so connections (and TLS sessions)
+    # to the model provider are reused instead of rebuilt on each request.
+    app.state.upstream_client = build_upstream_client()
+    try:
+        yield
+    finally:
+        await app.state.upstream_client.aclose()
 
 
 app = FastAPI(

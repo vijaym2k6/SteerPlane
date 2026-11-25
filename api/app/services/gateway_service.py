@@ -258,6 +258,104 @@ def reset_gateway_state() -> None:
     _state_store.reset()
 
 
+# ─── Hot-path usage counters ────────────────────────────────
+# Session cost, monthly cost, the per-minute request window and step numbers are
+# kept in the state store and seeded from the database once, on first use. This
+# replaces a SUM/COUNT/MAX scan per request (the monthly and rate scans grew with
+# every request a key ever made). The database stays the record; the counters
+# are updated synchronously, before the response, so enforcement never lags.
+
+
+def _run_cost_key(run_id: str) -> str:
+    return f"cost:run:{run_id}"
+
+
+def _month_cost_key(key_hash: str, now: datetime | None = None) -> str:
+    start, _ = month_bounds(now)
+    return f"cost:month:{key_hash}:{start:%Y-%m}"
+
+
+def _rate_key(key_hash: str) -> str:
+    return f"rate:{key_hash}"
+
+
+def _steps_key(run_id: str) -> str:
+    return f"steps:{run_id}"
+
+
+def _to_epoch(ts: datetime) -> float:
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    return ts.timestamp()
+
+
+def persist_gateway_request(
+    db: Session,
+    api_key_id: str,
+    session: GatewaySession,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    cost: float,
+    latency_ms: float,
+    step_number: int,
+    status: str | None = "completed",
+    error: str | None = None,
+    agent_name: str | None = None,
+    max_cost_usd: float | None = None,
+) -> None:
+    """Write one proxied request to the database (step row + run/key totals)."""
+    total_tokens = input_tokens + output_tokens
+    api_key = db.get(APIKey, api_key_id)
+    run = db.get(Run, session.run_id)
+    if run is None:
+        run = Run(
+            id=session.run_id,
+            agent_name=agent_name or f"gateway:{api_key.name if api_key else 'unknown'}",
+            status="running",
+            start_time=datetime.now(timezone.utc),
+            max_cost_usd=max_cost_usd
+            if max_cost_usd is not None
+            else (api_key.max_cost_usd if api_key else 50.0),
+            max_steps_limit=9999,
+        )
+        db.add(run)
+
+    db.add(
+        Step(
+            run_id=session.run_id,
+            step_number=step_number,
+            action=f"llm:{model}",
+            tokens=total_tokens,
+            cost_usd=cost,
+            latency_ms=latency_ms,
+            status=status,
+            error=error,
+            metadata_json={
+                "source": "gateway",
+                "model": model,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "session_id": session.session_id,
+                "session_explicit": session.explicit,
+            },
+            timestamp=datetime.now(timezone.utc),
+        )
+    )
+
+    run.total_steps = max(run.total_steps or 0, step_number)
+    run.total_cost = (run.total_cost or 0.0) + cost
+    run.total_tokens = (run.total_tokens or 0) + total_tokens
+
+    if api_key is not None:
+        api_key.total_requests = (api_key.total_requests or 0) + 1
+        api_key.total_cost = (api_key.total_cost or 0.0) + cost
+        api_key.total_tokens = (api_key.total_tokens or 0) + total_tokens
+        api_key.last_used_at = datetime.now(timezone.utc)
+
+    db.commit()
+
+
 class GatewayService:
     """Core gateway logic: auth, enforce, proxy, and log."""
 
@@ -293,6 +391,8 @@ class GatewayService:
                 run.end_time = now
                 updated = True
             _loop_detector.clear(loop_storage_key(session.key_hash, session.session_id))
+            _state_store.delete_counter(_run_cost_key(session.run_id))
+            _state_store.delete_counter(_steps_key(session.run_id))
 
         if updated:
             self.db.commit()
@@ -310,14 +410,30 @@ class GatewayService:
         return session
 
     def get_session_cost(self, session: GatewaySession) -> float:
+        key = _run_cost_key(session.run_id)
+        value = _state_store.get_counter(key)
+        if value is None:
+            value = self._db_session_cost(session.run_id)
+            _state_store.set_counter(key, value)
+        return float(value)
+
+    def get_monthly_cost(self, api_key: APIKey) -> float:
+        key = _month_cost_key(api_key.key_hash)
+        value = _state_store.get_counter(key)
+        if value is None:
+            value = self._db_monthly_cost(api_key)
+            _state_store.set_counter(key, value)
+        return float(value)
+
+    def _db_session_cost(self, run_id: str) -> float:
         return float(
             self.db.query(func.coalesce(func.sum(Step.cost_usd), 0.0))
-            .filter(Step.run_id == session.run_id)
+            .filter(Step.run_id == run_id)
             .scalar()
             or 0.0
         )
 
-    def get_monthly_cost(self, api_key: APIKey) -> float:
+    def _db_monthly_cost(self, api_key: APIKey) -> float:
         month_start, month_end = month_bounds()
         run_prefix = gateway_run_prefix(api_key.key_hash)
         return float(
@@ -385,19 +501,27 @@ class GatewayService:
 
         return True, "", session_limit
 
-    def check_rate_limit(self, api_key: APIKey) -> tuple[bool, str]:
-        one_min_ago = datetime.now(timezone.utc) - timedelta(seconds=60)
-        run_prefix = gateway_run_prefix(api_key.key_hash)
-        recent_count = (
-            self.db.query(func.count(Step.id))
-            .join(Run, Run.id == Step.run_id)
-            .filter(
-                Run.id.like(f"{run_prefix}%"),
-                Step.timestamp >= one_min_ago,
-                Step.action.like("llm:%"),
+    def _ensure_rate_window(self, api_key: APIKey) -> str:
+        key = _rate_key(api_key.key_hash)
+        if not _state_store.has_events(key):
+            one_min_ago = datetime.now(timezone.utc) - timedelta(seconds=60)
+            run_prefix = gateway_run_prefix(api_key.key_hash)
+            rows = (
+                self.db.query(Step.timestamp)
+                .join(Run, Run.id == Step.run_id)
+                .filter(
+                    Run.id.like(f"{run_prefix}%"),
+                    Step.timestamp >= one_min_ago,
+                    Step.action.like("llm:%"),
+                )
+                .all()
             )
-            .scalar()
-        ) or 0
+            _state_store.seed_events(key, [_to_epoch(r[0]) for r in rows])
+        return key
+
+    def check_rate_limit(self, api_key: APIKey) -> tuple[bool, str]:
+        key = self._ensure_rate_window(api_key)
+        recent_count = _state_store.count_events_since(key, time.time() - 60)
 
         if recent_count >= api_key.max_requests_per_min:
             return (
@@ -477,12 +601,32 @@ class GatewayService:
         return run
 
     def next_step_number(self, run_id: str) -> int:
-        current_max = (
-            self.db.query(func.coalesce(func.max(Step.step_number), 0))
-            .filter(Step.run_id == run_id)
-            .scalar()
-        ) or 0
-        return int(current_max) + 1
+        key = _steps_key(run_id)
+        if _state_store.get_counter(key) is None:
+            current_max = (
+                self.db.query(func.coalesce(func.max(Step.step_number), 0))
+                .filter(Step.run_id == run_id)
+                .scalar()
+            ) or 0
+            _state_store.set_counter(key, float(current_max))
+        return int(_state_store.add_counter(key, 1))
+
+    def record_usage(self, api_key: APIKey, session: GatewaySession, cost: float) -> int:
+        """Update the in-memory enforcement counters for one proxied request.
+
+        Runs synchronously before the response so limits see this request at
+        once, even when the database write happens after the response. Returns
+        the step number to persist.
+        """
+        # Seed from the database first, so the seed never already includes this request.
+        self.get_session_cost(session)
+        self.get_monthly_cost(api_key)
+        rate_key = self._ensure_rate_window(api_key)
+
+        _state_store.add_counter(_run_cost_key(session.run_id), cost)
+        _state_store.add_counter(_month_cost_key(api_key.key_hash), cost)
+        _state_store.add_event(rate_key, time.time())
+        return self.next_step_number(session.run_id)
 
     def log_request(
         self,
@@ -496,41 +640,22 @@ class GatewayService:
         status: str = "completed",
         error: str | None = None,
     ):
-        total_tokens = input_tokens + output_tokens
-        run = self.ensure_run(api_key, session)
-        step_number = self.next_step_number(session.run_id)
-
-        step = Step(
-            run_id=session.run_id,
-            step_number=step_number,
-            action=f"llm:{model}",
-            tokens=total_tokens,
-            cost_usd=cost,
-            latency_ms=latency_ms,
-            status=status,
-            error=error,
-            metadata_json={
-                "source": "gateway",
-                "model": model,
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "session_id": session.session_id,
-                "session_explicit": session.explicit,
-            },
-            timestamp=datetime.now(timezone.utc),
+        step_number = self.record_usage(api_key, session, cost)
+        persist_gateway_request(
+            self.db,
+            api_key.id,
+            session,
+            model,
+            input_tokens,
+            output_tokens,
+            cost,
+            latency_ms,
+            step_number,
+            status,
+            error,
+            agent_name=f"gateway:{api_key.name}",
+            max_cost_usd=api_key.max_cost_usd,
         )
-        self.db.add(step)
-
-        run.total_steps = step_number
-        run.total_cost = (run.total_cost or 0.0) + cost
-        run.total_tokens = (run.total_tokens or 0) + total_tokens
-
-        api_key.total_requests += 1
-        api_key.total_cost += cost
-        api_key.total_tokens += total_tokens
-        api_key.last_used_at = datetime.now(timezone.utc)
-
-        self.db.commit()
 
     def log_blocked_request(
         self,

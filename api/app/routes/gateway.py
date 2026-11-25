@@ -2,12 +2,15 @@
 OpenAI-compatible gateway routes.
 """
 
+import json
+import logging
 import time
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
+from starlette.background import BackgroundTask
 
 from ..config import settings
 from ..db.database import get_db
@@ -18,10 +21,39 @@ from ..services.gateway_service import (
     calculate_cost,
     format_usd_limit,
     normalize_model_name,
+    persist_gateway_request,
 )
 
 
 router = APIRouter(prefix="/gateway/v1", tags=["Gateway"])
+logger = logging.getLogger("steerplane.gateway")
+
+UPSTREAM_TIMEOUT_SEC = 120.0
+
+
+def build_upstream_client() -> httpx.AsyncClient:
+    """The pooled client the app opens at startup and shares across gateway calls."""
+    return httpx.AsyncClient(
+        timeout=UPSTREAM_TIMEOUT_SEC,
+        limits=httpx.Limits(
+            max_connections=200, max_keepalive_connections=100, keepalive_expiry=60.0
+        ),
+    )
+
+
+def _persist_after_response(bind, *args, **kwargs) -> None:
+    """Write the request to the database after the response has been sent.
+
+    Enforcement counters were already updated before the response, so a slow
+    or failed write never lets a request past a limit; it only delays or loses
+    the dashboard row.
+    """
+    try:
+        with Session(bind=bind, autoflush=False) as db:
+            persist_gateway_request(db, *args, **kwargs)
+    except Exception:  # pragma: no cover - logged, never raised to the client
+        logger.exception("gateway: failed to persist request telemetry")
+
 
 PROVIDER_URLS = {
     "openai": "https://api.openai.com/v1",
@@ -70,10 +102,13 @@ async def chat_completions(request: Request, db: Session = Depends(get_db)):
     if not api_key:
         raise HTTPException(status_code=401, detail="Invalid or inactive API key")
 
+    raw_body = await request.body()
     try:
-        body = await request.json()
+        body = json.loads(raw_body)
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Invalid JSON body") from exc
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
 
     model = body.get("model", "gpt-4o")
     messages = body.get("messages", [])
@@ -166,12 +201,19 @@ async def chat_completions(request: Request, db: Session = Depends(get_db)):
         target_url = f"{provider_url}/chat/completions"
         proxy_body = body
 
+    # The app's pooled client when it is running with its lifespan; a one-off
+    # client otherwise (e.g. a TestClient used without `with`).
+    client = getattr(request.app.state, "upstream_client", None)
+    owns_client = client is None
+    if owns_client:
+        client = httpx.AsyncClient(timeout=UPSTREAM_TIMEOUT_SEC)
+
     try:
         if is_streaming:
-            # Not `async with`: the stream outlives this call, and closing the client
-            # on return would cut it before the first chunk. _handle_streaming owns it.
+            # The stream outlives this call, so _handle_streaming decides when a
+            # one-off client may close: after the last chunk, never before.
             return await _handle_streaming(
-                client=httpx.AsyncClient(timeout=120.0),
+                client=client,
                 target_url=target_url,
                 headers=forward_headers,
                 body=proxy_body,
@@ -181,13 +223,18 @@ async def chat_completions(request: Request, db: Session = Depends(get_db)):
                 model=model,
                 start_time=start_time,
                 provider=provider,
+                owns_client=owns_client,
             )
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(
-                target_url,
-                headers=forward_headers,
-                json=proxy_body,
-            )
+        try:
+            if provider == "anthropic":
+                resp = await client.post(target_url, headers=forward_headers, json=proxy_body)
+            else:
+                # The OpenAI body is forwarded unchanged: send the bytes we received
+                # instead of re-encoding them.
+                resp = await client.post(target_url, headers=forward_headers, content=raw_body)
+        finally:
+            if owns_client:
+                await client.aclose()
     except httpx.TimeoutException as exc:
         svc.log_request(
             api_key,
@@ -274,7 +321,23 @@ async def chat_completions(request: Request, db: Session = Depends(get_db)):
 
     normalized_model = normalize_model_name(model)
     cost = calculate_cost(normalized_model, input_tokens, output_tokens)
-    svc.log_request(api_key, session, model, input_tokens, output_tokens, cost, latency_ms)
+
+    # Limits see this request now; the database row is written after the response.
+    step_number = svc.record_usage(api_key, session, cost)
+    persist = BackgroundTask(
+        _persist_after_response,
+        db.get_bind(),
+        api_key.id,
+        session,
+        model,
+        input_tokens,
+        output_tokens,
+        cost,
+        latency_ms,
+        step_number,
+        agent_name=f"gateway:{api_key.name}",
+        max_cost_usd=api_key.max_cost_usd,
+    )
 
     session_cost = svc.get_session_cost(session)
     response_data["steerplane"] = {
@@ -283,7 +346,7 @@ async def chat_completions(request: Request, db: Session = Depends(get_db)):
         "cost_limit_usd": svc.get_session_cost_limit(api_key, session),
         "monthly_cost_usd": svc.get_monthly_cost(api_key),
         "monthly_cost_limit_usd": api_key.max_cost_monthly,
-        "request_number": api_key.total_requests,
+        "request_number": (api_key.total_requests or 0) + 1,
         "session_id": session.session_id,
     }
 
@@ -293,6 +356,7 @@ async def chat_completions(request: Request, db: Session = Depends(get_db)):
             "X-SteerPlane-Session-ID": session.session_id,
             "X-SteerPlane-Session-Cost": str(session_cost),
         },
+        background=persist,
     )
 
 
@@ -307,6 +371,7 @@ async def _handle_streaming(
     model: str,
     start_time: float,
     provider: str = "openai",
+    owns_client: bool = True,
 ):
     """
     Handle streaming LLM responses with real-time chunk forwarding.
@@ -335,13 +400,15 @@ async def _handle_streaming(
     try:
         resp = await client.send(req, stream=True)
     except BaseException:
-        await client.aclose()
+        if owns_client:
+            await client.aclose()
         raise
 
     if resp.status_code != 200:
         content = await resp.aread()
         await resp.aclose()
-        await client.aclose()
+        if owns_client:
+            await client.aclose()
         return JSONResponse(
             status_code=resp.status_code,
             content={"error": content.decode()},
@@ -489,7 +556,8 @@ async def _handle_streaming(
             try:
                 await resp.aclose()
             finally:
-                await client.aclose()
+                if owns_client:
+                    await client.aclose()
 
     return StreamingResponse(
         stream_generator(),

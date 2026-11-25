@@ -13,7 +13,7 @@ SQLite is the default for easy local development.
 import os
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from .url import resolve_database_url
@@ -36,6 +36,20 @@ engine = create_engine(
     pool_size=10 if DATABASE_URL.startswith("postgresql") else 5,
     max_overflow=20 if DATABASE_URL.startswith("postgresql") else 0,
 )
+
+if DATABASE_URL.startswith("sqlite") and ":memory:" not in DATABASE_URL:
+
+    @event.listens_for(engine, "connect")
+    def _sqlite_wal(dbapi_connection, _record):
+        # WAL lets reads run while a write commits, and synchronous=NORMAL skips
+        # the per-commit disk flush (the default costs ~10 ms per gateway request
+        # on Windows). A crash of the app loses nothing; a power cut can lose
+        # the last commits. Use PostgreSQL for production.
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.close()
+
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
